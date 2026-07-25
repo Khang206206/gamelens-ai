@@ -1,0 +1,47 @@
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.coverage
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+htmlcov/
+venv/
+
+# Node.js and Next.js
+.next/
+.npm/
+.pnpm-store/
+coverage/
+node_modules/
+out/
+*.tsbuildinfo
+
+# Machine-learning outputs and local datasets
+data/raw/*
+data/processed/*
+ml/artifacts/*
+ml/reports/generated/*
+
+# Local databases, logs, and runtime state
+*.db
+*.sqlite
+*.sqlite3
+*.log
+logs/
+tmp/
+
+# IDE and operating-system files
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db
