@@ -26,6 +26,11 @@ Acceptance gate:
 
 ## Stage 1 — Backend and database foundation
 
+**Status:** Planned
+
+Detailed execution plan:
+[`stage-1-backend-database-plan.txt`](stage-1-backend-database-plan.txt)
+
 Build one vertical slice at a time:
 
 1. Python project and locked dependencies.
