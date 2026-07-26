@@ -8,6 +8,11 @@
 - **Primary outcome:** A runnable, tested, containerized catalog API backed by
   PostgreSQL and deterministic development data.
 
+This document retains the original forward-looking implementation language so
+the execution sequence remains reviewable. The implemented decisions are
+recorded in Section 21, the completed frontend handoff in Section 22, and the
+final acceptance evidence in Section 23.
+
 
 ## 1. Context
 
@@ -841,7 +846,7 @@ Every resolved decision must be reflected in code, tests, and documentation.
 
 ## 22. Stage 2 Handoff
 
-Stage 1 should leave the frontend stage with:
+Stage 1 leaves the frontend stage with:
 
 - A stable local API base URL.
 - OpenAPI documentation.
@@ -851,5 +856,33 @@ Stage 1 should leave the frontend stage with:
 - Documented loading, empty, validation, and not-found behaviors.
 - A Docker workflow that starts the API and PostgreSQL without source changes.
 
-Frontend implementation should not begin until the catalog contracts and
-Stage 1 acceptance criteria are complete.
+The catalog contracts and Stage 1 acceptance criteria are complete, so Stage 2
+frontend implementation can begin against this handoff.
+
+
+## 23. Verified Completion Record
+
+Stage 1 was implemented on `feat/stage-1-backend-foundation` and re-audited on
+2026-07-26. The verified result is:
+
+- 84 fast unit and contract tests passed.
+- 28 integration tests passed against disposable PostgreSQL.
+- Diagnostic application coverage was 92%, including explicit failure paths.
+- Ruff lint and format checks passed.
+- Both development and integration Compose configurations passed quiet
+  validation.
+- Alembic upgraded the persistent development database from
+  `0001_initial_schema` to `0002_stage_1_integrity_hardening` without data loss
+  or model/schema drift.
+- The seed command produced 30 games and 36 taxonomy records and remained
+  unchanged on a second run.
+- The locked container dependency graph had no known vulnerabilities.
+- PostgreSQL and the non-root API container became healthy, and the health,
+  catalog, detail, taxonomy, model-status, OpenAPI, and documentation smoke
+  checks passed.
+- `.env`, secrets, local databases, and generated coverage artifacts were not
+  committed.
+
+GNU Make remained optional and was not installed in the verification
+environment; every Make target used in Stage 1 has a documented direct
+PowerShell/Docker equivalent.

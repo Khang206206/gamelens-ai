@@ -74,13 +74,13 @@ installs the complete Linux/Python 3.12 dependency graph from
 .
 |-- apps/
 |   |-- api/                 # FastAPI application, migration, tests, image
-|   `-- web/                 # Next.js application from Stage 2
+|   `-- web/                 # Reserved for the Stage 2 Next.js application
 |-- data/
 |   `-- seed/games.json      # 30-game deterministic synthetic catalog
 |-- docs/                    # Architecture, data, recommendation, roadmap
 |-- infra/
 |   `-- docker-compose.test.yml
-|-- ml/                      # Offline ML workflow boundary
+|-- ml/                      # Reserved offline ML workflow boundary
 |-- scripts/                 # Future cross-project scripts
 |-- .env.example
 |-- docker-compose.yml       # PostgreSQL and API services
@@ -164,7 +164,8 @@ Every target has a direct equivalent in [the API README](apps/api/README.md).
 | `POSTGRES_PORT` | Development PostgreSQL host port |
 | `APP_NAME` | API title exposed in OpenAPI and health metadata |
 | `ENVIRONMENT` | `development`, `test`, or `production` |
-| `API_HOST` / `API_PORT` | Host-Python bind address and port; Compose publishes the API on loopback |
+| `API_HOST` | Host-Python bind address; Compose overrides the container bind address |
+| `API_PORT` | Host-Python port and Compose-published loopback port; the container listens on 8000 |
 | `DATABASE_URL` | SQLAlchemy PostgreSQL connection URL |
 | `CORS_ORIGINS` | Comma-separated explicit browser origins |
 | `LOG_LEVEL` | Structured application logging level |
@@ -196,6 +197,18 @@ The `quality` service bind-mounts the current API source, so tests, lint, and
 formatting never inspect a stale source snapshot. The integration database is
 reachable only inside its isolated Compose network, uses `tmpfs`, and never
 resets the persistent development volume.
+
+The Stage 1 acceptance gate was last re-audited on 2026-07-26:
+
+| Check | Verified result |
+| --- | --- |
+| Fast unit and contract suite | 84 passed |
+| Disposable-PostgreSQL integration suite | 28 passed |
+| Diagnostic application coverage | 92% |
+| Alembic | `0001_initial_schema` upgraded to `0002_stage_1_integrity_hardening` with no schema drift |
+| Deterministic seed | 30 games and 36 taxonomy records; a second run made no duplicates |
+| Dependency audit | No known vulnerabilities in the locked container dependency graph |
+| Runtime smoke test | Healthy non-root API and PostgreSQL containers; complete Stage 1 HTTP matrix passed |
 
 ## Project documentation
 

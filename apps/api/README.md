@@ -49,7 +49,14 @@ docker compose down
 
 ## Host Python workflow
 
-From `apps/api`, use Python 3.12:
+Start PostgreSQL from the repository root:
+
+```powershell
+docker compose up -d db
+Set-Location apps/api
+```
+
+Then use Python 3.12:
 
 ```powershell
 python -m venv .venv
@@ -89,6 +96,15 @@ page size is 20 and the maximum is 100. Supported sort values are
 Readiness returns HTTP 200 only when PostgreSQL is reachable, every required
 Stage 1 table exists, and Alembic is at the expected head. Otherwise it returns
 a typed degraded response with HTTP 503.
+
+The implemented migration chain is:
+
+```text
+0001_initial_schema -> 0002_stage_1_integrity_hardening
+```
+
+The second revision hardens constraints and indexes without resetting an
+existing Stage 1 database.
 
 Errors use one envelope:
 
@@ -142,6 +158,11 @@ working tree and formatting writes changes back to the host.
 
 Coverage is reported as a diagnostic in Stage 1; failure-path coverage matters
 more than an arbitrary percentage threshold.
+
+The acceptance gate was last re-audited on 2026-07-26: 84 fast tests and 28
+PostgreSQL integration tests passed, application coverage was 92%, Ruff checks
+passed, the locked dependency graph had no known vulnerabilities, and the
+Docker/HTTP smoke matrix passed.
 
 ## Seed data
 
