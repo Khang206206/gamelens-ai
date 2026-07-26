@@ -51,11 +51,15 @@ complete HTTP smoke matrix.
 
 ## Stage 2 — Frontend foundation
 
+**Status:** Next
+
 Create the Next.js application after catalog response schemas are stable.
 Implement the responsive shell, landing page, catalog, details, typed API
 client, and loading, empty, and error states.
 
 ## Stage 3 — Content recommendation MVP
+
+**Status:** Planned
 
 Create deterministic preprocessing and TF-IDF artifacts, a replaceable
 recommendation service, onboarding, structured explanations, recommendation
@@ -63,25 +67,35 @@ API contracts, and ranking tests.
 
 ## Stage 4 — Feedback and persistence
 
+**Status:** Planned
+
 Persist interactions and preferences, adjust results from feedback, exclude
 disliked games, and log model-versioned recommendation events.
 
 ## Stage 5 — Collaborative and hybrid ranking
+
+**Status:** Planned
 
 Introduce an interaction dataset and collaborative baseline, compare it with
 existing baselines, and combine independently observable component scores.
 
 ## Stage 6 — Evaluation and reporting
 
+**Status:** Planned
+
 Run reproducible ranking evaluation with saved configuration, machine-readable
 metrics, and an evidence-based Markdown experiment report.
 
 ## Stage 7 — Production readiness
 
+**Status:** Planned
+
 Add CI, production Dockerfiles, deployment documentation, logging and
 monitoring hooks, security review, and demo assets.
 
 ## Stage 8 — Selected advanced capability
+
+**Status:** Planned
 
 Choose only one or two justified capabilities after evaluation is credible,
 such as diversity reranking, semantic embeddings, natural-language preference

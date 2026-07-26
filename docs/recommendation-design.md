@@ -32,8 +32,12 @@ with the following conceptual capabilities:
 - Expose a stable model name and version.
 - Report artifact readiness and feature metadata.
 
-Stage 1 may define the interface, but it must not expose an untrained content
-model as active.
+Stage 1 implements this interface as a replaceable service protocol and exposes
+its state through `GET /api/v1/models/status`. The current implementation
+reports `not_configured`, has no active model, advertises no recommendation or
+explanation capability, and raises a clear error if recommendation execution is
+attempted internally. No recommendation endpoint is exposed until a real model
+is implemented and validated.
 
 ## Popularity baseline
 
