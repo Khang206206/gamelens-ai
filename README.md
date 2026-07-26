@@ -10,7 +10,7 @@ metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 1 — Backend and database foundation**
+**Stage 1 complete; Stage 2 ready for implementation**
 
 The repository now provides a runnable Python 3.12 FastAPI catalog API,
 PostgreSQL 16 persistence, a reviewed Alembic migration chain, deterministic
@@ -19,8 +19,12 @@ tests, and a Docker-first development workflow.
 
 The API supports health/readiness, paginated catalog browsing, game details,
 taxonomy metadata, and an explicit `not_configured` recommendation-model
-status. There is no frontend or trained model yet; those begin in Stage 2 and
-Stage 3.
+status.
+
+The detailed
+[Stage 2 frontend engineering plan](docs/stage-2-frontend-foundation-plan.md)
+is ready. Frontend implementation has not started, so the current runnable
+stack remains PostgreSQL and the API. A trained model remains Stage 3 work.
 
 ## Planned MVP
 
@@ -74,7 +78,7 @@ installs the complete Linux/Python 3.12 dependency graph from
 .
 |-- apps/
 |   |-- api/                 # FastAPI application, migration, tests, image
-|   `-- web/                 # Reserved for the Stage 2 Next.js application
+|   `-- web/                 # Stage 2 plan and future Next.js application
 |-- data/
 |   `-- seed/games.json      # 30-game deterministic synthetic catalog
 |-- docs/                    # Architecture, data, recommendation, roadmap
@@ -95,8 +99,9 @@ installs the complete Linux/Python 3.12 dependency graph from
 - Python 3.12 for the optional host workflow
 - GNU Make is optional; direct PowerShell/Docker commands are documented
 
-Node.js is not required until Stage 2. A host PostgreSQL installation is not
-required.
+Node.js is not required for the currently implemented Stage 1 workflow.
+Stage 2 will select and pin its Node.js runtime after a compatibility smoke
+test. A host PostgreSQL installation is not required.
 
 ## Local setup
 
@@ -217,6 +222,8 @@ The Stage 1 acceptance gate was last re-audited on 2026-07-26:
 - [Recommendation design](docs/recommendation-design.md)
 - [Roadmap](docs/roadmap.md)
 - [Stage 1 engineering plan](docs/stage-1-backend-database-plan.md)
+- [Stage 2 frontend engineering plan](docs/stage-2-frontend-foundation-plan.md)
+- [Web application status and API handoff](apps/web/README.md)
 - [API setup and contracts](apps/api/README.md)
 
 ## Current limitations

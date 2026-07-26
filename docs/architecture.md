@@ -40,6 +40,15 @@ flowchart TB
 client. It does not connect directly to PostgreSQL, embed secrets, or implement
 recommendation ranking.
 
+The planned Stage 2 boundary uses Next.js App Router routes for `/`, `/games`,
+and `/games/[gameId]`. Catalog request state lives in URL search parameters.
+Focused catalog and detail client components will call FastAPI through one
+project-owned typed client that consumes OpenAPI-derived contracts and is
+configured by `NEXT_PUBLIC_API_URL`. The plan does not introduce a
+backend-for-frontend, server-side catalog fetch, internal API URL, or global
+state store. These decisions are targets, not implemented behavior; see the
+[Stage 2 frontend engineering plan](stage-2-frontend-foundation-plan.md).
+
 ### API
 
 `apps/api` owns HTTP contracts, validation, orchestration, persistence, and
@@ -78,8 +87,9 @@ keys.
 
 Docker Compose provides PostgreSQL and the Stage 1 API container while
 preserving the option to run FastAPI directly on the host. Schema migration
-and deterministic seeding remain explicit commands. Stage 2 will add the web
-development server.
+and deterministic seeding remain explicit commands. Stage 2 implementation
+will add a web development server while keeping those lifecycle operations
+explicit.
 
 ### Production direction
 
@@ -104,4 +114,5 @@ services, repositories, and injected SQLAlchemy sessions; PostgreSQL is the
 runtime source of truth. Readiness requires both connectivity and the expected
 Alembic schema head. The recommendation boundary currently exposes only an
 honest `not_configured` status. The web application, active recommender,
-training pipeline, and model artifacts remain future components.
+training pipeline, and model artifacts remain future components. The Stage 2
+frontend plan is ready, but no web application code or service exists yet.
