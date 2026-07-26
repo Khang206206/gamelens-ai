@@ -1,0 +1,49 @@
+name: gamelens-ai-test
+
+services:
+  test-db:
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+    environment:
+      POSTGRES_DB: gamelens_test
+      POSTGRES_USER: gamelens_test
+      POSTGRES_PASSWORD: gamelens_test_only
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U gamelens_test -d gamelens_test
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+
+  test-api:
+    image: gamelens-ai-api:stage1
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg://gamelens_test:gamelens_test_only@test-db:5432/gamelens_test
+      GAMELENS_TEST_DATABASE_URL: postgresql+psycopg://gamelens_test:gamelens_test_only@test-db:5432/gamelens_test
+      CORS_ORIGINS: http://testserver
+      LOG_LEVEL: WARNING
+      GAMELENS_ALLOW_TEST_DATABASE_RESET: "true"
+    depends_on:
+      test-db:
+        condition: service_healthy
+    volumes:
+      - ../apps/api:/workspace/apps/api
+      - ../data/seed:/workspace/data/seed:ro
+    command:
+      - python
+      - -m
+      - pytest
+      - --run-integration
+      - -m
+      - integration
+      - tests/integration
+      - -q
+      - -p
+      - no:cacheprovider

@@ -20,20 +20,20 @@ Acceptance gate:
 
 - `git diff --check` succeeds.
 - `.env` is ignored while `.env.example` is tracked.
-- `docker compose config` succeeds.
+- `docker compose config --quiet` succeeds.
 - PostgreSQL starts and becomes healthy on a Docker-enabled machine.
 - Setup, architecture, limitations, and next work are understandable.
 
 ## Stage 1 — Backend and database foundation
 
-**Status:** Planned
+**Status:** Complete
 
 Detailed execution plan:
 [`stage-1-backend-database-plan.md`](stage-1-backend-database-plan.md)
 
 Build one vertical slice at a time:
 
-1. Python project and locked dependencies.
+1. Python project with pinned direct dependencies and a transitive container lock.
 2. FastAPI settings, logging, and error handling.
 3. PostgreSQL session management and Alembic.
 4. Initial relational models and migration.
@@ -43,6 +43,11 @@ Build one vertical slice at a time:
 
 The stage is complete when migrations, seed, server, tests, linting, and
 Compose startup all succeed.
+
+Acceptance was re-audited on 2026-07-26 with 84 fast tests, 28
+disposable-PostgreSQL integration tests, 92% diagnostic application coverage,
+a clean dependency vulnerability scan, a healthy Compose stack, and the
+complete HTTP smoke matrix.
 
 ## Stage 2 — Frontend foundation
 

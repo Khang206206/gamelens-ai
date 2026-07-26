@@ -10,8 +10,9 @@
 - Foreign keys and common lookup paths receive indexes.
 - JSON is reserved for genuinely flexible recommendation-event context.
 
-The following is the target MVP model. Stage 1 migrations will be the
-executable source of truth once implemented.
+The Stage 1 Alembic migration chain is the executable source of truth for this
+model. Revision `0002_stage_1_integrity_hardening` upgrades databases that
+already applied the initial schema without resetting their data.
 
 ## Entity relationship overview
 
@@ -77,15 +78,19 @@ Associates a user and game with one of:
 - `wishlisted`
 - `rated`
 
-It includes a numeric value where meaningful and a UTC event timestamp.
-Stage 1 will decide whether repeated views are events while state-like actions
-use an upsert policy.
+Only `rated` carries a numeric value, which is required to be from 0 through
+10; every other interaction type requires a null value. Each event has a UTC
+timestamp. Stage 1 preserves interactions as repeatable events. State-like
+upsert policy is deferred until feedback write endpoints are designed in
+Stage 4.
 
 ### RecommendationEvent
 
 Records the user, model name and version, generation time, bounded request
 context, and optionally a compact top-K result summary. It supports audit and
 evaluation without treating logged recommendations as user feedback.
+PostgreSQL checks require request context to be a JSON object and a non-null
+result summary to be a JSON array.
 
 ## Index and constraint plan
 
@@ -93,9 +98,12 @@ evaluation without treating logged recommendations as user feedback.
 - Indexes on game title and common catalog filters.
 - Composite indexes on interaction user/time and game/type.
 - Index on recommendation event user/generation time.
-- Check constraints for non-negative counts and bounded preference weights
-  once their exact ranges are defined.
-- Foreign-key deletion behavior must be explicit in migrations.
+- Check constraints enforce ratings from 0 through 10, non-negative counts and
+  popularity, preference weights from -1 through 1, lowercase slug shape,
+  interaction-value semantics, and recommendation JSON shapes.
+- User-owned preferences, interactions, and recommendation events cascade when
+  a user is deleted. Game-taxonomy associations cascade with either side.
+  Games referenced by interactions use `RESTRICT`.
 
 ## Migration policy
 

@@ -2,7 +2,7 @@
 
 ## Stage 1 Engineering Plan: Backend and Database Foundation
 
-- **Document status:** Proposed
+- **Document status:** Implemented and verified on 2026-07-26
 - **Stage 0 prerequisite:** Complete
 - **Target branch:** `feat/stage-1-backend-foundation`
 - **Primary outcome:** A runnable, tested, containerized catalog API backed by
@@ -150,15 +150,16 @@ creating disproportionate setup overhead.
 
 ### 5.4 Project Metadata and Dependency Pinning
 
-`apps/api/pyproject.toml` will define project metadata, Python compatibility,
-dependencies, and tool configuration. Runtime and development dependency
-versions will be pinned only after verifying that the complete initial stack
-imports and starts successfully.
+`apps/api/pyproject.toml` defines project metadata, Python compatibility,
+direct dependencies, and tool configuration. Runtime and development
+dependencies are fully locked for the Linux/Python 3.12 Docker workflow after
+verifying that the complete initial stack imports and starts successfully.
 
 ### 5.5 Configuration
 
 All runtime settings will come from environment variables:
 
+- `APP_NAME`
 - `ENVIRONMENT`
 - `API_HOST`
 - `API_PORT`
@@ -227,6 +228,7 @@ apps/api/
 |   `-- unit/
 |-- alembic.ini
 |-- Dockerfile
+|-- requirements.lock
 |-- pyproject.toml
 `-- README.md
 
@@ -264,7 +266,7 @@ state.
 - `git log --oneline -3`
 - `docker version`
 - `docker compose version`
-- `docker compose config`
+- `docker compose config --quiet`
 - `git check-ignore .env`
 
 ### Exit Criteria
@@ -587,11 +589,12 @@ or PostgreSQL installations.
 
 ### Verification
 
-- `docker compose config`
+- `docker compose --profile quality config --quiet`
+- `docker compose -f infra/docker-compose.test.yml config --quiet`
 - `docker compose build api`
 - `docker compose up -d db`
-- `docker compose run --rm api alembic upgrade head`
-- `docker compose run --rm api python -m app.db.seed`
+- `docker compose run --build --rm api python -m alembic upgrade head`
+- `docker compose run --build --rm api python -m app.db.seed`
 - `docker compose up -d api`
 - `docker compose ps`
 - HTTP requests to the health and catalog endpoints
@@ -635,7 +638,8 @@ documentation before the stage is considered complete.
 - Ruff lint.
 - Ruff format check.
 - `git diff --check`.
-- `docker compose config`.
+- `docker compose --profile quality config --quiet`.
+- `docker compose -f infra/docker-compose.test.yml config --quiet`.
 - Secret and ignored-file review.
 - OpenAPI route inventory.
 
@@ -751,7 +755,8 @@ Stage 1 is complete only when all of the following are true:
 - The model-status endpoint does not claim that a model is trained or active.
 - Fast and PostgreSQL integration test suites pass.
 - Ruff lint and format checks pass.
-- `docker compose config` succeeds.
+- Development and integration Compose files pass quiet validation, including
+  the opt-in quality profile.
 - Root commands and README instructions match verified behavior.
 - No secrets, local databases, or generated artifacts are committed.
 - Known limitations and the Stage 2 handoff are documented.
@@ -806,19 +811,30 @@ PowerShell equivalents.
 
 ## 21. Implementation-Time Decisions
 
-The following decisions should be confirmed during the relevant phase after a
-small compatibility or behavior test:
+The following decisions were confirmed during implementation after
+compatibility or behavior tests:
 
-1. Exact dependency versions.
-2. The final structured-log JSON fields.
-3. The default catalog page size and supported sort values.
-4. Whether unknown taxonomy filters return an empty page or a validation error.
-5. The interaction event uniqueness policy that best preserves Stage 4
-   flexibility.
-6. Whether the PostgreSQL integration environment is an independent Compose
-   file or a test profile.
-7. Whether coverage receives an enforcement threshold in Stage 1 or remains a
-   reported diagnostic until the API surface grows.
+1. Direct dependencies are pinned in `apps/api/pyproject.toml`; the complete
+   Linux/Python 3.12 Docker graph is pinned in `apps/api/requirements.lock`
+   after host and container smoke tests.
+2. Structured logs use timestamp, level, logger, message, safe request/error
+   context, and explicit seed inserted/updated/unchanged counters.
+3. Catalog pages default to 20, are capped at 100, and support `popularity`,
+   `rating`, `release_date`, and `title` sorts with deterministic ID
+   tie-breaking.
+4. Unknown taxonomy filters return an empty page with valid pagination
+   metadata.
+5. Stage 1 interactions remain repeatable events; state-like upsert policy is
+   deferred to the Stage 4 feedback contract.
+6. PostgreSQL integration tests use the independent
+   `infra/docker-compose.test.yml` project with a `tmpfs` database. Destructive
+   setup requires an explicit opt-in, a dedicated `_test` database on an
+   allowlisted host, and verification of the connected database identity.
+7. Coverage remains a diagnostic without a Stage 1 threshold. The verified
+   application result is 92%, with explicit failure-path tests.
+8. Request sessions and health checks use the same app-local engine. Readiness
+   requires both the Stage 1 tables and Alembic head; the engine is disposed at
+   application shutdown.
 
 Every resolved decision must be reflected in code, tests, and documentation.
 
