@@ -1,133 +1,204 @@
 GAMELENS AI
-KE HOACH STAGE 1 - BACKEND VA DATABASE FOUNDATION
-=================================================
+STAGE 1 ENGINEERING PLAN: BACKEND AND DATABASE FOUNDATION
+=========================================================
 
-Trang thai tai lieu: De xuat de review, chua bat dau implementation
-Dieu kien dau vao: Stage 0 da hoan tat va nhanh main dong bo voi origin/main
-Pham vi repository: D:\The-K-Game-Recommendation
-
-
-1. NGU CANH
------------
-
-Stage 0 da tao monorepo, tai lieu kien truc, cau hinh moi truong va PostgreSQL
-chay bang Docker Compose. Stage 1 se bien nen mong do thanh backend co the chay,
-co migration, seed data, API catalog va test.
-
-Ket qua mong doi cua Stage 1:
-
-- FastAPI khoi dong duoc tren host hoac bang Docker.
-- PostgreSQL la database chinh; SQLite chi duoc dung cho test nhanh.
-- Alembic quan ly schema va co migration dau tien.
-- Co it nhat 25 game trong seed dataset xac dinh, co the chay lai an toan.
-- Catalog, game detail, genre, tag va platform endpoints hoat dong.
-- Route mong; business logic nam trong service va repository.
-- Co test nhanh va smoke test tren PostgreSQL that.
-- Docker Compose khoi dong duoc ca db va api.
-- README, architecture, data model va command docs phan anh dung implementation.
-- Chua co recommendation algorithm gia, collaborative filtering, frontend,
-  authentication hoac external API.
+Document status: Proposed
+Stage 0 prerequisite: Complete
+Target branch: feat/stage-1-backend-foundation
+Primary outcome: A runnable, tested, containerized catalog API backed by
+PostgreSQL and deterministic development data.
 
 
-2. PHAN CONG TRACH NHIEM
------------------------
+1. CONTEXT
+----------
 
-Ky hieu trong tai lieu:
+Stage 0 established the monorepo boundaries, architecture documentation,
+environment-variable conventions, and a healthy PostgreSQL service managed by
+Docker Compose. Stage 1 converts that foundation into the first executable
+application slice.
 
-[CODEX]
-  Codex co the tu thuc hien trong workspace: tao/sua file, chay lint/test,
-  build image, chay migration, seed, kiem tra endpoint va cap nhat tai lieu.
-  Docker command co the hien hop thoai xin phep vi Docker Engine nam ngoai
-  filesystem sandbox.
+The stage focuses on backend and persistence fundamentals rather than
+recommendation quality. It must establish stable API contracts, a reproducible
+database schema, deterministic seed data, and a development workflow that can
+be reused by the frontend and machine-learning stages.
 
-[USER]
-  Viec can nguoi dung thao tac tren Windows hoac chap thuan thay doi ben ngoai
-  workspace.
+The resulting backend should demonstrate:
 
-[CHECKPOINT]
-  Dieu kien phai dat truoc khi sang cong doan tiep theo.
-
-Viec Codex co the tu lam:
-
-- Tao branch local va toan bo source code Stage 1.
-- Chon va pin cac dependency sau khi chay compatibility smoke test.
-- Tao SQLAlchemy models, Alembic migration, seed data va API routes.
-- Tao Dockerfile, Compose API service, pytest va Ruff configuration.
-- Chay migration, seed, test, lint va HTTP smoke test.
-- Sua loi cho den khi acceptance gate dat.
-- Tao commit local neu nguoi dung yeu cau ro.
-
-Viec USER can lam thu cong:
-
-- Khoi dong Docker Desktop va giu Docker Engine running trong luc test.
-- Chap thuan Docker command neu Codex/Desktop hien approval prompt.
-- Giai phong hoac doi port neu 5432/8000 dang bi ung dung khac chiem.
-- Dang nhap GitHub trong cua so trinh duyet neu Git Credential Manager yeu cau
-  khi push.
-- Review va chap nhan Pull Request sau khi branch Stage 1 duoc push.
-
-Viec USER khong bat buoc phai lam:
-
-- Khong can cai PostgreSQL truc tiep tren Windows.
-- Khong can cai Python tren host neu chi su dung Docker workflow.
-- Khong can cai GNU Make; tai lieu se co PowerShell/Docker equivalents.
-- Khong can cung cap API key, dataset ben ngoai hay LLM key.
+- Clear separation between HTTP routes, services, repositories, schemas, and
+  database models.
+- Environment-based configuration with no committed secrets.
+- Reproducible schema evolution through Alembic.
+- Deterministic local data with documented provenance.
+- Typed API responses and centralized error handling.
+- Fast tests for application behavior and PostgreSQL integration tests for
+  database-specific behavior.
+- Docker-first setup that does not require a host PostgreSQL installation.
 
 
-3. QUYET DINH KY THUAT DE XUAT
------------------------------
+2. STAGE OBJECTIVES
+-------------------
 
-3.1 Runtime va dependency
+Stage 1 will deliver:
 
-- Target Python 3.12 de uu tien do tuong thich cua FastAPI/SQLAlchemy.
-- Dinh nghia project va tool configuration trong apps/api/pyproject.toml.
-- Pin exact dependency versions luc implementation, sau compatibility test.
-- Runtime dependencies toi thieu:
-  FastAPI, Uvicorn, Pydantic Settings, SQLAlchemy 2.x, Psycopg 3 va Alembic.
-- Development dependencies toi thieu:
-  pytest, pytest-cov, HTTPX va Ruff.
-- Chua dua mypy vao Stage 1 neu no lam tang setup ma chua tao gia tri ro rang.
+1. A Python 3.12 FastAPI project under apps/api.
+2. Typed settings, structured logging, CORS configuration, and centralized
+   exception handling.
+3. SQLAlchemy 2.x session management using PostgreSQL as the primary database.
+4. Alembic configuration and an initial reviewed migration.
+5. Relational models for the catalog, taxonomy, anonymous users, preferences,
+   interactions, and recommendation events.
+6. A deterministic seed dataset containing at least 25 varied games.
+7. Health, catalog, detail, taxonomy, and model-status endpoints.
+8. A documented recommendation-service interface without a fake active model.
+9. Backend unit, contract, migration, seed, and integration tests.
+10. An API Docker image and a complete local Docker Compose workflow.
+11. Root commands and documentation that match verified behavior.
 
-3.2 Database access
 
-- Dung SQLAlchemy 2.x synchronous session cho MVP.
-- Khong dung async database stack o Stage 1; no tang do phuc tap ma catalog
-  nho chua duoc loi ro rang.
-- PostgreSQL 16 tiep tuc la database chinh.
-- SQLite in-memory chi phuc vu test nhanh, khong quyet dinh schema production.
-- Migration phai duoc test rieng tren PostgreSQL that.
+3. NON-GOALS
+------------
 
-3.3 Layering
+The following work is intentionally excluded from Stage 1:
 
-Luon giu luong:
+- Next.js or any frontend implementation.
+- Onboarding and preference-submission endpoints.
+- Interaction and feedback write endpoints.
+- Popularity, content-based, collaborative, or hybrid recommendation logic.
+- Model training or evaluation.
+- Authentication and authorization.
+- External game metadata APIs.
+- Cover-image downloads.
+- LLM integrations.
+- Production deployment configuration.
+- GitHub Actions or broader CI/CD work.
+- Performance or recommendation-quality claims.
+
+The database may include entities needed by later stages, but those entities
+must not be exposed through incomplete APIs.
+
+
+4. ENGINEERING PRINCIPLES
+-------------------------
+
+4.1 Incremental delivery
+
+Implementation will proceed through small vertical slices. Each phase must
+leave the repository importable, testable, and understandable before the next
+phase begins.
+
+4.2 Honest system state
+
+No endpoint may imply that a recommendation model has been trained or loaded.
+The model-status endpoint will explicitly report that no active model is
+configured until Stage 3.
+
+4.3 Explicit lifecycle operations
+
+Database migrations and seed operations will use explicit commands. They will
+not run silently inside ordinary API requests.
+
+4.4 Database fidelity
+
+PostgreSQL is the source of truth for runtime behavior. SQLite may support fast
+tests only where the tested behavior is database-portable. PostgreSQL-specific
+constraints, migrations, and seed behavior require PostgreSQL integration
+tests.
+
+4.5 Determinism
+
+Seed records, ordering, pagination, migration state, and test fixtures must
+produce repeatable results. Tie-breaking rules must be explicit.
+
+4.6 Minimal dependency surface
+
+Only dependencies with a clear Stage 1 purpose will be introduced. Exact
+versions will be selected and pinned after a compatibility smoke test.
+
+4.7 Safe local operations
+
+Automated tests must not delete or reset the persistent development volume.
+Destructive database tests will run against a disposable database or volume.
+
+
+5. PROPOSED TECHNICAL DECISIONS
+-------------------------------
+
+5.1 Runtime and framework
+
+- Python 3.12
+- FastAPI
+- Uvicorn
+- Pydantic v2
+- pydantic-settings
+
+5.2 Persistence
+
+- PostgreSQL 16
+- SQLAlchemy 2.x synchronous sessions
+- Psycopg 3
+- Alembic
+
+Synchronous sessions are preferred for this stage because the catalog workload
+is small and the simpler transaction model is easier to test and maintain.
+An asynchronous database stack can be evaluated later if profiling identifies
+a concrete need.
+
+5.3 Quality tooling
+
+- pytest
+- pytest-cov
+- HTTPX
+- Ruff linting and formatting
+
+Static type checking may be introduced later if it can be configured without
+creating disproportionate setup overhead.
+
+5.4 Project metadata and dependency pinning
+
+apps/api/pyproject.toml will define project metadata, Python compatibility,
+dependencies, and tool configuration. Runtime and development dependency
+versions will be pinned only after verifying that the complete initial stack
+imports and starts successfully.
+
+5.5 Configuration
+
+All runtime settings will come from environment variables:
+
+- ENVIRONMENT
+- API_HOST
+- API_PORT
+- DATABASE_URL
+- CORS_ORIGINS
+- LOG_LEVEL
+
+The host workflow will connect to PostgreSQL through localhost. The Compose API
+service will receive a container-specific DATABASE_URL using the db service
+hostname.
+
+5.6 API layering
+
+The required dependency direction is:
 
 route -> service -> repository -> SQLAlchemy session -> PostgreSQL
 
-- Route: HTTP parsing, dependency injection va response schema.
-- Service: use case, rule va error domain.
-- Repository: query va persistence.
-- Schema: Pydantic request/response contract.
-- Model: SQLAlchemy mapping, khong tra truc tiep ra API.
+Responsibilities:
 
-3.4 Configuration va security
+- Routes handle HTTP parsing, dependency injection, and response selection.
+- Services implement use cases and domain-level decisions.
+- Repositories own database queries and persistence behavior.
+- Pydantic schemas define stable external contracts.
+- SQLAlchemy models remain internal persistence representations.
 
-- Tat ca setting den tu environment variables.
-- CORS la allowlist, khong dung wildcard khi credentials duoc bat.
-- Khong log password, DATABASE_URL day du hoac secret.
-- UTC va timezone-aware timestamp.
-- Request validation va error envelope nhat quan.
-- Seed data khong chua cover image co ban quyen.
+5.7 Identifiers and timestamps
 
-3.5 Recommendation boundary
-
-- Tao interface/abstract contract cho recommendation service.
-- Model status endpoint phai noi ro "not configured" den Stage 3.
-- Khong tao stub tra ve score/recommendation gia.
-- Khong train model trong API request.
+- Integer primary keys for Stage 1 entities.
+- Unique, stable slugs for games and taxonomy records.
+- Timezone-aware UTC timestamps.
+- Nullable external identifiers for future source adapters.
 
 
-4. CAU TRUC DU KIEN SAU STAGE 1
--------------------------------
+6. TARGET REPOSITORY STRUCTURE
+------------------------------
 
 apps/api/
 |-- app/
@@ -143,10 +214,10 @@ apps/api/
 |   |   |-- exceptions.py
 |   |   `-- logging.py
 |   |-- db/
+|   |   |-- models/
 |   |   |-- base.py
-|   |   |-- session.py
 |   |   |-- seed.py
-|   |   `-- models/
+|   |   `-- session.py
 |   |-- repositories/
 |   |-- schemas/
 |   |-- services/
@@ -166,178 +237,163 @@ data/seed/
 `-- games.json
 
 infra/
-`-- docker-compose.test.yml (chi tao neu can de tach test database)
+`-- docker-compose.test.yml
 
-Khong tao directory rong. Moi directory phai co code, fixture hoac README co
-gia tri.
+Directories will be created only when they contain implementation, fixtures,
+configuration, or meaningful documentation.
 
 
-5. CONG DOAN 0 - PREFLIGHT VA BRANCH
-------------------------------------
+7. IMPLEMENTATION PHASE 0: PREFLIGHT AND BASELINE
+-------------------------------------------------
 
-Ngu canh:
-Bao ve nhanh main da hoan tat Stage 0 va tranh tron nhieu thay doi vao mot
-commit lon.
+Objective
 
-[CODEX]
+Establish a clean implementation baseline and protect the completed Stage 0
+state.
 
-1. Kiem tra working tree clean va main dong bo origin/main.
-2. Kiem tra Docker Engine, Compose va port 5432/8000.
-3. Tao branch de xuat:
-   feat/stage-1-backend-foundation
-4. Kiem tra file .env; neu khong co thi huong dan copy tu .env.example.
-5. Ghi lai baseline command va Docker version trong implementation log, khong
-   commit thong tin may ca nhan vao repository.
+Work
 
-[USER]
+1. Confirm that main is clean and synchronized with origin/main.
+2. Confirm that Docker Engine and Docker Compose are available.
+3. Validate the existing Compose configuration.
+4. Check whether ports 5432 and 8000 are available.
+5. Create feat/stage-1-backend-foundation from the latest main.
+6. Record the baseline repository tree and verification commands.
+7. Confirm that .env is ignored and .env.example is tracked.
 
-- Khoi dong Docker Desktop.
-- Neu port bi chiem, kiem tra bang:
-
-  Get-NetTCPConnection -LocalPort 5432,8000 -ErrorAction SilentlyContinue
-
-- Lua chon dong ung dung dang chiem port hoac doi POSTGRES_PORT/API_PORT trong
-  .env. Khong can cai PostgreSQL tren Windows.
-
-Kiem thu:
+Verification
 
 - git status --short --branch
+- git log --oneline -3
 - docker version
 - docker compose version
 - docker compose config
+- git check-ignore .env
 
-[CHECKPOINT]
+Exit criteria
 
-- Working tree sach.
-- Branch Stage 1 ton tai.
-- Docker Engine phan hoi.
-- Compose Stage 0 van hop le truoc khi sua.
-
-
-6. CONG DOAN 1 - PYTHON VA FASTAPI SKELETON
--------------------------------------------
-
-Ngu canh:
-Tao ung dung nho nhat co the import, khoi dong va test truoc khi them database.
-
-[CODEX]
-
-1. Tao apps/api/pyproject.toml voi metadata, Python target, runtime/dev
-   dependencies va Ruff/pytest configuration.
-2. Chay compatibility smoke test roi pin exact versions.
-3. Tao app package va application factory.
-4. Tao GET /health ban dau, response Pydantic typed.
-5. Bat OpenAPI tai /docs va /openapi.json.
-6. Tao pytest fixture cho TestClient/HTTPX va health test.
-7. Cap nhat apps/api/README.md voi host va Docker direction.
-
-[USER]
-
-- Khong co thao tac bat buoc.
-- Neu muon chay API truc tiep tren Windows thay vi Docker, USER tu cai Python
-  3.12 va virtual environment theo huong dan se duoc them vao README.
-
-Kiem thu:
-
-- Import smoke:
-  python -c "from app.main import app; print(app.title)"
-- pytest cho /health tra 200 va schema dung.
-- Ruff check va format check.
-- OpenAPI co route /health.
-
-[CHECKPOINT]
-
-- API import duoc ma khong can database dang chay.
-- /health test pass.
-- Khong co placeholder route ngoai pham vi.
-- Dependency versions duoc pin va giai thich.
+- The working tree is clean.
+- The feature branch starts from the current main commit.
+- Docker Engine responds successfully.
+- The Stage 0 Compose configuration remains valid.
 
 
-7. CONG DOAN 2 - SETTINGS, LOGGING VA ERROR HANDLING
-----------------------------------------------------
+8. IMPLEMENTATION PHASE 1: PYTHON AND FASTAPI SKELETON
+------------------------------------------------------
 
-Ngu canh:
-Configuration va loi can on dinh truoc khi database/repository phu thuoc vao
-chung.
+Objective
 
-[CODEX]
+Create the smallest importable and testable API application before introducing
+database dependencies.
 
-1. Tao Settings bang pydantic-settings:
-   environment, API host/port, DATABASE_URL, CORS_ORIGINS va LOG_LEVEL.
-2. Validate CORS origins va environment values.
-3. Cache settings object dung cach, cho phep override trong test.
-4. Tao JSON structured logging bang standard library hoac implementation nho,
-   khong them dependency neu khong can.
-5. Tao error envelope nhat quan:
-   code, message va optional details/request_id.
-6. Tao domain exceptions va central exception handlers.
-7. Them CORS middleware tu environment.
+Work
 
-[USER]
+1. Create apps/api/pyproject.toml with project metadata and tool configuration.
+2. Select and pin compatible runtime and development dependency versions.
+3. Create the Python package structure and FastAPI application factory.
+4. Add an initial GET /health response that verifies application startup.
+5. Enable generated OpenAPI documentation at /docs and /openapi.json.
+6. Add initial pytest fixtures and a health endpoint contract test.
+7. Replace the placeholder apps/api README with working setup instructions.
 
-- Review .env.example neu muon thay doi port mac dinh.
-- Khong dua password production vao .env.example hoac message chat.
+Verification
 
-Kiem thu:
+- Import the application in a clean Python environment.
+- Start Uvicorn and request GET /health.
+- Confirm that /docs and /openapi.json return HTTP 200.
+- Run pytest for the initial health contract.
+- Run Ruff lint and format checks.
 
-- Settings load default development values.
-- Invalid CORS/environment bi tu choi som.
-- Test override khong dung .env that.
-- Validation error va not-found error dung error envelope.
-- Log smoke khong chua POSTGRES_PASSWORD/DATABASE_URL day du.
+Exit criteria
 
-[CHECKPOINT]
-
-- Configuration co mot source of truth.
-- Test khong phu thuoc may USER.
-- Error contract da on dinh truoc khi them catalog routes.
+- The application imports without PostgreSQL running.
+- GET /health returns a typed response.
+- The initial tests and Ruff checks pass.
+- No unrelated or placeholder endpoints are present.
 
 
-8. CONG DOAN 3 - SQLALCHEMY SESSION VA ALEMBIC
-----------------------------------------------
+9. IMPLEMENTATION PHASE 2: SETTINGS, LOGGING, AND ERROR CONTRACTS
+----------------------------------------------------------------
 
-Ngu canh:
-Tao ket noi PostgreSQL va migration mechanism truoc model lon.
+Objective
 
-[CODEX]
+Stabilize configuration and cross-cutting behavior before database and catalog
+features depend on them.
 
-1. Tao Declarative Base va naming convention cho constraints.
-2. Tao engine/session factory va FastAPI dependency get_db.
-3. Dung SQLAlchemy 2.x style; khong dung legacy query API.
-4. Cau hinh Alembic import model metadata va DATABASE_URL.
-5. Tao connectivity smoke bang SELECT 1.
-6. Dam bao session commit/rollback/close ro rang.
-7. Cap nhat Compose de API trong container ket noi host db, trong khi host
-   workflow van ket noi localhost.
+Work
 
-[USER]
+1. Implement typed settings with pydantic-settings.
+2. Validate environment names, API ports, log levels, and CORS origins.
+3. Cache the runtime settings object while allowing deterministic test
+   overrides.
+4. Configure structured application logging without exposing secrets.
+5. Define a standard API error envelope:
+   code, message, and optional details or request identifier.
+6. Add domain exception types and centralized FastAPI exception handlers.
+7. Configure CORS from the explicit environment allowlist.
+8. Document every environment variable and its development default.
 
-- Giu Docker Desktop running.
-- Chap thuan Docker command neu Codex hien approval prompt.
+Verification
 
-Kiem thu:
+- Default development settings load successfully.
+- Invalid settings fail during startup with a clear error.
+- Tests can override settings without reading the developer's .env file.
+- Validation and not-found errors use the documented error envelope.
+- Log output does not contain passwords or a complete connection URL.
+- CORS tests confirm allowed and rejected origins.
 
-- PostgreSQL healthcheck dat.
-- SQLAlchemy SELECT 1 thanh cong.
-- alembic current chay duoc.
-- Session duoc close sau request.
-- Ket noi loi tra health/readiness status ro rang, khong lo connection string.
+Exit criteria
 
-[CHECKPOINT]
-
-- API co the ket noi PostgreSQL that.
-- Alembic environment chay duoc truoc khi tao migration schema.
+- Configuration has one documented source of truth.
+- Error responses are consistent.
+- Tests are independent of workstation-specific environment values.
 
 
-9. CONG DOAN 4 - DATA MODELS VA MIGRATION DAU TIEN
---------------------------------------------------
+10. IMPLEMENTATION PHASE 3: DATABASE SESSION AND ALEMBIC FOUNDATION
+------------------------------------------------------------------
 
-Ngu canh:
-Chuyen docs/data-model.md thanh schema executable, giu relational data ro rang.
+Objective
 
-[CODEX]
+Establish reliable PostgreSQL connectivity, transaction boundaries, and
+migration infrastructure before adding the full schema.
 
-Tao models va association tables:
+Work
+
+1. Create a SQLAlchemy Declarative Base with deterministic naming conventions
+   for indexes and constraints.
+2. Create the engine, session factory, and FastAPI database dependency.
+3. Use SQLAlchemy 2.x query and session APIs.
+4. Configure Alembic to load application metadata and DATABASE_URL.
+5. Add a PostgreSQL connectivity check using SELECT 1.
+6. Define clear commit, rollback, and close behavior.
+7. Extend health behavior to report database readiness without exposing
+   connection details.
+8. Prepare host and container database URLs without duplicating secrets.
+
+Verification
+
+- PostgreSQL reaches the healthy state.
+- A SQLAlchemy SELECT 1 query succeeds.
+- alembic current runs successfully.
+- Database sessions close after requests.
+- A failed database connection produces a controlled readiness response.
+- Connection failures do not leak credentials.
+
+Exit criteria
+
+- The API can connect to the Compose PostgreSQL service.
+- Alembic is operational before the initial schema migration is created.
+- Transaction lifecycle behavior is covered by tests.
+
+
+11. IMPLEMENTATION PHASE 4: RELATIONAL MODELS AND INITIAL MIGRATION
+------------------------------------------------------------------
+
+Objective
+
+Convert docs/data-model.md into an executable, reviewed relational schema.
+
+Tables
 
 - games
 - genres
@@ -351,139 +407,129 @@ Tao models va association tables:
 - interactions
 - recommendation_events
 
-Quy tac schema:
+Work
 
-- Integer primary keys va unique slugs.
-- external_id nullable.
-- rating_count >= 0.
-- preference weight co range duoc tai lieu hoa.
-- UTC timezone-aware created_at/updated_at.
-- Explicit foreign keys, on-delete policy va indexes.
-- Interaction type duoc validate bang application enum/check constraint.
-- JSON chi dung cho recommendation request context va result summary.
-- Association tables co composite uniqueness.
+1. Implement SQLAlchemy models and relationships.
+2. Add uniqueness constraints for slugs and association pairs.
+3. Add non-negative checks for rating counts and applicable numeric signals.
+4. Add documented bounds for preference weights.
+5. Add explicit foreign keys and deletion behavior.
+6. Add indexes for catalog filtering and user-event lookup paths.
+7. Use application enums and database checks for interaction types.
+8. Restrict JSON columns to recommendation request context and compact result
+   summaries.
+9. Generate the initial Alembic migration.
+10. Review the generated migration manually for ordering, naming, indexes, and
+    downgrade safety.
+11. Update docs/data-model.md wherever implementation decisions refine the
+    original design.
 
-Tao migration 0001 bang autogenerate, sau do review thu cong de:
+Verification
 
-- Xac nhan ten constraint/index on dinh.
-- Loai bo migration noise.
-- Xac nhan upgrade order cua foreign keys.
-- Xac nhan downgrade order, nhung khong downgrade database USER co data neu
-  khong duoc phep.
+- Run alembic upgrade head against a disposable PostgreSQL database.
+- Confirm alembic current matches the head revision.
+- Inspect the resulting tables, indexes, foreign keys, and constraints.
+- Test unique slugs and association pairs.
+- Test foreign-key enforcement.
+- Test non-negative and bounded numeric constraints.
+- Compare SQLAlchemy metadata with the migration result.
 
-[USER]
+Exit criteria
 
-- Khong co thao tac bat buoc.
-- Neu USER da dua data rieng vao volume development, phai bao truoc khi Codex
-  chay migration destructive. Stage 1 hien chi co volume rong/development.
-
-Kiem thu:
-
-- alembic upgrade head tren PostgreSQL that.
-- alembic current trung revision head.
-- SQLAlchemy metadata co day du table/index/constraint.
-- Test uniqueness, foreign key va rating_count check.
-- Migration smoke chay tren disposable test database/volume, khong xoa
-  gamelens-ai_postgres_data cua USER.
-
-[CHECKPOINT]
-
-- Fresh PostgreSQL database upgrade den head thanh cong.
-- Model va migration khop nhau.
-- docs/data-model.md duoc cap nhat voi moi quyet dinh khac ban thiet ke.
+- A fresh PostgreSQL database upgrades to head without manual SQL.
+- Models and migration describe the same schema.
+- Constraint and index behavior is covered by integration tests.
+- No persistent development volume is deleted during testing.
 
 
-10. CONG DOAN 5 - DETERMINISTIC SEED DATA
------------------------------------------
+12. IMPLEMENTATION PHASE 5: DETERMINISTIC SEED DATA
+---------------------------------------------------
 
-Ngu canh:
-Catalog phai co data du de test pagination/filter va lam input cho Stage 3,
-nhung khong phu thuoc external API.
+Objective
 
-[CODEX]
+Provide a varied local catalog for API development and future recommendation
+work without requiring network access or third-party licensing.
 
-1. Tao data/seed/games.json voi it nhat 25 game da dang:
-   nhieu genre, tag, platform, release year va popularity/rating distribution.
-2. Dung metadata toi thieu, original short descriptions va cover URL null.
-3. Tao schema validation cho seed file.
-4. Tao command seed rieng, khong dat seed trong migration.
-5. Dung slug/taxonomy slug lam natural key de upsert.
-6. Seed command phai idempotent:
-   chay lan hai khong duplicate game/taxonomy/association.
-7. Log so record inserted/updated/skipped, khong claim data la production.
-8. Ghi provenance: development seed do project quan ly, khong phai benchmark.
+Work
 
-[USER]
+1. Create data/seed/games.json with at least 25 varied games.
+2. Include enough genre, tag, platform, release-date, rating, and popularity
+   variation to exercise filtering and pagination.
+3. Use minimal metadata and original short descriptions.
+4. Keep cover_image_url null unless a stable, licensed source is documented.
+5. Define and validate the seed-file schema.
+6. Implement a standalone seed command.
+7. Use game and taxonomy slugs as deterministic natural keys.
+8. Upsert records and associations without creating duplicates.
+9. Log inserted, updated, and unchanged record counts.
+10. Document seed-data provenance and development-only limitations.
 
-- Co the review danh sach game neu muon, nhung khong bat buoc de Stage 1 chay.
-- Khong can tai dataset hoac cover image.
+Verification
 
-Kiem thu:
+- Parse and validate the seed file.
+- Run the seed command against an empty PostgreSQL database.
+- Confirm that at least 25 games are present.
+- Run the seed command a second time.
+- Confirm that record and association counts remain stable.
+- Confirm that every game has a title, slug, genre, and platform.
+- Confirm unique slugs and non-negative numeric values.
+- Confirm that no image binaries, secrets, or performance claims are included.
 
-- Seed file parse va validate.
-- Lan 1 tao >= 25 games.
-- Lan 2 giu nguyen so record va association.
-- Moi game co title, slug va it nhat mot genre/platform.
-- Slug unique; rating_count/popularity khong am.
-- Khong co secret, copyrighted image binary hoac fake performance metric.
+Exit criteria
 
-[CHECKPOINT]
-
-- Deterministic catalog san sang.
-- Seed idempotency test pass tren PostgreSQL.
-
-
-11. CONG DOAN 6 - REPOSITORY, SERVICE VA API SCHEMAS
-----------------------------------------------------
-
-Ngu canh:
-Khong dat query/business logic vao route. On dinh contract truoc khi frontend
-Stage 2 phu thuoc vao API.
-
-[CODEX]
-
-1. Tao GameRepository:
-   count, list voi pagination/filter, get by id va taxonomy queries.
-2. Tao CatalogService:
-   validate use case, not-found mapping va stable ordering.
-3. Tao Pydantic schemas rieng:
-   GameSummary, GameDetail, taxonomy response, pagination metadata va error.
-4. Pagination 1-based:
-   page >= 1, page_size default hop ly, max 100.
-5. Catalog filters toi thieu:
-   q, genre, tag va platform slug.
-6. Stable sort/tie-break de response deterministic.
-7. Query eager-load hop ly, tranh N+1 cho taxonomy.
-
-[USER]
-
-- Review contract neu USER co yeu cau frontend dac biet. Neu khong, dung contract
-  da ghi trong plan.
-
-Kiem thu:
-
-- Repository unit tests cho empty, first page, last page va no results.
-- Invalid page/page_size tra 422.
-- Filter ket hop tra dung game.
-- Unknown taxonomy tra empty list hoac validation rule da tai lieu hoa.
-- Get unknown game mapping thanh 404 error envelope.
-- Query-count check hoac inspection de tranh N+1 ro rang.
-
-[CHECKPOINT]
-
-- Service/repository tests pass.
-- API schema khong expose SQLAlchemy objects.
+- The catalog can be reproduced with one documented command.
+- Seeding is idempotent.
+- Seed provenance and limitations are documented.
 
 
-12. CONG DOAN 7 - HTTP ENDPOINTS VA MODEL STATUS
-------------------------------------------------
+13. IMPLEMENTATION PHASE 6: REPOSITORIES, SERVICES, AND API SCHEMAS
+------------------------------------------------------------------
 
-Ngu canh:
-Hoan thanh vertical slice catalog co the dung boi frontend Stage 2.
+Objective
 
-[CODEX]
+Create a maintainable catalog application layer and stable contracts for the
+future frontend.
 
-Implement:
+Work
+
+1. Implement GameRepository operations for count, paginated listing, filtering,
+   and lookup by internal ID.
+2. Implement taxonomy repositories or equivalent focused query functions.
+3. Implement CatalogService for catalog use cases and domain error mapping.
+4. Define GameSummary, GameDetail, taxonomy, pagination, and error schemas.
+5. Use one-based pagination with validated bounds.
+6. Set a documented default page size and maximum page size of 100.
+7. Support catalog filters for:
+   q, genre, tag, and platform slug.
+8. Define deterministic sorting and tie-breaking.
+9. Use appropriate eager loading to avoid N+1 taxonomy queries.
+10. Keep SQLAlchemy models out of external responses.
+
+Verification
+
+- Test empty and non-empty catalog behavior.
+- Test first, middle, final, and out-of-range pages.
+- Test invalid page and page-size values.
+- Test each filter independently and in supported combinations.
+- Test deterministic ordering when primary sort values are equal.
+- Test unknown game lookup and domain-to-HTTP error mapping.
+- Inspect query behavior for obvious N+1 loading.
+
+Exit criteria
+
+- Repository and service behavior is deterministic.
+- Response schemas are independent of persistence models.
+- Pagination and filter contracts are covered by tests.
+
+
+14. IMPLEMENTATION PHASE 7: HTTP ENDPOINTS AND MODEL STATUS
+-----------------------------------------------------------
+
+Objective
+
+Expose the complete Stage 1 catalog slice through versioned HTTP contracts.
+
+Endpoints
 
 - GET /health
 - GET /api/v1/games
@@ -493,60 +539,64 @@ Implement:
 - GET /api/v1/metadata/platforms
 - GET /api/v1/models/status
 
-Yeu cau:
+Work
 
-- /health bao app/database status ro rang.
-- Catalog response co items, page, page_size, total va total_pages.
-- Detail response co taxonomy.
-- Metadata sorted deterministic.
-- Model status tra "not_configured" va active_model null cho den Stage 3.
-- Recommendation interface ton tai nhung khong sinh fake recommendation.
-- Route chi orchestration va dependency injection.
+1. Register a versioned API router.
+2. Keep route functions limited to request parsing, dependency injection, and
+   response selection.
+3. Return pagination metadata with catalog results:
+   items, page, page_size, total, and total_pages.
+4. Return full taxonomy metadata with game details.
+5. Return taxonomy lists in deterministic order.
+6. Define an abstract recommendation-service contract with model name, model
+   version, readiness, and recommendation capabilities.
+7. Report not_configured and a null active model until Stage 3.
+8. Ensure all endpoint contracts appear in OpenAPI.
 
-[USER]
+Verification
 
-- Optional manual UX review tai http://localhost:8000/docs.
+- Health returns HTTP 200 when application and database are ready.
+- Catalog returns seeded games and correct pagination metadata.
+- A known game returns HTTP 200 with taxonomy details.
+- An unknown game returns the standard HTTP 404 error envelope.
+- Genre, tag, and platform lists are non-empty, unique, and sorted.
+- Invalid query parameters return controlled validation errors.
+- Model status accurately reports that no model is configured.
+- /docs and /openapi.json contain every Stage 1 endpoint.
 
-Kiem thu:
+Exit criteria
 
-- Contract tests cho status code va JSON shape.
-- Health 200 khi database san sang; failure behavior duoc test.
-- Catalog co >= 25 seeded games qua nhieu page.
-- Detail 200 voi ID ton tai; 404 voi ID khong ton tai.
-- Metadata khong duplicate va sorted.
-- Model status trung thuc, khong claim model da trained.
-- OpenAPI co du cac endpoint Stage 1.
-
-[CHECKPOINT]
-
-- Tat ca core catalog endpoints hoat dong tren PostgreSQL seed data.
+- Every required Stage 1 endpoint works against PostgreSQL seed data.
+- Contracts are stable enough for Stage 2 frontend integration.
+- No endpoint produces fake recommendation output.
 
 
-13. CONG DOAN 8 - DOCKER, COMMANDS VA WORKFLOW
-----------------------------------------------
+15. IMPLEMENTATION PHASE 8: DOCKER AND DEVELOPMENT COMMANDS
+-----------------------------------------------------------
 
-Ngu canh:
-Nguoi moi phai chay duoc backend ma khong can cai PostgreSQL/Python truc tiep.
+Objective
 
-[CODEX]
+Provide a reproducible Docker-first workflow that does not require host Python
+or PostgreSQL installations.
 
-1. Tao apps/api/Dockerfile dua tren Python 3.12 slim, non-root user neu thuc te.
-2. Tao .dockerignore phu hop.
-3. Them api service vao docker-compose.yml:
-   build context, environment, port, dependency tren db health va API health.
-4. Migration va seed van la explicit commands, khong silently chay moi request.
-5. Them Make targets chi khi da chay duoc:
-   build, api, migrate, seed, test, test-integration, lint va format.
-6. Ghi PowerShell/Docker equivalents cho USER khong co GNU Make.
-7. Neu can, tao disposable PostgreSQL test Compose config de integration tests
-   khong cham vao development volume.
+Work
 
-[USER]
+1. Create apps/api/Dockerfile using a Python 3.12 slim base.
+2. Run the application as a non-root container user where practical.
+3. Add an API-specific .dockerignore.
+4. Add the api service to docker-compose.yml.
+5. Inject a container-specific DATABASE_URL using the db service hostname.
+6. Make the API service depend on the database health check.
+7. Add an API health check.
+8. Keep migrations and seeding as explicit commands.
+9. Add root commands only after their direct equivalents work:
+   build, api, migrate, seed, test, test-integration, lint, and format.
+10. Document direct PowerShell and Docker commands for environments without
+    GNU Make.
+11. Add a disposable PostgreSQL test configuration if required to isolate
+    integration tests from development data.
 
-- Khoi dong Docker Desktop.
-- Neu Windows Firewall hoi, chi cho phep local/private network neu phu hop.
-
-Kiem thu:
+Verification
 
 - docker compose config
 - docker compose build api
@@ -554,202 +604,245 @@ Kiem thu:
 - docker compose run --rm api alembic upgrade head
 - docker compose run --rm api python -m app.db.seed
 - docker compose up -d api
-- docker compose ps: db va api healthy
-- HTTP smoke qua localhost:8000
+- docker compose ps
+- HTTP requests to the health and catalog endpoints
+- docker compose down
 
-[CHECKPOINT]
+Exit criteria
 
-- Docker-only workflow chay duoc tren may USER.
-- Khong co secret baked vao image.
-- Restart container khong lam mat PostgreSQL volume.
+- The db and api services both become healthy.
+- The Docker-only workflow is fully documented.
+- Restarting containers does not remove the PostgreSQL volume.
+- No secret is embedded in an image or committed configuration.
 
 
-14. CONG DOAN 9 - TEST MATRIX VA QUALITY GATE
----------------------------------------------
+16. IMPLEMENTATION PHASE 9: TEST MATRIX AND QUALITY GATE
+--------------------------------------------------------
 
-Test nhanh:
+Objective
 
-- Settings/config validation.
-- Domain exceptions va error envelope.
-- Schemas va pagination.
-- Repository/service behavior.
-- Endpoint contract voi SQLite in-memory neu compatibility cho phep.
+Validate application behavior, database fidelity, container startup, and
+documentation before the stage is considered complete.
 
-PostgreSQL integration:
+Fast test suite
 
-- Connection va SELECT 1.
-- Alembic upgrade head tren disposable database.
-- Seed lan mot va lan hai.
-- Constraint/index behavior can PostgreSQL.
-- Catalog/detail/metadata qua API voi seeded PostgreSQL.
+- Settings validation and overrides.
+- Structured error responses.
+- Schema validation.
+- Pagination calculations.
+- Repository and service behavior that is portable to SQLite.
+- HTTP contracts through an isolated test application.
 
-Static quality:
+PostgreSQL integration suite
+
+- Engine connectivity.
+- Initial migration against a fresh database.
+- Constraint and index behavior.
+- Seed creation and idempotency.
+- Catalog, detail, and taxonomy endpoints using PostgreSQL seed data.
+- Session commit, rollback, and cleanup behavior.
+
+Static checks
 
 - Ruff lint.
 - Ruff format check.
 - git diff --check.
 - docker compose config.
-- Kiem tra .env bi ignore va .env.example duoc track.
+- Secret and ignored-file review.
+- OpenAPI route inventory.
 
-HTTP smoke:
+HTTP smoke matrix
 
-- GET /health -> 200.
-- GET /api/v1/games?page=1&page_size=5 -> 5 items va pagination.
-- GET mot game ton tai -> 200.
-- GET game khong ton tai -> 404 error envelope.
-- GET genres/tags/platforms -> non-empty deterministic lists.
-- GET models/status -> not_configured.
-- GET /docs va /openapi.json -> 200.
+- GET /health -> HTTP 200.
+- GET /api/v1/games?page=1&page_size=5 -> five or fewer items with correct
+  pagination metadata.
+- GET an existing game -> HTTP 200.
+- GET an unknown game -> HTTP 404 with the standard error envelope.
+- GET genre, tag, and platform metadata -> deterministic non-empty lists.
+- GET /api/v1/models/status -> not_configured.
+- GET /docs and /openapi.json -> HTTP 200.
 
-Coverage:
+Coverage policy
 
-- Tao coverage report cho app code, loai tru migrations va seed data fixture.
-- Khong dung coverage nhu bang chung duy nhat; bat buoc test failure paths.
-- Ghi lai untested branches neu chua dat muc tieu hop ly, khong che so lieu.
+- Generate a coverage report for application code.
+- Exclude migration scripts and static seed fixtures from coverage targets.
+- Test failure paths explicitly rather than relying on a percentage alone.
+- Record meaningful gaps instead of inventing or concealing results.
 
-[USER]
+Operational smoke test
 
-Manual acceptance, sau khi Codex bao test automated pass:
+1. Build and start the Compose stack.
+2. Confirm that db and api report healthy.
+3. Request health and a five-item catalog page from localhost:8000.
+4. Inspect the generated API documentation.
+5. Stop the stack with docker compose down.
+6. Confirm that the named PostgreSQL volume remains present.
 
-1. Mo Docker Desktop.
-2. Trong PowerShell:
+Exit criteria
 
-   cd D:\The-K-Game-Recommendation
-   docker compose up -d --build
-   docker compose ps
-   Invoke-RestMethod http://localhost:8000/health
-   Invoke-RestMethod "http://localhost:8000/api/v1/games?page=1&page_size=5"
-
-3. Mo http://localhost:8000/docs trong browser.
-4. Xac nhan health, catalog va Swagger UI hien dung.
-5. Chay:
-
-   docker compose down
-
-Lenh down tren giu volume. Khong chay docker compose down --volumes tru khi
-USER chu dong muon xoa development data.
-
-[CHECKPOINT]
-
-- Automated tests pass.
-- Lint/format pass.
-- PostgreSQL integration pass.
-- USER manual smoke pass hoac co log loi cu the de sua.
+- All automated tests pass.
+- PostgreSQL integration tests pass.
+- Ruff lint and format checks pass.
+- Docker Compose validation and startup pass.
+- The operational smoke test passes.
+- Remaining limitations are documented.
 
 
-15. CONG DOAN 10 - DOCUMENTATION VA PUBLISH
--------------------------------------------
+17. IMPLEMENTATION PHASE 10: DOCUMENTATION AND RELEASE PREPARATION
+-----------------------------------------------------------------
 
-[CODEX]
+Objective
 
-1. Cap nhat README:
-   setup, migration, seed, test, lint, endpoint summary va /docs.
-2. Cap nhat architecture.md va data-model.md theo implementation thuc.
-3. Cap nhat roadmap Stage 1 thanh Complete chi sau acceptance gate.
-4. Ghi known limitations:
-   no auth, no frontend, no recommender, seed chi dung development.
-5. Tao repository tree va implementation log dua tren command da chay.
-6. Chia commit de xuat:
+Make the completed backend reproducible, reviewable, and ready to support the
+frontend stage.
 
-   - chore(api): scaffold FastAPI project and quality tooling
-   - feat(db): add SQLAlchemy models and initial migration
-   - feat(catalog): add deterministic seed and catalog API
-   - test(docker): add integration workflow and Stage 1 documentation
+Work
 
-[USER]
+1. Update the root README with:
+   setup, migration, seed, test, lint, endpoint, and OpenAPI instructions.
+2. Replace apps/api placeholder documentation with verified commands.
+3. Update architecture.md and data-model.md to match the implementation.
+4. Update roadmap.md only after the Stage 1 acceptance gate passes.
+5. Document current limitations:
+   no authentication, frontend, active recommender, or external metadata.
+6. Record the commands actually executed and their outcomes.
+7. Review the repository tree and remove dead placeholders.
+8. Review the Git diff for secrets, generated artifacts, and unrelated changes.
 
-1. Review git diff/commits.
-2. Cho phep push qua Git Credential Manager neu co prompt.
-3. Push branch:
+Suggested commit structure
 
-   git push -u origin feat/stage-1-backend-foundation
+1. chore(api): scaffold FastAPI project and quality tooling
+2. feat(db): add SQLAlchemy models and initial migration
+3. feat(catalog): add deterministic seed data and catalog API
+4. test(docker): add integration workflow and Stage 1 documentation
 
-4. Tao/chap nhan Pull Request vao main. GitHub plugin co the ho tro tao draft
-   PR sau khi branch da push, neu USER yeu cau ro.
+Exit criteria
 
-Kiem thu sau push:
-
-- GitHub branch co dung commits.
-- Khong co .env, secret, local database hoac generated coverage artifact.
-- PR summary chi claim cac command thuc su da chay.
-
-[CHECKPOINT]
-
-- main chi nhan Stage 1 sau khi test, docs va manual smoke dat.
+- Setup documentation is reproducible from a clean checkout.
+- Every documented command exists and works.
+- The final diff contains only Stage 1 scope.
+- No .env file, credential, local database, or generated coverage output is
+  tracked.
+- The branch is ready for review and merge.
 
 
-16. DEFINITION OF DONE CHO STAGE 1
-----------------------------------
-
-Stage 1 chi Complete khi:
-
-- API image build thanh cong.
-- db va api services healthy.
-- Alembic upgrade head thanh cong tren PostgreSQL moi.
-- Seed command tao >= 25 games va idempotent.
-- Health, catalog, detail va metadata endpoints dung contract.
-- Model status khong gia mao model da trained.
-- pytest va PostgreSQL integration tests pass.
-- Ruff lint va format check pass.
-- docker compose config hop le.
-- README/docs/Make commands dung voi implementation.
-- .env/secret khong bi commit.
-- Working tree sach sau commit.
-- Branch duoc push/merge theo quyet dinh cua USER.
-
-
-17. RUI RO VA CACH GIAM THIEU
+18. COMMAND INTERFACE TARGET
 ----------------------------
 
-Rui ro: Dependency versions khong tuong thich.
-Giam thieu: Smoke-test import va pin exact versions truoc khi viet nhieu code.
+The following root commands should exist only after their implementations are
+verified:
 
-Rui ro: API container dung DATABASE_URL localhost.
-Giam thieu: Compose inject URL co hostname db; host workflow dung localhost.
+- make help
+- make config
+- make build
+- make up
+- make down
+- make logs
+- make api
+- make migrate
+- make seed
+- make test
+- make test-integration
+- make lint
+- make format
 
-Rui ro: Test lam hong development database.
-Giam thieu: SQLite cho test nhanh va disposable PostgreSQL cho integration;
-khong xoa volume USER.
-
-Rui ro: Alembic autogenerate tao migration sai/noise.
-Giam thieu: Review migration thu cong va chay tren fresh PostgreSQL.
-
-Rui ro: Seed duplicate sau moi lan chay.
-Giam thieu: Upsert theo slug va co idempotency test.
-
-Rui ro: N+1 query trong catalog.
-Giam thieu: Eager loading va query behavior test/inspection.
-
-Rui ro: Fake recommendation status gay hieu nham portfolio.
-Giam thieu: not_configured explicit, khong co fake scores/results.
-
-Rui ro: Windows khong co Python/Make tren PATH.
-Giam thieu: Docker-first va document direct PowerShell commands.
+Equivalent Docker and PowerShell commands must be documented so GNU Make
+remains optional on Windows.
 
 
-18. NGOAI PHAM VI STAGE 1
+19. ACCEPTANCE CRITERIA
+-----------------------
+
+Stage 1 is complete only when all of the following are true:
+
+- The API image builds successfully.
+- PostgreSQL and API services become healthy.
+- Alembic upgrades a fresh PostgreSQL database to head.
+- SQLAlchemy models and the migration describe the same schema.
+- The deterministic seed command creates at least 25 games.
+- Running the seed command twice does not duplicate records or associations.
+- Health, catalog, detail, taxonomy, and model-status endpoints satisfy their
+  documented contracts.
+- The model-status endpoint does not claim that a model is trained or active.
+- Fast and PostgreSQL integration test suites pass.
+- Ruff lint and format checks pass.
+- docker compose config succeeds.
+- Root commands and README instructions match verified behavior.
+- No secrets, local databases, or generated artifacts are committed.
+- Known limitations and the Stage 2 handoff are documented.
+
+
+20. RISKS AND MITIGATIONS
 -------------------------
 
-- Next.js/frontend.
-- Onboarding va recommendation page.
-- Popularity/content/collaborative/hybrid model.
-- Feedback/interactions API behavior cua Stage 4.
-- Authentication.
-- External game API va cover-image download.
-- LLM.
-- CI/CD va production deployment.
-- Performance benchmark hoac fabricated evaluation result.
+Risk: Dependency incompatibility.
+Mitigation: Run an import and startup compatibility smoke test before pinning
+versions or building substantial application code.
+
+Risk: Container code uses localhost for PostgreSQL.
+Mitigation: Inject a Compose-specific DATABASE_URL that uses the db service
+hostname while retaining localhost for host development.
+
+Risk: Integration tests modify development data.
+Mitigation: Use a disposable PostgreSQL database or Compose configuration and
+never remove the persistent development volume as part of routine tests.
+
+Risk: Alembic autogenerate produces noisy or incorrect migrations.
+Mitigation: Review every generated migration and validate it against a fresh
+PostgreSQL database.
+
+Risk: Repeated seeding creates duplicates.
+Mitigation: Use stable natural keys, explicit upserts, and an idempotency test.
+
+Risk: Catalog serialization triggers N+1 queries.
+Mitigation: Use focused eager loading and inspect query behavior in repository
+tests.
+
+Risk: Seed metadata introduces licensing concerns.
+Mitigation: Use minimal metadata, original descriptions, nullable image URLs,
+and documented provenance.
+
+Risk: A placeholder recommender is mistaken for a trained model.
+Mitigation: Expose an explicit not_configured status and return no fabricated
+scores or recommendations.
+
+Risk: Windows environments lack Python or GNU Make.
+Mitigation: Maintain a complete Docker-first workflow and document direct
+PowerShell equivalents.
 
 
-19. BUOC BAT DAU KHI USER CHAP NHAN KE HOACH
---------------------------------------------
+21. IMPLEMENTATION-TIME DECISIONS
+---------------------------------
 
-Codex se:
+The following decisions should be confirmed during the relevant phase after a
+small compatibility or behavior test:
 
-1. Kiem tra main clean va Docker running.
-2. Tao branch feat/stage-1-backend-foundation.
-3. Thuc hien Cong doan 1 thanh vertical slice nho.
-4. Chay test/lint va bao ket qua.
-5. Chi sang database sau khi FastAPI skeleton dat checkpoint.
+1. Exact dependency versions.
+2. The final structured-log JSON fields.
+3. The default catalog page size and supported sort values.
+4. Whether unknown taxonomy filters return an empty page or a validation error.
+5. The interaction event uniqueness policy that best preserves Stage 4
+   flexibility.
+6. Whether the PostgreSQL integration environment is an independent Compose
+   file or a test profile.
+7. Whether coverage receives an enforcement threshold in Stage 1 or remains a
+   reported diagnostic until the API surface grows.
 
-USER chi can khoi dong Docker Desktop va xu ly approval prompt neu xuat hien.
+Every resolved decision must be reflected in code, tests, and documentation.
+
+
+22. STAGE 2 HANDOFF
+-------------------
+
+Stage 1 should leave the frontend stage with:
+
+- A stable local API base URL.
+- OpenAPI documentation.
+- Typed and documented catalog response shapes.
+- Deterministic seed data for visual development.
+- Reliable pagination and taxonomy filtering.
+- Documented loading, empty, validation, and not-found behaviors.
+- A Docker workflow that starts the API and PostgreSQL without source changes.
+
+Frontend implementation should not begin until the catalog contracts and
+Stage 1 acceptance criteria are complete.
