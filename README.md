@@ -173,7 +173,7 @@ version control.
 - [Data model](docs/data-model.md)
 - [Recommendation design](docs/recommendation-design.md)
 - [Roadmap](docs/roadmap.md)
-- [Stage 1 backend and database plan](docs/stage-1-backend-database-plan.txt)
+- [Stage 1 backend and database plan](docs/stage-1-backend-database-plan.md)
 
 ## Stage 0 verification
 

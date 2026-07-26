@@ -1,16 +1,15 @@
-GAMELENS AI
-STAGE 1 ENGINEERING PLAN: BACKEND AND DATABASE FOUNDATION
-=========================================================
+# GameLens AI
 
-Document status: Proposed
-Stage 0 prerequisite: Complete
-Target branch: feat/stage-1-backend-foundation
-Primary outcome: A runnable, tested, containerized catalog API backed by
-PostgreSQL and deterministic development data.
+## Stage 1 Engineering Plan: Backend and Database Foundation
+
+- **Document status:** Proposed
+- **Stage 0 prerequisite:** Complete
+- **Target branch:** `feat/stage-1-backend-foundation`
+- **Primary outcome:** A runnable, tested, containerized catalog API backed by
+  PostgreSQL and deterministic development data.
 
 
-1. CONTEXT
-----------
+## 1. Context
 
 Stage 0 established the monorepo boundaries, architecture documentation,
 environment-variable conventions, and a healthy PostgreSQL service managed by
@@ -35,12 +34,11 @@ The resulting backend should demonstrate:
 - Docker-first setup that does not require a host PostgreSQL installation.
 
 
-2. STAGE OBJECTIVES
--------------------
+## 2. Stage Objectives
 
 Stage 1 will deliver:
 
-1. A Python 3.12 FastAPI project under apps/api.
+1. A Python 3.12 FastAPI project under `apps/api`.
 2. Typed settings, structured logging, CORS configuration, and centralized
    exception handling.
 3. SQLAlchemy 2.x session management using PostgreSQL as the primary database.
@@ -55,8 +53,7 @@ Stage 1 will deliver:
 11. Root commands and documentation that match verified behavior.
 
 
-3. NON-GOALS
-------------
+## 3. Non-Goals
 
 The following work is intentionally excluded from Stage 1:
 
@@ -77,53 +74,51 @@ The database may include entities needed by later stages, but those entities
 must not be exposed through incomplete APIs.
 
 
-4. ENGINEERING PRINCIPLES
--------------------------
+## 4. Engineering Principles
 
-4.1 Incremental delivery
+### 4.1 Incremental Delivery
 
 Implementation will proceed through small vertical slices. Each phase must
 leave the repository importable, testable, and understandable before the next
 phase begins.
 
-4.2 Honest system state
+### 4.2 Honest System State
 
 No endpoint may imply that a recommendation model has been trained or loaded.
 The model-status endpoint will explicitly report that no active model is
 configured until Stage 3.
 
-4.3 Explicit lifecycle operations
+### 4.3 Explicit Lifecycle Operations
 
 Database migrations and seed operations will use explicit commands. They will
 not run silently inside ordinary API requests.
 
-4.4 Database fidelity
+### 4.4 Database Fidelity
 
 PostgreSQL is the source of truth for runtime behavior. SQLite may support fast
 tests only where the tested behavior is database-portable. PostgreSQL-specific
 constraints, migrations, and seed behavior require PostgreSQL integration
 tests.
 
-4.5 Determinism
+### 4.5 Determinism
 
 Seed records, ordering, pagination, migration state, and test fixtures must
 produce repeatable results. Tie-breaking rules must be explicit.
 
-4.6 Minimal dependency surface
+### 4.6 Minimal Dependency Surface
 
 Only dependencies with a clear Stage 1 purpose will be introduced. Exact
 versions will be selected and pinned after a compatibility smoke test.
 
-4.7 Safe local operations
+### 4.7 Safe Local Operations
 
 Automated tests must not delete or reset the persistent development volume.
 Destructive database tests will run against a disposable database or volume.
 
 
-5. PROPOSED TECHNICAL DECISIONS
--------------------------------
+## 5. Proposed Technical Decisions
 
-5.1 Runtime and framework
+### 5.1 Runtime and Framework
 
 - Python 3.12
 - FastAPI
@@ -131,7 +126,7 @@ Destructive database tests will run against a disposable database or volume.
 - Pydantic v2
 - pydantic-settings
 
-5.2 Persistence
+### 5.2 Persistence
 
 - PostgreSQL 16
 - SQLAlchemy 2.x synchronous sessions
@@ -143,7 +138,7 @@ is small and the simpler transaction model is easier to test and maintain.
 An asynchronous database stack can be evaluated later if profiling identifies
 a concrete need.
 
-5.3 Quality tooling
+### 5.3 Quality Tooling
 
 - pytest
 - pytest-cov
@@ -153,35 +148,37 @@ a concrete need.
 Static type checking may be introduced later if it can be configured without
 creating disproportionate setup overhead.
 
-5.4 Project metadata and dependency pinning
+### 5.4 Project Metadata and Dependency Pinning
 
-apps/api/pyproject.toml will define project metadata, Python compatibility,
+`apps/api/pyproject.toml` will define project metadata, Python compatibility,
 dependencies, and tool configuration. Runtime and development dependency
 versions will be pinned only after verifying that the complete initial stack
 imports and starts successfully.
 
-5.5 Configuration
+### 5.5 Configuration
 
 All runtime settings will come from environment variables:
 
-- ENVIRONMENT
-- API_HOST
-- API_PORT
-- DATABASE_URL
-- CORS_ORIGINS
-- LOG_LEVEL
+- `ENVIRONMENT`
+- `API_HOST`
+- `API_PORT`
+- `DATABASE_URL`
+- `CORS_ORIGINS`
+- `LOG_LEVEL`
 
-The host workflow will connect to PostgreSQL through localhost. The Compose API
-service will receive a container-specific DATABASE_URL using the db service
+The host workflow will connect to PostgreSQL through `localhost`. The Compose
+API service will receive a container-specific `DATABASE_URL` using the `db` service
 hostname.
 
-5.6 API layering
+### 5.6 API Layering
 
 The required dependency direction is:
 
+```text
 route -> service -> repository -> SQLAlchemy session -> PostgreSQL
+```
 
-Responsibilities:
+**Responsibilities:**
 
 - Routes handle HTTP parsing, dependency injection, and response selection.
 - Services implement use cases and domain-level decisions.
@@ -189,7 +186,7 @@ Responsibilities:
 - Pydantic schemas define stable external contracts.
 - SQLAlchemy models remain internal persistence representations.
 
-5.7 Identifiers and timestamps
+### 5.7 Identifiers and Timestamps
 
 - Integer primary keys for Stage 1 entities.
 - Unique, stable slugs for games and taxonomy records.
@@ -197,9 +194,9 @@ Responsibilities:
 - Nullable external identifiers for future source adapters.
 
 
-6. TARGET REPOSITORY STRUCTURE
-------------------------------
+## 6. Target Repository Structure
 
+```text
 apps/api/
 |-- app/
 |   |-- api/
@@ -238,20 +235,20 @@ data/seed/
 
 infra/
 `-- docker-compose.test.yml
+```
 
 Directories will be created only when they contain implementation, fixtures,
 configuration, or meaningful documentation.
 
 
-7. IMPLEMENTATION PHASE 0: PREFLIGHT AND BASELINE
--------------------------------------------------
+## 7. Implementation Phase 0: Preflight and Baseline
 
-Objective
+### Objective
 
 Establish a clean implementation baseline and protect the completed Stage 0
 state.
 
-Work
+### Work
 
 1. Confirm that main is clean and synchronized with origin/main.
 2. Confirm that Docker Engine and Docker Compose are available.
@@ -259,18 +256,18 @@ Work
 4. Check whether ports 5432 and 8000 are available.
 5. Create feat/stage-1-backend-foundation from the latest main.
 6. Record the baseline repository tree and verification commands.
-7. Confirm that .env is ignored and .env.example is tracked.
+7. Confirm that `.env` is ignored and `.env.example` is tracked.
 
-Verification
+### Verification
 
-- git status --short --branch
-- git log --oneline -3
-- docker version
-- docker compose version
-- docker compose config
-- git check-ignore .env
+- `git status --short --branch`
+- `git log --oneline -3`
+- `docker version`
+- `docker compose version`
+- `docker compose config`
+- `git check-ignore .env`
 
-Exit criteria
+### Exit Criteria
 
 - The working tree is clean.
 - The feature branch starts from the current main commit.
@@ -278,49 +275,47 @@ Exit criteria
 - The Stage 0 Compose configuration remains valid.
 
 
-8. IMPLEMENTATION PHASE 1: PYTHON AND FASTAPI SKELETON
-------------------------------------------------------
+## 8. Implementation Phase 1: Python and FastAPI Skeleton
 
-Objective
+### Objective
 
 Create the smallest importable and testable API application before introducing
 database dependencies.
 
-Work
+### Work
 
-1. Create apps/api/pyproject.toml with project metadata and tool configuration.
+1. Create `apps/api/pyproject.toml` with project metadata and tool configuration.
 2. Select and pin compatible runtime and development dependency versions.
 3. Create the Python package structure and FastAPI application factory.
-4. Add an initial GET /health response that verifies application startup.
-5. Enable generated OpenAPI documentation at /docs and /openapi.json.
+4. Add an initial `GET /health` response that verifies application startup.
+5. Enable generated OpenAPI documentation at `/docs` and `/openapi.json`.
 6. Add initial pytest fixtures and a health endpoint contract test.
-7. Replace the placeholder apps/api README with working setup instructions.
+7. Replace the placeholder `apps/api/README.md` with working setup instructions.
 
-Verification
+### Verification
 
 - Import the application in a clean Python environment.
-- Start Uvicorn and request GET /health.
-- Confirm that /docs and /openapi.json return HTTP 200.
+- Start Uvicorn and request `GET /health`.
+- Confirm that `/docs` and `/openapi.json` return HTTP 200.
 - Run pytest for the initial health contract.
 - Run Ruff lint and format checks.
 
-Exit criteria
+### Exit Criteria
 
 - The application imports without PostgreSQL running.
-- GET /health returns a typed response.
+- `GET /health` returns a typed response.
 - The initial tests and Ruff checks pass.
 - No unrelated or placeholder endpoints are present.
 
 
-9. IMPLEMENTATION PHASE 2: SETTINGS, LOGGING, AND ERROR CONTRACTS
-----------------------------------------------------------------
+## 9. Implementation Phase 2: Settings, Logging, and Error Contracts
 
-Objective
+### Objective
 
 Stabilize configuration and cross-cutting behavior before database and catalog
 features depend on them.
 
-Work
+### Work
 
 1. Implement typed settings with pydantic-settings.
 2. Validate environment names, API ports, log levels, and CORS origins.
@@ -333,67 +328,65 @@ Work
 7. Configure CORS from the explicit environment allowlist.
 8. Document every environment variable and its development default.
 
-Verification
+### Verification
 
 - Default development settings load successfully.
 - Invalid settings fail during startup with a clear error.
-- Tests can override settings without reading the developer's .env file.
+- Tests can override settings without reading the developer's `.env` file.
 - Validation and not-found errors use the documented error envelope.
 - Log output does not contain passwords or a complete connection URL.
 - CORS tests confirm allowed and rejected origins.
 
-Exit criteria
+### Exit Criteria
 
 - Configuration has one documented source of truth.
 - Error responses are consistent.
 - Tests are independent of workstation-specific environment values.
 
 
-10. IMPLEMENTATION PHASE 3: DATABASE SESSION AND ALEMBIC FOUNDATION
-------------------------------------------------------------------
+## 10. Implementation Phase 3: Database Session and Alembic Foundation
 
-Objective
+### Objective
 
 Establish reliable PostgreSQL connectivity, transaction boundaries, and
 migration infrastructure before adding the full schema.
 
-Work
+### Work
 
 1. Create a SQLAlchemy Declarative Base with deterministic naming conventions
    for indexes and constraints.
 2. Create the engine, session factory, and FastAPI database dependency.
 3. Use SQLAlchemy 2.x query and session APIs.
-4. Configure Alembic to load application metadata and DATABASE_URL.
-5. Add a PostgreSQL connectivity check using SELECT 1.
+4. Configure Alembic to load application metadata and `DATABASE_URL`.
+5. Add a PostgreSQL connectivity check using `SELECT 1`.
 6. Define clear commit, rollback, and close behavior.
 7. Extend health behavior to report database readiness without exposing
    connection details.
 8. Prepare host and container database URLs without duplicating secrets.
 
-Verification
+### Verification
 
 - PostgreSQL reaches the healthy state.
-- A SQLAlchemy SELECT 1 query succeeds.
-- alembic current runs successfully.
+- A SQLAlchemy `SELECT 1` query succeeds.
+- `alembic current` runs successfully.
 - Database sessions close after requests.
 - A failed database connection produces a controlled readiness response.
 - Connection failures do not leak credentials.
 
-Exit criteria
+### Exit Criteria
 
 - The API can connect to the Compose PostgreSQL service.
 - Alembic is operational before the initial schema migration is created.
 - Transaction lifecycle behavior is covered by tests.
 
 
-11. IMPLEMENTATION PHASE 4: RELATIONAL MODELS AND INITIAL MIGRATION
-------------------------------------------------------------------
+## 11. Implementation Phase 4: Relational Models and Initial Migration
 
-Objective
+### Objective
 
 Convert docs/data-model.md into an executable, reviewed relational schema.
 
-Tables
+### Tables
 
 - games
 - genres
@@ -407,7 +400,7 @@ Tables
 - interactions
 - recommendation_events
 
-Work
+### Work
 
 1. Implement SQLAlchemy models and relationships.
 2. Add uniqueness constraints for slugs and association pairs.
@@ -424,7 +417,7 @@ Work
 11. Update docs/data-model.md wherever implementation decisions refine the
     original design.
 
-Verification
+### Verification
 
 - Run alembic upgrade head against a disposable PostgreSQL database.
 - Confirm alembic current matches the head revision.
@@ -434,7 +427,7 @@ Verification
 - Test non-negative and bounded numeric constraints.
 - Compare SQLAlchemy metadata with the migration result.
 
-Exit criteria
+### Exit Criteria
 
 - A fresh PostgreSQL database upgrades to head without manual SQL.
 - Models and migration describe the same schema.
@@ -442,17 +435,16 @@ Exit criteria
 - No persistent development volume is deleted during testing.
 
 
-12. IMPLEMENTATION PHASE 5: DETERMINISTIC SEED DATA
----------------------------------------------------
+## 12. Implementation Phase 5: Deterministic Seed Data
 
-Objective
+### Objective
 
 Provide a varied local catalog for API development and future recommendation
 work without requiring network access or third-party licensing.
 
-Work
+### Work
 
-1. Create data/seed/games.json with at least 25 varied games.
+1. Create `data/seed/games.json` with at least 25 varied games.
 2. Include enough genre, tag, platform, release-date, rating, and popularity
    variation to exercise filtering and pagination.
 3. Use minimal metadata and original short descriptions.
@@ -464,7 +456,7 @@ Work
 9. Log inserted, updated, and unchanged record counts.
 10. Document seed-data provenance and development-only limitations.
 
-Verification
+### Verification
 
 - Parse and validate the seed file.
 - Run the seed command against an empty PostgreSQL database.
@@ -475,22 +467,21 @@ Verification
 - Confirm unique slugs and non-negative numeric values.
 - Confirm that no image binaries, secrets, or performance claims are included.
 
-Exit criteria
+### Exit Criteria
 
 - The catalog can be reproduced with one documented command.
 - Seeding is idempotent.
 - Seed provenance and limitations are documented.
 
 
-13. IMPLEMENTATION PHASE 6: REPOSITORIES, SERVICES, AND API SCHEMAS
-------------------------------------------------------------------
+## 13. Implementation Phase 6: Repositories, Services, and API Schemas
 
-Objective
+### Objective
 
 Create a maintainable catalog application layer and stable contracts for the
 future frontend.
 
-Work
+### Work
 
 1. Implement GameRepository operations for count, paginated listing, filtering,
    and lookup by internal ID.
@@ -505,7 +496,7 @@ Work
 9. Use appropriate eager loading to avoid N+1 taxonomy queries.
 10. Keep SQLAlchemy models out of external responses.
 
-Verification
+### Verification
 
 - Test empty and non-empty catalog behavior.
 - Test first, middle, final, and out-of-range pages.
@@ -515,31 +506,30 @@ Verification
 - Test unknown game lookup and domain-to-HTTP error mapping.
 - Inspect query behavior for obvious N+1 loading.
 
-Exit criteria
+### Exit Criteria
 
 - Repository and service behavior is deterministic.
 - Response schemas are independent of persistence models.
 - Pagination and filter contracts are covered by tests.
 
 
-14. IMPLEMENTATION PHASE 7: HTTP ENDPOINTS AND MODEL STATUS
------------------------------------------------------------
+## 14. Implementation Phase 7: HTTP Endpoints and Model Status
 
-Objective
+### Objective
 
 Expose the complete Stage 1 catalog slice through versioned HTTP contracts.
 
-Endpoints
+### Endpoints
 
-- GET /health
-- GET /api/v1/games
-- GET /api/v1/games/{game_id}
-- GET /api/v1/metadata/genres
-- GET /api/v1/metadata/tags
-- GET /api/v1/metadata/platforms
-- GET /api/v1/models/status
+- `GET /health`
+- `GET /api/v1/games`
+- `GET /api/v1/games/{game_id}`
+- `GET /api/v1/metadata/genres`
+- `GET /api/v1/metadata/tags`
+- `GET /api/v1/metadata/platforms`
+- `GET /api/v1/models/status`
 
-Work
+### Work
 
 1. Register a versioned API router.
 2. Keep route functions limited to request parsing, dependency injection, and
@@ -550,10 +540,10 @@ Work
 5. Return taxonomy lists in deterministic order.
 6. Define an abstract recommendation-service contract with model name, model
    version, readiness, and recommendation capabilities.
-7. Report not_configured and a null active model until Stage 3.
+7. Report `not_configured` and a null active model until Stage 3.
 8. Ensure all endpoint contracts appear in OpenAPI.
 
-Verification
+### Verification
 
 - Health returns HTTP 200 when application and database are ready.
 - Catalog returns seeded games and correct pagination metadata.
@@ -562,30 +552,29 @@ Verification
 - Genre, tag, and platform lists are non-empty, unique, and sorted.
 - Invalid query parameters return controlled validation errors.
 - Model status accurately reports that no model is configured.
-- /docs and /openapi.json contain every Stage 1 endpoint.
+- `/docs` and `/openapi.json` contain every Stage 1 endpoint.
 
-Exit criteria
+### Exit Criteria
 
 - Every required Stage 1 endpoint works against PostgreSQL seed data.
 - Contracts are stable enough for Stage 2 frontend integration.
 - No endpoint produces fake recommendation output.
 
 
-15. IMPLEMENTATION PHASE 8: DOCKER AND DEVELOPMENT COMMANDS
------------------------------------------------------------
+## 15. Implementation Phase 8: Docker and Development Commands
 
-Objective
+### Objective
 
 Provide a reproducible Docker-first workflow that does not require host Python
 or PostgreSQL installations.
 
-Work
+### Work
 
-1. Create apps/api/Dockerfile using a Python 3.12 slim base.
+1. Create `apps/api/Dockerfile` using a Python 3.12 slim base.
 2. Run the application as a non-root container user where practical.
 3. Add an API-specific .dockerignore.
-4. Add the api service to docker-compose.yml.
-5. Inject a container-specific DATABASE_URL using the db service hostname.
+4. Add the `api` service to `docker-compose.yml`.
+5. Inject a container-specific `DATABASE_URL` using the `db` service hostname.
 6. Make the API service depend on the database health check.
 7. Add an API health check.
 8. Keep migrations and seeding as explicit commands.
@@ -596,19 +585,19 @@ Work
 11. Add a disposable PostgreSQL test configuration if required to isolate
     integration tests from development data.
 
-Verification
+### Verification
 
-- docker compose config
-- docker compose build api
-- docker compose up -d db
-- docker compose run --rm api alembic upgrade head
-- docker compose run --rm api python -m app.db.seed
-- docker compose up -d api
-- docker compose ps
+- `docker compose config`
+- `docker compose build api`
+- `docker compose up -d db`
+- `docker compose run --rm api alembic upgrade head`
+- `docker compose run --rm api python -m app.db.seed`
+- `docker compose up -d api`
+- `docker compose ps`
 - HTTP requests to the health and catalog endpoints
-- docker compose down
+- `docker compose down`
 
-Exit criteria
+### Exit Criteria
 
 - The db and api services both become healthy.
 - The Docker-only workflow is fully documented.
@@ -616,15 +605,14 @@ Exit criteria
 - No secret is embedded in an image or committed configuration.
 
 
-16. IMPLEMENTATION PHASE 9: TEST MATRIX AND QUALITY GATE
---------------------------------------------------------
+## 16. Implementation Phase 9: Test Matrix and Quality Gate
 
-Objective
+### Objective
 
 Validate application behavior, database fidelity, container startup, and
 documentation before the stage is considered complete.
 
-Fast test suite
+### Fast Test Suite
 
 - Settings validation and overrides.
 - Structured error responses.
@@ -633,7 +621,7 @@ Fast test suite
 - Repository and service behavior that is portable to SQLite.
 - HTTP contracts through an isolated test application.
 
-PostgreSQL integration suite
+### PostgreSQL Integration Suite
 
 - Engine connectivity.
 - Initial migration against a fresh database.
@@ -642,43 +630,43 @@ PostgreSQL integration suite
 - Catalog, detail, and taxonomy endpoints using PostgreSQL seed data.
 - Session commit, rollback, and cleanup behavior.
 
-Static checks
+### Static Checks
 
 - Ruff lint.
 - Ruff format check.
-- git diff --check.
-- docker compose config.
+- `git diff --check`.
+- `docker compose config`.
 - Secret and ignored-file review.
 - OpenAPI route inventory.
 
-HTTP smoke matrix
+### HTTP Smoke Matrix
 
-- GET /health -> HTTP 200.
-- GET /api/v1/games?page=1&page_size=5 -> five or fewer items with correct
+- `GET /health` -> HTTP 200.
+- `GET /api/v1/games?page=1&page_size=5` -> five or fewer items with correct
   pagination metadata.
-- GET an existing game -> HTTP 200.
-- GET an unknown game -> HTTP 404 with the standard error envelope.
-- GET genre, tag, and platform metadata -> deterministic non-empty lists.
-- GET /api/v1/models/status -> not_configured.
-- GET /docs and /openapi.json -> HTTP 200.
+- `GET` an existing game -> HTTP 200.
+- `GET` an unknown game -> HTTP 404 with the standard error envelope.
+- `GET` genre, tag, and platform metadata -> deterministic non-empty lists.
+- `GET /api/v1/models/status` -> `not_configured`.
+- `GET /docs` and `GET /openapi.json` -> HTTP 200.
 
-Coverage policy
+### Coverage Policy
 
 - Generate a coverage report for application code.
 - Exclude migration scripts and static seed fixtures from coverage targets.
 - Test failure paths explicitly rather than relying on a percentage alone.
 - Record meaningful gaps instead of inventing or concealing results.
 
-Operational smoke test
+### Operational Smoke Test
 
 1. Build and start the Compose stack.
 2. Confirm that db and api report healthy.
-3. Request health and a five-item catalog page from localhost:8000.
+3. Request health and a five-item catalog page from `localhost:8000`.
 4. Inspect the generated API documentation.
-5. Stop the stack with docker compose down.
+5. Stop the stack with `docker compose down`.
 6. Confirm that the named PostgreSQL volume remains present.
 
-Exit criteria
+### Exit Criteria
 
 - All automated tests pass.
 - PostgreSQL integration tests pass.
@@ -688,19 +676,18 @@ Exit criteria
 - Remaining limitations are documented.
 
 
-17. IMPLEMENTATION PHASE 10: DOCUMENTATION AND RELEASE PREPARATION
------------------------------------------------------------------
+## 17. Implementation Phase 10: Documentation and Release Preparation
 
-Objective
+### Objective
 
 Make the completed backend reproducible, reviewable, and ready to support the
 frontend stage.
 
-Work
+### Work
 
 1. Update the root README with:
    setup, migration, seed, test, lint, endpoint, and OpenAPI instructions.
-2. Replace apps/api placeholder documentation with verified commands.
+2. Replace `apps/api` placeholder documentation with verified commands.
 3. Update architecture.md and data-model.md to match the implementation.
 4. Update roadmap.md only after the Stage 1 acceptance gate passes.
 5. Document current limitations:
@@ -709,49 +696,47 @@ Work
 7. Review the repository tree and remove dead placeholders.
 8. Review the Git diff for secrets, generated artifacts, and unrelated changes.
 
-Suggested commit structure
+### Suggested Commit Structure
 
-1. chore(api): scaffold FastAPI project and quality tooling
-2. feat(db): add SQLAlchemy models and initial migration
-3. feat(catalog): add deterministic seed data and catalog API
-4. test(docker): add integration workflow and Stage 1 documentation
+1. `chore(api): scaffold FastAPI project and quality tooling`
+2. `feat(db): add SQLAlchemy models and initial migration`
+3. `feat(catalog): add deterministic seed data and catalog API`
+4. `test(docker): add integration workflow and Stage 1 documentation`
 
-Exit criteria
+### Exit Criteria
 
 - Setup documentation is reproducible from a clean checkout.
 - Every documented command exists and works.
 - The final diff contains only Stage 1 scope.
-- No .env file, credential, local database, or generated coverage output is
+- No `.env` file, credential, local database, or generated coverage output is
   tracked.
 - The branch is ready for review and merge.
 
 
-18. COMMAND INTERFACE TARGET
-----------------------------
+## 18. Command Interface Target
 
 The following root commands should exist only after their implementations are
 verified:
 
-- make help
-- make config
-- make build
-- make up
-- make down
-- make logs
-- make api
-- make migrate
-- make seed
-- make test
-- make test-integration
-- make lint
-- make format
+- `make help`
+- `make config`
+- `make build`
+- `make up`
+- `make down`
+- `make logs`
+- `make api`
+- `make migrate`
+- `make seed`
+- `make test`
+- `make test-integration`
+- `make lint`
+- `make format`
 
 Equivalent Docker and PowerShell commands must be documented so GNU Make
 remains optional on Windows.
 
 
-19. ACCEPTANCE CRITERIA
------------------------
+## 19. Acceptance Criteria
 
 Stage 1 is complete only when all of the following are true:
 
@@ -766,53 +751,60 @@ Stage 1 is complete only when all of the following are true:
 - The model-status endpoint does not claim that a model is trained or active.
 - Fast and PostgreSQL integration test suites pass.
 - Ruff lint and format checks pass.
-- docker compose config succeeds.
+- `docker compose config` succeeds.
 - Root commands and README instructions match verified behavior.
 - No secrets, local databases, or generated artifacts are committed.
 - Known limitations and the Stage 2 handoff are documented.
 
 
-20. RISKS AND MITIGATIONS
--------------------------
+## 20. Risks and Mitigations
 
-Risk: Dependency incompatibility.
-Mitigation: Run an import and startup compatibility smoke test before pinning
+**Risk:** Dependency incompatibility.
+
+**Mitigation:** Run an import and startup compatibility smoke test before pinning
 versions or building substantial application code.
 
-Risk: Container code uses localhost for PostgreSQL.
-Mitigation: Inject a Compose-specific DATABASE_URL that uses the db service
+**Risk:** Container code uses `localhost` for PostgreSQL.
+
+**Mitigation:** Inject a Compose-specific `DATABASE_URL` that uses the `db` service
 hostname while retaining localhost for host development.
 
-Risk: Integration tests modify development data.
-Mitigation: Use a disposable PostgreSQL database or Compose configuration and
+**Risk:** Integration tests modify development data.
+
+**Mitigation:** Use a disposable PostgreSQL database or Compose configuration and
 never remove the persistent development volume as part of routine tests.
 
-Risk: Alembic autogenerate produces noisy or incorrect migrations.
-Mitigation: Review every generated migration and validate it against a fresh
+**Risk:** Alembic autogenerate produces noisy or incorrect migrations.
+
+**Mitigation:** Review every generated migration and validate it against a fresh
 PostgreSQL database.
 
-Risk: Repeated seeding creates duplicates.
-Mitigation: Use stable natural keys, explicit upserts, and an idempotency test.
+**Risk:** Repeated seeding creates duplicates.
 
-Risk: Catalog serialization triggers N+1 queries.
-Mitigation: Use focused eager loading and inspect query behavior in repository
+**Mitigation:** Use stable natural keys, explicit upserts, and an idempotency test.
+
+**Risk:** Catalog serialization triggers N+1 queries.
+
+**Mitigation:** Use focused eager loading and inspect query behavior in repository
 tests.
 
-Risk: Seed metadata introduces licensing concerns.
-Mitigation: Use minimal metadata, original descriptions, nullable image URLs,
+**Risk:** Seed metadata introduces licensing concerns.
+
+**Mitigation:** Use minimal metadata, original descriptions, nullable image URLs,
 and documented provenance.
 
-Risk: A placeholder recommender is mistaken for a trained model.
-Mitigation: Expose an explicit not_configured status and return no fabricated
+**Risk:** A placeholder recommender is mistaken for a trained model.
+
+**Mitigation:** Expose an explicit `not_configured` status and return no fabricated
 scores or recommendations.
 
-Risk: Windows environments lack Python or GNU Make.
-Mitigation: Maintain a complete Docker-first workflow and document direct
+**Risk:** Windows environments lack Python or GNU Make.
+
+**Mitigation:** Maintain a complete Docker-first workflow and document direct
 PowerShell equivalents.
 
 
-21. IMPLEMENTATION-TIME DECISIONS
----------------------------------
+## 21. Implementation-Time Decisions
 
 The following decisions should be confirmed during the relevant phase after a
 small compatibility or behavior test:
@@ -831,8 +823,7 @@ small compatibility or behavior test:
 Every resolved decision must be reflected in code, tests, and documentation.
 
 
-22. STAGE 2 HANDOFF
--------------------
+## 22. Stage 2 Handoff
 
 Stage 1 should leave the frontend stage with:
 

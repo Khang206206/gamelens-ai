@@ -29,7 +29,7 @@ Acceptance gate:
 **Status:** Planned
 
 Detailed execution plan:
-[`stage-1-backend-database-plan.txt`](stage-1-backend-database-plan.txt)
+[`stage-1-backend-database-plan.md`](stage-1-backend-database-plan.md)
 
 Build one vertical slice at a time:
 
