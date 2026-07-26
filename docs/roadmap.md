@@ -51,11 +51,31 @@ complete HTTP smoke matrix.
 
 ## Stage 2 — Frontend foundation
 
-**Status:** Next
+**Status:** Ready for implementation; application code has not started
 
-Create the Next.js application after catalog response schemas are stable.
-Implement the responsive shell, landing page, catalog, details, typed API
-client, and loading, empty, and error states.
+Detailed execution plan:
+[`stage-2-frontend-foundation-plan.md`](stage-2-frontend-foundation-plan.md)
+
+Build one reviewable slice at a time:
+
+1. Verify the Stage 1 contract and select a compatible pinned Node/Next.js
+   toolchain.
+2. Create the strict TypeScript, App Router, Tailwind, and test skeleton.
+3. Generate types from OpenAPI and establish one project-owned API client.
+4. Build accessible design tokens, shared UI, navigation, and responsive shell.
+5. Add the truthful landing page.
+6. Add URL-backed catalog title search, single-value filters, sorting, and
+   pagination.
+7. Add numeric-ID game details and explicit nullable-field fallbacks.
+8. Harden loading, empty, partial-error, not-found, unavailable, responsive,
+   and keyboard states.
+9. Add the web Docker workflow, browser tests, accessibility checks, and
+   documentation.
+
+The stage is complete only when clean install, type, lint, format, test, build,
+OpenAPI-drift, accessibility, real-browser, and full-stack Docker gates pass.
+No Stage 2 screen may imply that recommendations are active while the model
+status remains `not_configured`.
 
 ## Stage 3 — Content recommendation MVP
 
