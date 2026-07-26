@@ -1,36 +1,39 @@
 # GameLens AI
 
 GameLens AI is a production-style, full-stack game recommendation portfolio
-project. It is designed to demonstrate recommendation-system fundamentals,
-data and ML engineering, API and database design, frontend development,
-testing, containerization, and reproducible evaluation.
+project. It demonstrates recommendation-system fundamentals, data and ML
+engineering, API and database design, frontend development, testing,
+containerization, and reproducible evaluation.
 
-The project will own its ranking logic. External services may later enrich
-game metadata, but they will not replace the recommendation engine.
+The project owns its ranking logic. External services may later enrich game
+metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 0 — Repository foundation**
+**Stage 1 — Backend and database foundation**
 
-The repository currently provides project boundaries, architecture and data
-design documents, local PostgreSQL configuration, environment-variable
-examples, and a staged delivery roadmap. Application code begins in Stage 1.
+The repository now provides a runnable Python 3.12 FastAPI catalog API,
+PostgreSQL 16 persistence, a reviewed Alembic migration chain, deterministic
+synthetic seed data, typed API contracts, unit and PostgreSQL integration
+tests, and a Docker-first development workflow.
 
-There is no API, frontend, seed dataset, or trained model yet. This is
-intentional: commands and components are added only when they are runnable.
+The API supports health/readiness, paginated catalog browsing, game details,
+taxonomy metadata, and an explicit `not_configured` recommendation-model
+status. There is no frontend or trained model yet; those begin in Stage 2 and
+Stage 3.
 
 ## Planned MVP
 
-The first runnable product will let an anonymous development user:
+The complete MVP will let an anonymous development user:
 
-1. Browse a game catalog.
+1. Browse the Stage 1 game catalog.
 2. Select preferred genres, tags, platforms, and example games.
 3. Receive recommendations from a project-owned content model.
 4. See structured reasons for each result.
-5. Record simple feedback such as liked, disliked, played, or wishlisted.
+5. Record feedback such as liked, disliked, played, or wishlisted.
 
 Authentication, collaborative filtering, external metadata imports, and LLM
-explanations are later stages.
+explanations remain later stages.
 
 ## Architecture
 
@@ -48,124 +51,151 @@ flowchart LR
 
 The web application, backend, persistent data, and offline ML workflow remain
 separate. Training never runs inside an API request. See
-[Architecture](docs/architecture.md) for the detailed boundaries.
+[Architecture](docs/architecture.md) for detailed boundaries.
 
-## Technology direction
+## Technology
 
-| Area | Planned technology |
+| Area | Technology |
 | --- | --- |
-| Web | Next.js, React, TypeScript, Tailwind CSS |
-| API | Python, FastAPI, Pydantic |
-| Persistence | PostgreSQL, SQLAlchemy 2.x, Alembic |
-| ML | pandas, NumPy, scikit-learn, SciPy, joblib |
+| API | Python 3.12, FastAPI, Pydantic v2, Uvicorn |
+| Persistence | PostgreSQL 16, SQLAlchemy 2.x, Psycopg 3, Alembic |
+| Web | Next.js, React, TypeScript, Tailwind CSS (Stage 2) |
+| ML | pandas, NumPy, scikit-learn, SciPy, joblib (Stage 3+) |
 | Local infrastructure | Docker Compose |
-| Quality | pytest, Ruff, strict TypeScript, ESLint |
+| Quality | pytest, PostgreSQL integration tests, Ruff |
 
-Exact dependency versions will be selected and locked when each application is
-introduced, rather than guessing versions before code exists.
+Direct Stage 1 dependencies are pinned in `apps/api/pyproject.toml`. Docker
+installs the complete Linux/Python 3.12 dependency graph from
+`apps/api/requirements.lock`.
 
 ## Repository layout
 
 ```text
 .
 |-- apps/
-|   |-- api/                 # FastAPI application from Stage 1
+|   |-- api/                 # FastAPI application, migration, tests, image
 |   `-- web/                 # Next.js application from Stage 2
-|-- data/                    # Dataset policy and future seed/import locations
-|-- docs/
-|   |-- architecture.md
-|   |-- data-model.md
-|   |-- recommendation-design.md
-|   `-- roadmap.md
-|-- infra/                   # Infrastructure notes
+|-- data/
+|   `-- seed/games.json      # 30-game deterministic synthetic catalog
+|-- docs/                    # Architecture, data, recommendation, roadmap
+|-- infra/
+|   `-- docker-compose.test.yml
 |-- ml/                      # Offline ML workflow boundary
-|-- scripts/                 # Future cross-project task scripts
+|-- scripts/                 # Future cross-project scripts
 |-- .env.example
-|-- docker-compose.yml       # Stage 0 PostgreSQL service
-|-- Makefile                 # Commands that currently work
+|-- docker-compose.yml       # PostgreSQL and API services
+|-- Makefile                 # Optional command shortcuts
 `-- README.md
 ```
-
-Each currently empty implementation area contains a short README. Subfolders
-such as `data/raw`, `ml/artifacts`, and `.github/workflows` will be created
-only when a stage has a real file to place there.
 
 ## Prerequisites
 
 - Git
-- Docker Desktop with the Docker Compose plugin
-- GNU Make is optional; every current Make target has a direct Docker command
+- Docker Desktop with Docker Compose
+- Python 3.12 for the optional host workflow
+- GNU Make is optional; direct PowerShell/Docker commands are documented
 
-Python and Node.js become prerequisites in Stage 1 and Stage 2 respectively.
+Node.js is not required until Stage 2. A host PostgreSQL installation is not
+required.
 
 ## Local setup
 
-From the repository root, create a local environment file:
+Create the ignored local environment file:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-On macOS or Linux:
-
-```bash
-cp .env.example .env
-```
-
-The example credentials are development-only. Change them before using a
-shared or remotely accessible database.
-
-Validate and start PostgreSQL:
+Build, migrate, seed, and start the stack:
 
 ```powershell
-docker compose config
-docker compose up -d
+docker compose --profile quality config --quiet
+docker compose build api
+docker compose up -d db
+docker compose run --build --rm api python -m alembic upgrade head
+docker compose run --build --rm api python -m app.db.seed
+docker compose up -d api
 docker compose ps
 ```
 
-Stop the service without deleting its named volume:
+Migrations and seeding are explicit lifecycle operations; ordinary API startup
+does not mutate the schema or catalog.
+Published PostgreSQL and API ports bind only to `127.0.0.1`.
+
+Open or request:
+
+```text
+http://localhost:8000/health
+http://localhost:8000/api/v1/games?page=1&page_size=5
+http://localhost:8000/docs
+http://localhost:8000/openapi.json
+```
+
+Stop services without deleting the named database volume:
 
 ```powershell
 docker compose down
 ```
 
-To also remove local database data, explicitly run
-`docker compose down --volumes`. That destructive variant is intentionally not
-wrapped by the Makefile.
+`docker compose down --volumes` is intentionally not wrapped because it
+deletes local development data.
 
 ## Root commands
 
-The current Makefile exposes only commands backed by working Stage 0
-components:
+| Command | Purpose |
+| --- | --- |
+| `make config` | Validate Compose |
+| `make build` | Build the API development image |
+| `make up` / `make down` | Start or stop db and API |
+| `make logs` / `make api` | Follow logs or run API in foreground |
+| `make migrate` | Upgrade the development schema |
+| `make seed` | Idempotently load the deterministic catalog |
+| `make test` | Run fast unit/contract tests |
+| `make test-integration` | Run tests with disposable PostgreSQL |
+| `make lint` / `make format` | Check or apply Ruff rules |
 
-| Command | Direct equivalent | Purpose |
-| --- | --- | --- |
-| `make help` | — | List current commands |
-| `make config` | `docker compose config` | Validate Compose |
-| `make up` | `docker compose up -d` | Start PostgreSQL |
-| `make down` | `docker compose down` | Stop PostgreSQL |
-| `make logs` | `docker compose logs -f db` | Follow database logs |
-
-Commands such as `migrate`, `seed`, `test`, `lint`, `api`, `web`, `train`, and
-`evaluate` will be added only with their corresponding implementation.
+Every target has a direct equivalent in [the API README](apps/api/README.md).
 
 ## Environment variables
 
-| Variable | Used now | Purpose |
-| --- | --- | --- |
-| `POSTGRES_DB` | Yes | Local database name |
-| `POSTGRES_USER` | Yes | Local database user |
-| `POSTGRES_PASSWORD` | Yes | Local development password |
-| `POSTGRES_PORT` | Yes | Host port mapped to PostgreSQL |
-| `ENVIRONMENT` | Stage 1 | Backend runtime environment |
-| `API_HOST` / `API_PORT` | Stage 1 | Backend bind address |
-| `DATABASE_URL` | Stage 1 | SQLAlchemy connection URL |
-| `CORS_ORIGINS` | Stage 1 | Allowed browser origins |
-| `LOG_LEVEL` | Stage 1 | Application log verbosity |
-| `NEXT_PUBLIC_API_URL` | Stage 2 | Browser-visible API base URL |
+| Variable | Purpose |
+| --- | --- |
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Local database identity |
+| `POSTGRES_PORT` | Development PostgreSQL host port |
+| `APP_NAME` | API title exposed in OpenAPI and health metadata |
+| `ENVIRONMENT` | `development`, `test`, or `production` |
+| `API_HOST` / `API_PORT` | Host-Python bind address and port; Compose publishes the API on loopback |
+| `DATABASE_URL` | SQLAlchemy PostgreSQL connection URL |
+| `CORS_ORIGINS` | Comma-separated explicit browser origins |
+| `LOG_LEVEL` | Structured application logging level |
+| `NEXT_PUBLIC_API_URL` | Stage 2 browser-visible API base URL |
 
 Never commit `.env` or production credentials. Only `.env.example` belongs in
 version control.
+
+## Stage 1 verification
+
+```powershell
+docker compose --profile quality config --quiet
+docker compose -f infra/docker-compose.test.yml config --quiet
+docker compose build api
+docker compose run --build --rm api python -m alembic upgrade head
+docker compose run --build --rm api python -m app.db.seed
+docker compose run --build --rm --no-deps quality python -m pytest tests/unit -q -p no:cacheprovider
+docker compose run --build --rm --no-deps quality python -m ruff check --no-cache app tests alembic
+docker compose run --build --rm --no-deps quality python -m ruff format --no-cache --check app tests alembic
+docker compose -f infra/docker-compose.test.yml up -d test-db
+try {
+    docker compose -f infra/docker-compose.test.yml run --build --rm test-api
+} finally {
+    docker compose -f infra/docker-compose.test.yml down --remove-orphans
+}
+```
+
+The `quality` service bind-mounts the current API source, so tests, lint, and
+formatting never inspect a stale source snapshot. The integration database is
+reachable only inside its isolated Compose network, uses `tmpfs`, and never
+resets the persistent development volume.
 
 ## Project documentation
 
@@ -173,34 +203,17 @@ version control.
 - [Data model](docs/data-model.md)
 - [Recommendation design](docs/recommendation-design.md)
 - [Roadmap](docs/roadmap.md)
-- [Stage 1 backend and database plan](docs/stage-1-backend-database-plan.md)
-
-## Stage 0 verification
-
-Run the following before considering the repository foundation complete:
-
-```powershell
-git diff --check
-docker compose config
-docker compose up -d
-docker compose ps
-docker compose down
-git check-ignore .env
-```
-
-PostgreSQL should become healthy, `.env` should be ignored, and the Compose
-configuration should render without an error.
+- [Stage 1 engineering plan](docs/stage-1-backend-database-plan.md)
+- [API setup and contracts](apps/api/README.md)
 
 ## Current limitations
 
-- No application endpoints or OpenAPI document exist yet.
-- No database migrations or seed data exist yet.
-- No recommendation model has been trained.
-- No external game API or paid service is required.
-- No performance or evaluation claims are made.
-
-See the roadmap for the next vertical slice: FastAPI configuration, database
-session management, the first migration, a health endpoint, and tests.
+- No frontend, authentication, or authorization.
+- No preference or interaction write APIs.
+- No active recommendation model, training, or evaluation.
+- No external metadata service or cover-image ingestion.
+- Seed ratings and popularity values are synthetic development signals.
+- Production deployment and monitoring are deferred to Stage 7.
 
 ## License
 

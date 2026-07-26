@@ -49,8 +49,9 @@ online recommendation inference. Route functions remain thin:
 route -> service -> repository/model interface -> database or artifact
 ```
 
-Database sessions are dependency-injected. Database models are not returned
-directly as API responses.
+Database sessions are dependency-injected from the app-local engine, which is
+also used by readiness checks and disposed at shutdown. Database models are
+not returned directly as API responses.
 
 ### Database
 
@@ -75,9 +76,10 @@ keys.
 
 ### Local development
 
-Stage 0 provides PostgreSQL through Docker Compose. Stage 1 will add the API
-container while preserving the option to run FastAPI directly on the host.
-Stage 2 will add the web development server.
+Docker Compose provides PostgreSQL and the Stage 1 API container while
+preserving the option to run FastAPI directly on the host. Schema migration
+and deterministic seeding remain explicit commands. Stage 2 will add the web
+development server.
 
 ### Production direction
 
@@ -97,6 +99,9 @@ and managed PostgreSQL. The repository must not depend on a specific vendor.
 
 ## Current state
 
-Only the repository foundation and local PostgreSQL definition exist in Stage
-0. Diagrammed application components describe accepted boundaries, not
-already implemented functionality.
+Stage 1 implements the API and database boundaries. Catalog routes depend on
+services, repositories, and injected SQLAlchemy sessions; PostgreSQL is the
+runtime source of truth. Readiness requires both connectivity and the expected
+Alembic schema head. The recommendation boundary currently exposes only an
+honest `not_configured` status. The web application, active recommender,
+training pipeline, and model artifacts remain future components.

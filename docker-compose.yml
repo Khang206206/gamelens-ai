@@ -2,13 +2,13 @@ name: gamelens-ai
 
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-gamelens}
       POSTGRES_USER: ${POSTGRES_USER:-gamelens}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gamelens_dev_only}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,6 +19,52 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
+
+  api:
+    image: gamelens-ai-api:stage1
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      APP_NAME: ${APP_NAME:-GameLens AI API}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-gamelens}:${POSTGRES_PASSWORD:-gamelens_dev_only}@db:5432/${POSTGRES_DB:-gamelens}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  quality:
+    profiles:
+      - quality
+    image: gamelens-ai-api:stage1
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg://gamelens_test:gamelens_test_only@localhost:5432/gamelens_test
+      CORS_ORIGINS: http://testserver
+      LOG_LEVEL: WARNING
+      RUFF_CACHE_DIR: /tmp/ruff-cache
+    volumes:
+      - ./apps/api:/workspace/apps/api
+      - ./data/seed:/workspace/data/seed:ro
 
 volumes:
   postgres_data:
