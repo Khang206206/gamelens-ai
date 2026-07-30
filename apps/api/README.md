@@ -4,6 +4,10 @@ The Stage 1 API is a Python 3.12 FastAPI application backed by PostgreSQL 16.
 It exposes a deterministic catalog and an honest recommendation-model status;
 it does not train or fabricate recommendations.
 
+The Stage 2 application in `apps/web` consumes this API through generated
+OpenAPI types and a project-owned browser client. Use the repository
+[README](../../README.md) for complete db/API/web startup.
+
 ## Responsibilities
 
 The dependency direction is:
@@ -176,7 +180,8 @@ It emits structured inserted, updated, and unchanged counters.
 
 - No authentication or authorization.
 - No preference or interaction write endpoints.
-- No frontend.
+- No recommendation, onboarding, or feedback endpoints; the implemented
+  frontend is intentionally limited to catalog and game-detail capabilities.
 - No trained or active recommendation model.
 - No external metadata source.
 - The Docker image is development-oriented; production hardening is Stage 7.

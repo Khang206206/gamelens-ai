@@ -1,0 +1,95 @@
+name: gamelens-ai-e2e
+
+services:
+  e2e-db:
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+    environment:
+      POSTGRES_DB: gamelens_e2e
+      POSTGRES_USER: gamelens_e2e
+      POSTGRES_PASSWORD: gamelens_e2e_only
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U gamelens_e2e -d gamelens_e2e
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+
+  e2e-setup:
+    image: gamelens-ai-api:e2e
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@e2e-db:5432/gamelens_e2e
+      CORS_ORIGINS: http://e2e-web:3000
+      LOG_LEVEL: WARNING
+    depends_on:
+      e2e-db:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -c
+      - python -m alembic upgrade head && python -m app.db.seed
+    restart: "no"
+
+  e2e-api:
+    image: gamelens-ai-api:e2e
+    environment:
+      ENVIRONMENT: test
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@e2e-db:5432/gamelens_e2e
+      CORS_ORIGINS: http://e2e-web:3000
+      LOG_LEVEL: WARNING
+    depends_on:
+      e2e-setup:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  e2e-web:
+    image: gamelens-ai-web:e2e
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: http://e2e-api:8000
+    depends_on:
+      e2e-api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "Promise.all([fetch('http://localhost:3000'), fetch('http://localhost:3000/games')]).then((responses) => { if (responses.some((response) => !response.ok)) process.exit(1) })"
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 8s
+
+  e2e:
+    image: gamelens-ai-playwright:stage2
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile.e2e
+    environment:
+      WEB_BASE_URL: http://e2e-web:3000
+      PLAYWRIGHT_EXTERNAL_SERVER: "1"
+    depends_on:
+      e2e-web:
+        condition: service_healthy
+    ipc: host

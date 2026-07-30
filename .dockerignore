@@ -1,0 +1,53 @@
+# Repository metadata and local configuration
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+**/*.key
+**/*.pem
+
+# Python caches, environments, and reports
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+**/.coverage
+**/.mypy_cache
+**/.pytest_cache
+**/.ruff_cache
+**/.venv
+**/htmlcov
+**/venv
+
+# Node.js dependencies, framework output, and browser artifacts
+**/.next
+**/.npm
+**/.pnpm-store
+**/coverage
+**/node_modules
+**/out
+**/playwright-report
+**/test-results
+**/blob-report
+**/*.tsbuildinfo
+
+# Local runtime state and editor files
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/*.log
+**/logs
+**/tmp
+**/.DS_Store
+**/.idea
+**/.vscode
+**/Thumbs.db
+
+# Untracked data and model outputs
+data/raw
+data/processed
+ml/artifacts
+ml/reports/generated

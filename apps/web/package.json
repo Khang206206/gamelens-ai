@@ -1,0 +1,57 @@
+{
+  "name": "@gamelens-ai/web",
+  "version": "0.2.0",
+  "private": true,
+  "description": "GameLens AI catalog frontend",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "npm": ">=11.0.0 <12"
+  },
+  "packageManager": "npm@11.16.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit --incremental false",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "playwright:install": "playwright install chromium firefox webkit",
+    "test:e2e": "playwright test",
+    "api:types": "node scripts/api-types.mjs update",
+    "api:types:check": "node scripts/api-types.mjs check"
+  },
+  "dependencies": {
+    "next": "16.2.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "overrides": {
+    "postcss": "8.5.25",
+    "sharp": "0.35.3"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@next/env": "16.2.12",
+    "@playwright/test": "1.62.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@testing-library/jest-dom": "7.0.0",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
+    "@types/node": "26.1.2",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitest/coverage-v8": "4.1.10",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.2.12",
+    "jsdom": "30.0.1",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.6",
+    "prettier-plugin-tailwindcss": "0.7.2",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

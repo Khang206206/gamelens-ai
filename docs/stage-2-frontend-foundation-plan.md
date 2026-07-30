@@ -2,17 +2,15 @@
 
 ## Stage 2 Engineering Plan: Frontend Foundation
 
-- **Document status:** Ready for implementation as of 2026-07-26; no Stage 2
-  application code has been added yet.
+- **Document status:** Complete, detail-audited, and verified on 2026-07-30.
 - **Stage 1 prerequisite:** Complete and verified.
-- **Target branch:** `feat/stage-2-frontend-foundation`
-- **Primary outcome:** A runnable, tested, responsive, and accessible Next.js
-  catalog experience backed by the verified Stage 1 API.
+- **Implementation branch:** `codex/stage-2-frontend-foundation`
+- **Primary outcome achieved:** A runnable, tested, responsive, and accessible
+  Next.js catalog experience backed by the verified Stage 1 API.
 
-This document intentionally uses forward-looking implementation language.
-Implementation-time decisions must be recorded in Section 21, the Stage 3
-handoff must be updated in Section 22, and completion evidence must be added to
-Section 23 only after the complete acceptance gate passes.
+This document began as a forward-looking implementation plan. Sections 21–23
+now record the decisions, Stage 3 handoff, and evidence produced by the
+completed acceptance gate.
 
 ## 1. Context
 
@@ -231,11 +229,11 @@ than implied by static types.
 
 Stage 2 owns these routes:
 
-| Route | Purpose |
-| --- | --- |
-| `/` | Product introduction and catalog call to action |
-| `/games` | Searchable, filterable, sortable, paginated catalog |
-| `/games/[gameId]` | Game details using the Stage 1 numeric ID |
+| Route             | Purpose                                             |
+| ----------------- | --------------------------------------------------- |
+| `/`               | Product introduction and catalog call to action     |
+| `/games`          | Searchable, filterable, sortable, paginated catalog |
+| `/games/[gameId]` | Game details using the Stage 1 numeric ID           |
 
 The catalog query contract mirrors the API:
 
@@ -731,7 +729,7 @@ loading, not-found, and failure behavior.
    preserve the prior query.
 9. Map `game_not_found` and invalid identifiers to a not-found experience.
 10. Keep network, unavailable-backend, malformed-response, and unexpected
-   failures recoverable without pretending the game does not exist.
+    failures recoverable without pretending the game does not exist.
 11. Add a route-specific loading skeleton with stable layout.
 12. Do not add recommendation, preference, or feedback controls.
 13. Add unique route metadata using only data available safely at render time.
@@ -1202,30 +1200,82 @@ review the client build before the final gate.
 
 ## 21. Implementation-Time Decisions
 
-No implementation-time decisions are recorded yet because Stage 2 application
-work has not started. This section must be updated as evidence resolves:
-
-1. Exact Node.js, npm, Next.js, React, TypeScript, and Tailwind versions.
-2. Exact OpenAPI generation and typed-request tooling.
-3. Final Vitest, request-mocking, Playwright, and accessibility packages.
-4. Exact Playwright test image and optional host browser-install behavior.
-5. Confirmed app-local, Docker-development, and production-build environment
-   handling.
-6. Confirmed component boundaries within the browser-data-fetch design.
-7. Confirmed catalog query normalization and request-cancellation behavior.
-8. Confirmed Docker source-mount, file-watching, and `node_modules` strategy.
-9. Confirmed web health check, E2E topology, and root command names.
-10. Any API contract blocker and its explicitly approved resolution.
-11. Runtime response-validation depth, if any, beyond JSON and error-envelope
-   checks.
-12. Diagnostic coverage and browser/a11y audit findings.
-
-Every resolved decision must be reflected in implementation, tests, and
-documentation.
+1. The verified host toolchain is Node.js 24.18.0 with npm 11.16.0. The app
+   pins Next.js 16.2.12, React 19.2.8, TypeScript 5.9.3, and Tailwind CSS
+   4.3.3. TypeScript 6 was not selected because the OpenAPI generator's
+   published peer range did not yet support it.
+2. `openapi-typescript` 7.13.0 generates the committed contract at
+   `apps/web/src/lib/api/generated.ts` from the live FastAPI OpenAPI document.
+   `npm run api:types:check` regenerates into memory and fails on drift. The
+   scripts load the app-local Next.js environment through `@next/env`, use a
+   15-second request timeout by default, and accept only a bounded
+   `OPENAPI_TIMEOUT_MS` override.
+3. Vitest 4.1.10, React Testing Library 16.3.2, jsdom 30.0.1, Playwright
+   1.62.0, and `@axe-core/playwright` 4.12.1 form the test stack. Fast API
+   client tests inject a fetch transport directly, avoiding a runtime
+   request-mocking dependency.
+4. The Docker browser runner uses
+   `mcr.microsoft.com/playwright:v1.62.0-noble` pinned to digest
+   `sha256:baed2032d533817f3dbe6425de795788430ba345e819a1201337009ba17c9d07`.
+   `npm run playwright:install` remains the optional host-browser workflow.
+5. `NEXT_PUBLIC_API_URL` is the only browser-public configuration. It is
+   validated as an absolute HTTP(S) URL for direct development, Compose, and
+   production-build checks. No internal database or API credential enters the
+   web environment.
+6. Static root layout and landing content provide the shared shell. Focused
+   client components own catalog and detail requests, while shared UI owns
+   cards, covers, notices, loading placeholders, navigation, and formatters.
+7. Catalog search parameters are the single request-state source. Invalid
+   values normalize to documented defaults, filters are single-valued, and
+   superseded fetches are aborted. A browser regression exposed an unbound
+   native `fetch`; the client now binds the global transport and includes a
+   unit regression. A later detail audit also added optimistic query
+   composition so rapid filter changes cannot overwrite one another, while a
+   controlled draft preserves unsubmitted search text across URL changes.
+8. Docker development bind-mounts the source tree and stores Linux
+   `node_modules` and `.next` data in separate named volumes. A constrained
+   initializer compares source and image lockfiles, synchronizes stale
+   dependencies from the image, repairs old volume ownership, invalidates the
+   disposable cache when dependencies change, and drops to UID 1000 before
+   starting Next.js. The exact base is
+   `node:24.18.0-bookworm-slim` pinned to digest
+   `sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d`.
+9. The web health check requests `/` as a Next.js liveness check; it is not
+   represented as API/catalog readiness. The isolated E2E topology proves
+   integration using a `tmpfs` database plus explicit setup, API, web, and
+   Playwright services. Root Make targets expose build, startup, logs, tests,
+   lint, format, E2E, and OpenAPI generation without replacing direct npm or
+   Compose commands.
+10. The Stage 1 API contract required no change. Allowed-origin CORS behavior
+    was verified for `http://localhost:3000`, and an unknown origin received
+    no allow-origin header.
+11. Generated contracts provide compile-time shapes. Runtime checking is
+    intentionally limited to successful JSON content and the standard typed
+    API error envelope; no schema-validator runtime was added in this stage.
+12. Diagnostic fast-test coverage is concentrated in configuration, URL
+    state, formatting, and API-client boundaries. Full feature components are
+    exercised through real-browser flows. Axe reported no serious or critical
+    violations across happy paths, invalid IDs, and the global 404 state.
+13. npm audit identified vulnerable PostCSS and Sharp versions under the
+    current stable Next.js package. Global transitive overrides pin PostCSS
+    8.5.25 and Sharp 0.35.3 without downgrading Next.js. This is narrower than
+    `npm audit fix --force` and passed clean install, build, Docker, and browser
+    regression gates. No override is applied to `brace-expansion` across
+    incompatible major versions.
+14. The detail audit restored mobile primary navigation, gave route-level
+    failure states an `h1`, removed duplicate accessible links from game cards,
+    preserved successful taxonomy data during partial retries, made invalid
+    numeric routes use the route-specific not-found boundary, and replaced
+    static “online” or model-health claims with release and seed-fixture
+    wording.
+15. The root `.dockerignore` provides generic secret/cache protection for
+    future root-context builds. The current API build remains protected by its
+    stricter Dockerfile-specific deny-all allowlist, while both web images use
+    the context-local web ignore file.
 
 ## 22. Stage 3 Handoff
 
-When complete, Stage 2 should leave the content-recommendation stage with:
+Stage 2 leaves the content-recommendation stage with:
 
 - A stable responsive application shell and navigation model.
 - Reusable accessible controls, cards, notices, loading states, and error
@@ -1237,27 +1287,117 @@ When complete, Stage 2 should leave the content-recommendation stage with:
 - Game-card and taxonomy presentation primitives that Stage 3 can extend for
   onboarding.
 - Deterministic browser fixtures and full-stack test orchestration.
-- An honest capability boundary that still reports no active recommendation
-  model until Stage 3 provides one.
+- An honest capability boundary with no recommendation control or fabricated
+  score while the backend reports no configured model.
 
 Stage 3 may add onboarding and recommendation experiences only after real
 backend contracts and a validated model exist. It must not move ranking logic
-into the browser.
+into the browser. New recommendation response types should extend the same
+OpenAPI generation path and project-owned API client. The current model status
+is baseline evidence, not a permanent assertion in browser tests, so Stage 3
+can change it deliberately. The 30-game seed and isolated E2E topology remain
+available as deterministic regression fixtures.
 
 ## 23. Verified Completion Record
 
-Pending implementation.
+Stage 2 was completed on 2026-07-30 on
+`codex/stage-2-frontend-foundation`. A same-day detailed audit then reproduced
+and corrected URL-state, mobile navigation, heading hierarchy, truthful status
+copy, accessible-card, OpenAPI-tooling, and Docker-volume defects before the
+acceptance gate below was rerun.
 
-This section must remain unpopulated until every Stage 2 acceptance criterion
-passes. The final record must include:
+### Runtime and dependency baseline
 
-- Completion date and branch.
-- Pinned runtime and major tooling versions.
-- Type, lint, format, unit/component, browser, and build results.
-- Diagnostic coverage result and meaningful gaps.
-- OpenAPI generation and drift-check result.
-- Accessibility and representative viewport audit result.
-- Dependency and secret-review result.
-- Full-stack container health and browser smoke result.
-- Confirmation that the Stage 1 persistent database volume was not reset or
-  deleted.
+- Node.js 24.18.0 and npm 11.16.0.
+- Next.js 16.2.12, React 19.2.8, TypeScript 5.9.3, and Tailwind CSS 4.3.3.
+- Vitest 4.1.10, Playwright 1.62.0, and axe-core Playwright 4.12.1.
+- Direct production dependencies are limited to Next.js, React, and React DOM.
+  `@next/env` is a direct development-only dependency for consistent tooling
+  configuration. Reviewed direct dependency licenses are MIT, Apache-2.0, or
+  MPL-2.0.
+- `npm ci` completed from the updated lockfile with 495 packages installed and
+  496 audited on the Windows host.
+- Global npm overrides resolve Next.js and the rest of the tree to
+  `postcss@8.5.25` and `sharp@0.35.3`. `npm audit --omit=dev --json` reports
+  zero production vulnerabilities.
+- The full audit reports 11 high-severity development-tooling dependency paths
+  through vulnerable `brace-expansion` versions under ESLint,
+  `eslint-config-next`, and `openapi-typescript`. npm's proposed remediations
+  require breaking and incompatible Next.js/ESLint/OpenAPI changes, so these
+  paths are accepted only for trusted project source and a trusted local
+  OpenAPI endpoint pending compatible upstream releases. The tooling must not
+  process untrusted glob or schema input, and these paths are not represented
+  as production-clean findings.
+
+### Frontend quality and contract gates
+
+| Gate                        | Result                                                                 |
+| --------------------------- | ---------------------------------------------------------------------- |
+| Clean install               | `npm ci` passed; 495 packages installed, 496 audited                   |
+| Production dependency audit | Passed with zero vulnerabilities                                       |
+| Full dependency audit       | 11 high development-only paths documented; no production finding       |
+| Strict type check           | Passed                                                                 |
+| ESLint                      | Passed                                                                 |
+| Prettier check              | Passed                                                                 |
+| Fast tests                  | 40 tests across 7 files passed                                         |
+| Production build            | Passed; static `/`, `/_not-found`, `/games`, dynamic `/games/[gameId]` |
+| OpenAPI drift               | Live `npm run api:types:check` passed                                  |
+| Compose validation          | Root quality, API test, and E2E definitions passed                     |
+
+The diagnostic coverage report recorded 41.48% statements, 39.03% branches,
+26.47% functions, and 45.08% lines overall. Project-owned boundary modules had
+stronger coverage: configuration 82.35% statements, formatting 100%, routes
+90%, API client 82.75%, and API errors 90.9%. React feature components are the
+main fast-suite gap; their complete user paths are covered by the real-browser
+suite rather than by a percentage threshold.
+
+### Browser, accessibility, and responsive acceptance
+
+The final isolated Docker-first E2E run passed all 21 scenarios without retry
+in 55.6 seconds: 13 complete Chromium paths and four critical smoke paths in
+each of Firefox and WebKit. It covered landing/catalog/detail navigation,
+genre/tag/platform and every sort option, preserved search drafts, rapid
+filter composition, reload/back/forward state, invalid catalog links, known
+and unknown details, empty/filtered-empty/out-of-range states, catalog,
+metadata, and detail recovery, and console/page-error collection on the happy
+navigation path. Mobile primary navigation was keyboard reachable. Catalog
+and detail layouts had no page overflow at 320, 768, or 1440 CSS pixels.
+Automated axe scans found no serious or critical violations on landing,
+populated catalog/detail, invalid-ID, and global 404 states.
+
+### Full-stack and regression evidence
+
+- The web image built from the pinned Node image. Its bounded initializer ran
+  as root only long enough to repair mounted cache ownership, then the main
+  process and Next.js server ran as UID 1000.
+- PostgreSQL, API, and web services all became healthy.
+- Landing and catalog HTTP checks returned 200.
+- The pre-existing `web_node_modules` volume was repaired in place from the
+  image lock: its marker matched the current lockfile, and runtime inspection
+  resolved `sharp@0.35.3` and `postcss@8.5.25`.
+- The isolated database migrated and seeded exactly 30 games and 36 taxonomy
+  records before browser tests.
+- Stage 1 remained green: 84 fast tests, 28 disposable-PostgreSQL integration
+  tests, Ruff lint, and Ruff format checks passed.
+- The E2E project used only its own `tmpfs` database. The persistent Stage 1
+  development database volume was not reset or deleted. Neither web named
+  volume was deleted; stale dependency contents were replaced in place and
+  disposable `.next` cache contents were regenerated.
+
+### Artifact and capability review
+
+Generated API types and the project-owned social preview image are intentional
+tracked artifacts. Local environment files, `.next`, `node_modules`, coverage,
+traces, screenshots, videos, and test reports remain ignored. The UI exposes
+only working catalog and game-detail behavior; it does not fabricate
+recommendations, preferences, feedback, authentication, or imported cover
+art. Production deployment remains Stage 7 scope.
+The current localhost social-metadata base is development-only and must be
+replaced by validated Stage 7 deployment configuration.
+
+A malformed game ID now uses the route-specific not-found boundary, and a
+well-formed numeric ID missing from FastAPI uses the client not-found state.
+The streamed Next.js route shell returns HTTP 200 in both cases. The
+missing-ID API response itself remains 404; propagating that status through the
+page requires the internal server-origin/deployment design that Stage 2
+intentionally excluded.

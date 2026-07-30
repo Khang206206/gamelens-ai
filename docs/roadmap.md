@@ -51,7 +51,7 @@ complete HTTP smoke matrix.
 
 ## Stage 2 — Frontend foundation
 
-**Status:** Ready for implementation; application code has not started
+**Status:** Complete (verified 2026-07-30)
 
 Detailed execution plan:
 [`stage-2-frontend-foundation-plan.md`](stage-2-frontend-foundation-plan.md)
@@ -77,9 +77,20 @@ OpenAPI-drift, accessibility, real-browser, and full-stack Docker gates pass.
 No Stage 2 screen may imply that recommendations are active while the model
 status remains `not_configured`.
 
+Acceptance was detail-audited with a clean `npm ci`, 40 fast tests, a
+successful production build, current OpenAPI-generated contracts, and 21
+Docker-first Playwright scenarios across Chromium, Firefox, and WebKit. The
+browser suite passed serious/critical axe checks, keyboard-reachable mobile
+navigation, recovery states, URL races, and responsive catalog/detail layouts.
+The repaired development stack verified the locked Sharp and PostCSS versions
+inside its existing dependency volume. PostgreSQL, API, and web services became
+healthy, and the Stage 1 regression suite remained green with 84 fast tests and
+28 disposable-PostgreSQL integration tests. See the completion record in the
+detailed plan for exact versions, commands, and known limitations.
+
 ## Stage 3 — Content recommendation MVP
 
-**Status:** Planned
+**Status:** Ready for implementation
 
 Create deterministic preprocessing and TF-IDF artifacts, a replaceable
 recommendation service, onboarding, structured explanations, recommendation

@@ -49,6 +49,33 @@ services:
       retries: 10
       start_period: 5s
 
+  web:
+    image: gamelens-ai-web:stage2
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - ./apps/web:/workspace
+      - web_node_modules:/workspace/node_modules
+      - web_next:/workspace/.next
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000').then((response) => { if (!response.ok) process.exit(1) })"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 8s
+
   quality:
     profiles:
       - quality
@@ -68,3 +95,5 @@ services:
 
 volumes:
   postgres_data:
+  web_node_modules:
+  web_next:

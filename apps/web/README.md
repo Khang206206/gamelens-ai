@@ -1,68 +1,165 @@
-# Web application
+# GameLens AI web application
 
-**Status:** The Stage 2 engineering plan is ready; application implementation
-has not started. The Stage 1 backend handoff is complete, and this directory
-remains reserved for the Next.js and TypeScript application.
+The Stage 2 web application is a Next.js 16.2 App Router project using React 19.2, strict
+TypeScript 5.9, and Tailwind CSS 4. It presents the verified Stage 1 catalog without
+implying that recommendations, preferences, feedback, or authentication exist.
 
-See the
-[Stage 2 frontend engineering plan](../../docs/stage-2-frontend-foundation-plan.md)
-for scope, phases, verification, acceptance criteria, risks, and the Stage 3
-handoff.
+## Responsibilities
 
-## Planned responsibility
+The browser dependency direction is:
 
-The frontend will own routes, presentation components, browser state, and a
-typed API client. It will use environment-based API configuration, responsive
-and accessible components, URL-backed catalog state, and explicit loading,
-empty, not-found, partial-error, and full-error states.
+```text
+route -> feature component -> project API client -> FastAPI
+```
 
-It will not connect to PostgreSQL, embed backend secrets, implement ranking,
-or fabricate recommendations while the backend model status is
-`not_configured`.
+`src/app` owns routes and framework boundaries, `src/features` owns catalog and detail
+behavior, `src/components` owns reusable presentation, and `src/lib/api` is the only
+browser path to FastAPI. The application does not connect to PostgreSQL, contain backend
+credentials, proxy requests through Next.js, or rank games.
 
-## Target routes
+## Routes
 
-| Route | Planned purpose |
-| --- | --- |
-| `/` | Truthful product introduction and catalog call to action |
-| `/games` | Search, single-value taxonomy filters, sorting, and pagination |
-| `/games/[gameId]` | Details through the existing numeric game ID contract |
+| Route             | Implemented behavior                                                            |
+| ----------------- | ------------------------------------------------------------------------------- |
+| `/`               | Server-rendered product introduction and catalog call to action                 |
+| `/games`          | URL-backed title search, one genre/tag/platform filter, sorting, and pagination |
+| `/games/[gameId]` | Numeric-ID game details with explicit nullable-field states                     |
 
-Search, filters, sort, and page will be encoded in the catalog URL so reload,
-browser history, bookmarks, and shared links reproduce the same request.
+Catalog state uses `q`, `genre`, `tag`, `platform`, `sort`, and `page` search parameters.
+The runtime parser rejects malformed values before an API request, while reload,
+back/forward navigation, bookmarks, and shared links reproduce valid state.
 
-## Stage 1 API handoff
+## Direct npm workflow
 
-The verified local backend contract available to Stage 2 includes:
+First start, migrate, seed, and expose the API from the repository root. Then:
 
-- API base URL `http://localhost:8000`, configurable for the browser through
-  `NEXT_PUBLIC_API_URL`.
-- OpenAPI at `/openapi.json` and interactive documentation at `/docs`.
-- Paginated catalog, game detail, and sorted genre, tag, and platform routes
-  under `/api/v1`.
-- One-based pages with a default size of 20 and a maximum size of 100.
-- Title search and genre, tag, and platform filters plus deterministic catalog
-  sorting.
-- A consistent error envelope for validation, not-found, database, and
-  unexpected failures.
-- An explicit `not_configured` model status; Stage 2 must not present
-  recommendations as available yet.
+```powershell
+Set-Location apps/web
+Copy-Item .env.example .env.local
+npm ci
+npm run dev
+```
 
-The synthetic catalog currently has no cover-image URLs. Stage 2 will provide
-a project-owned placeholder and will not introduce an undocumented remote
-image source.
+Open `http://localhost:3000`. The ignored `.env.local` is for direct npm work; the root
+`.env` remains the Docker Compose source.
 
-The default CORS allowlist contains `http://localhost:3000`. If the Stage 2
-development origin changes, update `CORS_ORIGINS` in the ignored root `.env`
-file rather than hard-coding an origin in frontend or backend code.
+`NEXT_PUBLIC_API_URL` is the only required browser variable. It must be an absolute
+HTTP(S) URL without credentials, a query string, or a fragment. Trailing slashes are
+normalized. Next.js embeds this public value into production client output, so set it
+before `npm run build`.
 
-The planned direct npm workflow will use an ignored `apps/web/.env.local`
-created from an app-local example; the root `.env` will remain the Compose
-source. Public API values must be supplied before a production build because
-Next.js embeds `NEXT_PUBLIC_` values into the client bundle.
+## Commands
 
-## Current command status
+Run commands from `apps/web`:
 
-No npm, Next.js, web-container, or frontend quality command exists yet.
-Commands will be documented here only after the corresponding Stage 2
-implementation has been created and verified.
+| Command                                   | Purpose                                                          |
+| ----------------------------------------- | ---------------------------------------------------------------- |
+| `npm run dev`                             | Start the development server                                     |
+| `npm run build` / `npm run start`         | Build or serve the production bundle                             |
+| `npm run typecheck`                       | Run strict TypeScript without emitting files                     |
+| `npm run lint`                            | Run ESLint                                                       |
+| `npm run format` / `npm run format:check` | Apply or verify Prettier formatting                              |
+| `npm run test`                            | Run Vitest and React Testing Library checks                      |
+| `npm run test:coverage`                   | Run fast tests with diagnostic V8 coverage                       |
+| `npm run playwright:install`              | Install locked host Chromium, Firefox, and WebKit binaries       |
+| `npm run test:e2e`                        | Run Playwright against `WEB_BASE_URL` or `http://localhost:3000` |
+| `npm run api:types`                       | Refresh committed TypeScript contracts from the live API         |
+| `npm run api:types:check`                 | Fail when the live OpenAPI contract and generated output differ  |
+| `npm audit --omit=dev`                    | Audit the production dependency tree                             |
+| `npm audit`                               | Audit production and development dependencies                    |
+
+Type generation reads `OPENAPI_URL` when supplied, otherwise
+`${NEXT_PUBLIC_API_URL}/openapi.json`, defaulting to the documented local API. The scripts
+load `.env.local` with Next's environment loader and apply a 15-second request timeout.
+Set `OPENAPI_TIMEOUT_MS` to a whole number from 1000 through 120000 only when a trusted
+endpoint needs a different bound. The generated file is committed at
+`src/lib/api/generated.ts`; feature code must not hand-copy backend response interfaces.
+
+The client validates JSON content, the standard error envelope, HTTP status, and
+cancellation. It maps validation, not-found, unavailable, malformed, network, abort, and
+unexpected failures to safe categories while preserving status and backend error code for
+application logic.
+
+## Docker workflows
+
+From the repository root, after explicit migration and seed:
+
+```powershell
+docker compose build web
+docker compose up -d db api web
+docker compose ps
+```
+
+Windows source files are bind-mounted at `/workspace`; named `web_node_modules` and
+`web_next` volumes keep Linux dependencies and Next.js cache out of the host tree. At
+startup, a constrained initializer compares the bind-mounted lockfile with the image
+lockfile. A stale image fails with a rebuild instruction. A stale or root-owned dependency
+volume is synchronized from the image, ownership is repaired, and the disposable Next.js
+cache is cleared when dependencies change. The initializer then drops to the non-root
+`node` user before starting Next.js. It does not install from the network at runtime.
+
+The published web port binds to `127.0.0.1` and defaults to `WEB_PORT=3000`. If that port
+changes, update `CORS_ORIGINS` to the same web origin. If `API_PORT` changes, update
+`NEXT_PUBLIC_API_URL` to the same API origin. Web startup never migrates, seeds, resets,
+or deletes the database.
+
+The browser acceptance stack is isolated:
+
+```powershell
+$e2eExitCode = 0
+try {
+    docker compose -f infra/docker-compose.e2e.yml up --build `
+        --abort-on-container-exit --exit-code-from e2e e2e
+    $e2eExitCode = $LASTEXITCODE
+} finally {
+    docker compose -f infra/docker-compose.e2e.yml down --remove-orphans
+}
+if ($e2eExitCode -ne 0) { exit $e2eExitCode }
+```
+
+It creates a tmpfs PostgreSQL database, migrates and seeds it in an explicit setup
+service, starts a network-only API and web application, then runs the locked Playwright
+1.62 image. The complete Chromium suite and critical Firefox/WebKit smoke paths use the
+deterministic 30-game catalog.
+
+## Verified Stage 2 quality
+
+The acceptance gate on 2026-07-30 produced:
+
+- 40 fast tests across query parsing, formatting, configuration, API errors, request
+  transport, shared UI, and truthful landing content.
+- Strict TypeScript, ESLint, Prettier, clean install, OpenAPI drift, and production build
+  passes.
+- Targeted npm overrides resolve Next.js to PostCSS 8.5.25 and Sharp 0.35.3. The
+  production audit reports zero vulnerabilities.
+- 21 Playwright passes without retry: 13 complete Chromium tests and four critical smoke
+  tests in each of Firefox and WebKit.
+- No serious or critical axe violations on landing, populated catalog/detail, invalid-ID,
+  and 404 states.
+- Mobile primary navigation is visible and keyboard reachable. Catalog and detail routes
+  have no horizontal page overflow at 320, 768, or 1440 CSS pixels.
+- Diagnostic V8 coverage of 41.48% statements overall. Pure configuration, formatting,
+  route, and API modules report 82.35% through 100% statement coverage; client feature
+  workflows are intentionally exercised by the real browser suite and remain the main
+  fast-suite coverage gap.
+
+## Current limitations
+
+- Recommendation ranking, onboarding, preferences, and feedback remain Stage 3 and Stage 4
+  work.
+- The deterministic catalog has no cover binaries or approved remote image source, so
+  every game uses a project-owned generated placeholder.
+- Ratings and popularity are synthetic development signals, not market data or
+  recommendation evidence.
+- Production deployment, optimized production containers, monitoring, and CI remain Stage
+  7 work. The current localhost `metadataBase` is development-only; Stage 7 must supply a
+  validated public site origin.
+- Malformed game IDs use the route-specific not-found boundary, and well-formed numeric
+  IDs missing from the API use a client not-found state. The streamed dynamic route shell
+  returns HTTP 200 in both cases. The missing-ID API response remains 404; true
+  server-route status propagation requires the later internal-origin/deployment design.
+- The full npm audit retains 11 high-severity development-tooling paths through
+  `brace-expansion`; production audit is clean. Run the affected lint and OpenAPI tools
+  only on trusted project source and a trusted local schema endpoint. The finding remains
+  documented until compatible upstream releases replace it without forcing breaking
+  Next.js, ESLint, or OpenAPI tool downgrades/upgrades.

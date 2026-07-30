@@ -5,89 +5,100 @@ project. It demonstrates recommendation-system fundamentals, data and ML
 engineering, API and database design, frontend development, testing,
 containerization, and reproducible evaluation.
 
-The project owns its ranking logic. External services may later enrich game
-metadata, but they will not replace the recommendation engine.
+The project owns its future ranking logic. External services may later enrich
+game metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 1 complete; Stage 2 ready for implementation**
+**Stage 2 complete; Stage 3 ready for implementation**
 
-The repository now provides a runnable Python 3.12 FastAPI catalog API,
-PostgreSQL 16 persistence, a reviewed Alembic migration chain, deterministic
-synthetic seed data, typed API contracts, unit and PostgreSQL integration
-tests, and a Docker-first development workflow.
+The repository now provides:
 
-The API supports health/readiness, paginated catalog browsing, game details,
-taxonomy metadata, and an explicit `not_configured` recommendation-model
-status.
+- A Python 3.12 FastAPI catalog API and PostgreSQL 16 persistence.
+- A reviewed Alembic migration chain and deterministic 30-game synthetic seed.
+- A responsive Next.js 16.2, React 19.2, and strict TypeScript 5.9 web
+  application.
+- A generated OpenAPI TypeScript contract and one project-owned browser API
+  client.
+- URL-backed catalog title search, single-value taxonomy filters, sorting, and
+  pagination.
+- Numeric game details with deliberate loading, empty, validation, not-found,
+  unavailable, and nullable-field states.
+- Vitest, React Testing Library, Playwright, axe, pytest, PostgreSQL integration,
+  Ruff, and Docker-first quality workflows.
 
-The detailed
-[Stage 2 frontend engineering plan](docs/stage-2-frontend-foundation-plan.md)
-is ready. Frontend implementation has not started, so the current runnable
-stack remains PostgreSQL and the API. A trained model remains Stage 3 work.
+Recommendation-model status remains honestly `not_configured`. Preference
+capture and project-owned content recommendations begin in Stage 3; no current
+screen fabricates a match, score, or personalized result.
 
-## Planned MVP
+## Implemented user experience
 
-The complete MVP will let an anonymous development user:
+An anonymous development user can:
 
-1. Browse the Stage 1 game catalog.
-2. Select preferred genres, tags, platforms, and example games.
-3. Receive recommendations from a project-owned content model.
-4. See structured reasons for each result.
-5. Record feedback such as liked, disliked, played, or wishlisted.
+1. Understand what catalog functionality works now and what is planned later.
+2. Browse 30 fictional titles at `/games`.
+3. Search titles and combine one genre, tag, and platform filter with
+   deterministic sorting.
+4. Reload, bookmark, share, and navigate browser history without losing catalog
+   state.
+5. Open reader-relevant game details and return to the previous catalog URL.
+6. Recover from malformed links, empty results, missing games, metadata
+   failures, and backend downtime.
 
-Authentication, collaborative filtering, external metadata imports, and LLM
-explanations remain later stages.
+Onboarding, recommendation results, feedback writes, and authentication remain
+future capabilities because their API contracts do not exist yet.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    U["User"] --> W["Next.js web app"]
-    W --> A["FastAPI application"]
+    U["Anonymous user"] --> W["Next.js web app"]
+    W -->|"JSON over HTTP"| A["FastAPI application"]
     A --> P[("PostgreSQL")]
-    A --> R["Recommendation service"]
-    R --> M["Versioned model artifacts"]
-    T["Offline training and evaluation"] --> M
+    A --> R["Recommendation boundary: not configured"]
+    R -. "Stage 3+" .-> M["Versioned model artifacts"]
+    T["Offline training and evaluation"] -.-> M
     D["Seed or imported datasets"] --> T
     D --> P
 ```
 
-The web application, backend, persistent data, and offline ML workflow remain
-separate. Training never runs inside an API request. See
+The web application, backend, persistent data, and future offline ML workflow
+remain separate. Training never runs inside an API request. See
 [Architecture](docs/architecture.md) for detailed boundaries.
 
 ## Technology
 
-| Area | Technology |
-| --- | --- |
-| API | Python 3.12, FastAPI, Pydantic v2, Uvicorn |
-| Persistence | PostgreSQL 16, SQLAlchemy 2.x, Psycopg 3, Alembic |
-| Web | Next.js, React, TypeScript, Tailwind CSS (Stage 2) |
-| ML | pandas, NumPy, scikit-learn, SciPy, joblib (Stage 3+) |
-| Local infrastructure | Docker Compose |
-| Quality | pytest, PostgreSQL integration tests, Ruff |
+| Area                 | Technology                                                                             |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| API                  | Python 3.12, FastAPI, Pydantic v2, Uvicorn                                             |
+| Persistence          | PostgreSQL 16, SQLAlchemy 2.x, Psycopg 3, Alembic                                      |
+| Web                  | Node.js 24.18 LTS, Next.js 16.2.12, React 19.2.8, TypeScript 5.9.3, Tailwind CSS 4.3.3 |
+| Web quality          | ESLint 9.39, Prettier 3.9, Vitest 4.1, Testing Library, Playwright 1.62, axe-core      |
+| ML                   | pandas, NumPy, scikit-learn, SciPy, joblib (Stage 3+)                                  |
+| Local infrastructure | Docker Compose                                                                         |
+| API quality          | pytest, disposable PostgreSQL integration tests, Ruff                                  |
 
-Direct Stage 1 dependencies are pinned in `apps/api/pyproject.toml`. Docker
-installs the complete Linux/Python 3.12 dependency graph from
-`apps/api/requirements.lock`.
+Direct web and API dependencies are exactly pinned. npm commits
+`apps/web/package-lock.json`; the API container installs its Linux/Python graph
+from `apps/api/requirements.lock`.
 
 ## Repository layout
 
 ```text
 .
 |-- apps/
-|   |-- api/                 # FastAPI application, migration, tests, image
-|   `-- web/                 # Stage 2 plan and future Next.js application
+|   |-- api/                 # FastAPI app, Alembic, tests, development image
+|   `-- web/                 # Next.js app, generated contracts, tests, images
 |-- data/
 |   `-- seed/games.json      # 30-game deterministic synthetic catalog
-|-- docs/                    # Architecture, data, recommendation, roadmap
+|-- docs/                    # Architecture, data, plans, roadmap, handoffs
 |-- infra/
-|   `-- docker-compose.test.yml
+|   |-- docker-compose.test.yml
+|   `-- docker-compose.e2e.yml
 |-- ml/                      # Reserved offline ML workflow boundary
-|-- scripts/                 # Future cross-project scripts
+|-- scripts/                 # Reserved cross-project scripts
 |-- .env.example
-|-- docker-compose.yml       # PostgreSQL and API services
+|-- docker-compose.yml       # PostgreSQL, API, web, and API quality service
 |-- Makefile                 # Optional command shortcuts
 `-- README.md
 ```
@@ -96,124 +107,142 @@ installs the complete Linux/Python 3.12 dependency graph from
 
 - Git
 - Docker Desktop with Docker Compose
-- Python 3.12 for the optional host workflow
-- GNU Make is optional; direct PowerShell/Docker commands are documented
+- Node.js 24 LTS and npm 11 for direct frontend work
+- Python 3.12 for the optional host API workflow
+- GNU Make is optional; direct PowerShell, npm, and Docker commands are
+  documented
 
-Node.js is not required for the currently implemented Stage 1 workflow.
-Stage 2 will select and pin its Node.js runtime after a compatibility smoke
-test. A host PostgreSQL installation is not required.
+A host PostgreSQL installation is not required. The Docker-first browser suite
+also does not require host Playwright browser binaries.
 
-## Local setup
+## Docker-first local setup
 
-Create the ignored local environment file:
+Create the ignored root environment file:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Build, migrate, seed, and start the stack:
+Validate configuration, build images, migrate and seed explicitly, then start
+the full stack:
 
 ```powershell
 docker compose --profile quality config --quiet
-docker compose build api
+docker compose -f infra/docker-compose.test.yml config --quiet
+docker compose -f infra/docker-compose.e2e.yml config --quiet
+docker compose build api web
 docker compose up -d db
 docker compose run --build --rm api python -m alembic upgrade head
 docker compose run --build --rm api python -m app.db.seed
-docker compose up -d api
+docker compose up -d api web
 docker compose ps
 ```
 
-Migrations and seeding are explicit lifecycle operations; ordinary API startup
-does not mutate the schema or catalog.
-Published PostgreSQL and API ports bind only to `127.0.0.1`.
-
-Open or request:
+Open:
 
 ```text
-http://localhost:8000/health
-http://localhost:8000/api/v1/games?page=1&page_size=5
+http://localhost:3000/
+http://localhost:3000/games
 http://localhost:8000/docs
 http://localhost:8000/openapi.json
 ```
 
-Stop services without deleting the named database volume:
+PostgreSQL, API, and web ports bind only to `127.0.0.1`. Migrations and seed
+operations remain explicit; ordinary API or web startup does not mutate the
+database.
+
+Stop services without deleting development data:
 
 ```powershell
 docker compose down
 ```
 
-`docker compose down --volumes` is intentionally not wrapped because it
-deletes local development data.
+`docker compose down --volumes` is intentionally not wrapped because it deletes
+local development data and web dependency caches.
+
+## Direct web workflow
+
+With the migrated and seeded API running:
+
+```powershell
+Set-Location apps/web
+Copy-Item .env.example .env.local
+npm ci
+npm run dev
+```
+
+The app-local `.env.local` is ignored. Next.js does not automatically load the
+repository-root `.env` when commands run from `apps/web`. The OpenAPI
+generation scripts do load the app-local Next.js environment, so direct npm
+development and contract checks use the same API base URL.
 
 ## Root commands
 
-| Command | Purpose |
-| --- | --- |
-| `make config` | Validate Compose |
-| `make build` | Build the API development image |
-| `make up` / `make down` | Start or stop db and API |
-| `make logs` / `make api` | Follow logs or run API in foreground |
-| `make migrate` | Upgrade the development schema |
-| `make seed` | Idempotently load the deterministic catalog |
-| `make test` | Run fast unit/contract tests |
-| `make test-integration` | Run tests with disposable PostgreSQL |
-| `make lint` / `make format` | Check or apply Ruff rules |
+| Command                               | Purpose                                                           |
+| ------------------------------------- | ----------------------------------------------------------------- |
+| `make config`                         | Validate development, API-test, and browser-test Compose files    |
+| `make build` / `make build-web`       | Build API or web development images                               |
+| `make up` / `make down`               | Start or stop the migrated, seeded full stack                     |
+| `make logs` / `make api` / `make web` | Follow logs or run API/full stack in the foreground               |
+| `make migrate` / `make seed`          | Upgrade schema or idempotently load the catalog                   |
+| `make test` / `make test-integration` | Run fast API or disposable-PostgreSQL tests                       |
+| `make test-web`                       | Run web type, lint, format, test, build, and contract-drift gates |
+| `make test-web-e2e`                   | Run browser tests against isolated tmpfs PostgreSQL               |
+| `make lint` / `make format`           | Check or apply Ruff rules                                         |
+| `make lint-web` / `make format-web`   | Check or apply web lint/format rules                              |
+| `make api-types`                      | Refresh web types from the running API OpenAPI document           |
 
-Every target has a direct equivalent in [the API README](apps/api/README.md).
+Every optional Make target has a direct equivalent in the
+[API README](apps/api/README.md) or [web README](apps/web/README.md).
 
 ## Environment variables
 
-| Variable | Purpose |
-| --- | --- |
-| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Local database identity |
-| `POSTGRES_PORT` | Development PostgreSQL host port |
-| `APP_NAME` | API title exposed in OpenAPI and health metadata |
-| `ENVIRONMENT` | `development`, `test`, or `production` |
-| `API_HOST` | Host-Python bind address; Compose overrides the container bind address |
-| `API_PORT` | Host-Python port and Compose-published loopback port; the container listens on 8000 |
-| `DATABASE_URL` | SQLAlchemy PostgreSQL connection URL |
-| `CORS_ORIGINS` | Comma-separated explicit browser origins |
-| `LOG_LEVEL` | Structured application logging level |
-| `NEXT_PUBLIC_API_URL` | Stage 2 browser-visible API base URL |
+| Variable                                              | Purpose                                                                       |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Local database identity                                                       |
+| `POSTGRES_PORT`                                       | Development PostgreSQL host port                                              |
+| `APP_NAME`                                            | API title exposed in OpenAPI and health metadata                              |
+| `ENVIRONMENT`                                         | `development`, `test`, or `production`                                        |
+| `API_HOST`                                            | Host-Python bind address; Compose binds the container to `0.0.0.0` internally |
+| `API_PORT`                                            | API host port; the container listens on 8000                                  |
+| `DATABASE_URL`                                        | Host SQLAlchemy PostgreSQL connection URL                                     |
+| `CORS_ORIGINS`                                        | Comma-separated explicit browser origins                                      |
+| `LOG_LEVEL`                                           | API structured logging level                                                  |
+| `NEXT_PUBLIC_API_URL`                                 | Browser-visible absolute FastAPI base URL                                     |
+| `WEB_PORT`                                            | Loopback web host port, default 3000                                          |
+| `OPENAPI_URL`                                         | Optional trusted OpenAPI document URL for type tooling                        |
+| `OPENAPI_TIMEOUT_MS`                                  | OpenAPI tooling timeout, default 15000; allowed 1000–120000                   |
 
-Never commit `.env` or production credentials. Only `.env.example` belongs in
-version control.
+Only `NEXT_PUBLIC_API_URL` enters the browser bundle. Never commit `.env`,
+`.env.local`, production credentials, or database URLs.
 
-## Stage 1 verification
+When changing published ports, keep the associated browser origin aligned:
+`WEB_PORT` must match the port in `CORS_ORIGINS`, and `API_PORT` must match the
+port in `NEXT_PUBLIC_API_URL`. For example, web port `3100` requires
+`CORS_ORIGINS=http://localhost:3100`; API port `8100` requires
+`NEXT_PUBLIC_API_URL=http://localhost:8100`.
 
-```powershell
-docker compose --profile quality config --quiet
-docker compose -f infra/docker-compose.test.yml config --quiet
-docker compose build api
-docker compose run --build --rm api python -m alembic upgrade head
-docker compose run --build --rm api python -m app.db.seed
-docker compose run --build --rm --no-deps quality python -m pytest tests/unit -q -p no:cacheprovider
-docker compose run --build --rm --no-deps quality python -m ruff check --no-cache app tests alembic
-docker compose run --build --rm --no-deps quality python -m ruff format --no-cache --check app tests alembic
-docker compose -f infra/docker-compose.test.yml up -d test-db
-try {
-    docker compose -f infra/docker-compose.test.yml run --build --rm test-api
-} finally {
-    docker compose -f infra/docker-compose.test.yml down --remove-orphans
-}
-```
+## Stage 2 verification
 
-The `quality` service bind-mounts the current API source, so tests, lint, and
-formatting never inspect a stale source snapshot. The integration database is
-reachable only inside its isolated Compose network, uses `tmpfs`, and never
-resets the persistent development volume.
+The Stage 2 acceptance gate was executed on Windows, Node.js 24.18.0, npm
+11.16.0, Docker Desktop 29.6.2, and Docker Compose 5.3.1 on 2026-07-30:
 
-The Stage 1 acceptance gate was last re-audited on 2026-07-26:
+| Check                       | Verified result                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------ |
+| Clean frontend install      | `npm ci` completed from the committed lock                                           |
+| Fast frontend suite         | 40 passed across 7 files                                                             |
+| Frontend static quality     | strict TypeScript, ESLint, and Prettier passed                                       |
+| Frontend production build   | `/`, `/games`, and `/games/[gameId]` compiled                                        |
+| OpenAPI contract            | generated output matched the live Stage 1 document                                   |
+| Production dependency audit | zero vulnerabilities after PostCSS 8.5.25 and Sharp 0.35.3 overrides                 |
+| Browser and accessibility   | 21 passed; 13 Chromium plus 4 Firefox and 4 WebKit; no serious/critical axe findings |
+| Responsive smoke            | mobile navigation and catalog/detail layouts passed at 320, 768, and 1440 CSS pixels |
+| Full-stack development      | healthy stack; dependency volume repaired in place; landing/catalog returned 200     |
+| Stage 1 regression          | 84 fast tests, 28 PostgreSQL integration tests, Ruff lint and format passed          |
 
-| Check | Verified result |
-| --- | --- |
-| Fast unit and contract suite | 84 passed |
-| Disposable-PostgreSQL integration suite | 28 passed |
-| Diagnostic application coverage | 92% |
-| Alembic | `0001_initial_schema` upgraded to `0002_stage_1_integrity_hardening` with no schema drift |
-| Deterministic seed | 30 games and 36 taxonomy records; a second run made no duplicates |
-| Dependency audit | No known vulnerabilities in the locked container dependency graph |
-| Runtime smoke test | Healthy non-root API and PostgreSQL containers; complete Stage 1 HTTP matrix passed |
+Diagnostic frontend coverage was 41.48% statements overall. Pure configuration,
+formatting, route, and API modules ranged from 82.35% to 100%; real-browser tests
+own the primary catalog/detail feature coverage.
 
 ## Project documentation
 
@@ -222,20 +251,33 @@ The Stage 1 acceptance gate was last re-audited on 2026-07-26:
 - [Recommendation design](docs/recommendation-design.md)
 - [Roadmap](docs/roadmap.md)
 - [Stage 1 engineering plan](docs/stage-1-backend-database-plan.md)
-- [Stage 2 frontend engineering plan](docs/stage-2-frontend-foundation-plan.md)
-- [Web application status and API handoff](apps/web/README.md)
+- [Stage 2 engineering plan and completion record](docs/stage-2-frontend-foundation-plan.md)
+- [Web application commands and contracts](apps/web/README.md)
 - [API setup and contracts](apps/api/README.md)
+- [Infrastructure workflows](infra/README.md)
 
 ## Current limitations
 
-- No frontend, authentication, or authorization.
-- No preference or interaction write APIs.
-- No active recommendation model, training, or evaluation.
-- No external metadata service or cover-image ingestion.
+- No authentication or authorization.
+- No preference, recommendation, or interaction write APIs.
+- No active recommendation model, training pipeline, or evaluation artifacts.
+- No external metadata service or approved remote cover-image source.
 - Seed ratings and popularity values are synthetic development signals.
-- Production deployment and monitoring are deferred to Stage 7.
+- The full npm audit retains 11 high-severity development-only paths through
+  `brace-expansion`; production audit is clean. The affected lint and OpenAPI
+  tools are accepted only for trusted project source and a trusted local
+  OpenAPI endpoint; do not run them against untrusted glob or schema input.
+- Social metadata currently uses a localhost development base. A validated
+  public site origin remains part of the Stage 7 deployment configuration.
+- Game-detail routes use deliberate malformed-ID and missing-ID views, but the
+  streamed dynamic route shell has HTTP 200. A missing-ID API response itself
+  is 404; propagating status through the page requires the later
+  internal-origin/deployment design.
+- Production deployment, monitoring, CI, and hardened production images remain
+  Stage 7 work.
 
 ## License
 
-This repository is available under the [MIT License](LICENSE). Dataset and
+This repository is available under the [MIT License](LICENSE). Direct Stage 2
+frontend packages use MIT, Apache-2.0, or MPL-2.0 licenses. Dataset and
 third-party metadata licenses must be documented separately before ingestion.

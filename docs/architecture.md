@@ -13,23 +13,29 @@ replaceable recommendation algorithms, and deployment-neutral containers.
 
 ```mermaid
 flowchart TB
-    User["Anonymous or authenticated user"]
+    User["Anonymous user (current)"]
+    AuthUser["Authenticated user (future)"]:::future
     Web["Next.js web application"]
     API["FastAPI application"]
     DB[("PostgreSQL")]
-    Recommender["Recommendation service"]
-    Artifacts["Versioned model artifacts"]
-    Pipeline["Offline training and evaluation"]
-    Sources["Seed data or external adapters"]
+    Seed["Deterministic seed data"]
+    Recommender["Recommendation service (future)"]:::future
+    Artifacts["Versioned model artifacts (future)"]:::future
+    Pipeline["Offline training and evaluation (future)"]:::future
+    Sources["External adapters (future)"]:::future
 
     User --> Web
     Web -->|"JSON over HTTP"| API
     API --> DB
-    API --> Recommender
-    Recommender --> Artifacts
-    Sources --> DB
-    Sources --> Pipeline
-    Pipeline --> Artifacts
+    Seed --> DB
+    AuthUser -.-> Web
+    API -.-> Recommender
+    Recommender -.-> Artifacts
+    Sources -.-> DB
+    Sources -.-> Pipeline
+    Pipeline -.-> Artifacts
+
+    classDef future stroke-dasharray: 6 4
 ```
 
 ## Repository boundaries
@@ -40,19 +46,26 @@ flowchart TB
 client. It does not connect directly to PostgreSQL, embed secrets, or implement
 recommendation ranking.
 
-The planned Stage 2 boundary uses Next.js App Router routes for `/`, `/games`,
-and `/games/[gameId]`. Catalog request state lives in URL search parameters.
-Focused catalog and detail client components will call FastAPI through one
-project-owned typed client that consumes OpenAPI-derived contracts and is
-configured by `NEXT_PUBLIC_API_URL`. The plan does not introduce a
-backend-for-frontend, server-side catalog fetch, internal API URL, or global
-state store. These decisions are targets, not implemented behavior; see the
+Stage 2 implements Next.js App Router routes for `/`, `/games`, and
+`/games/[gameId]`. The root layout and landing page are statically rendered;
+focused catalog and detail client components own browser-side API requests and
+interactive state. Catalog request state is normalized into URL search
+parameters so reload and browser history restore the same request without a
+global store.
+
+All browser requests pass through one project-owned client configured by the
+validated `NEXT_PUBLIC_API_URL`. Its compile-time contracts are generated from
+the live FastAPI OpenAPI document and checked for drift. The runtime boundary
+also verifies JSON responses and the standard API error envelope. There is no
+backend-for-frontend, internal API URL, direct database access, or browser-side
+ranking logic. See the completed
 [Stage 2 frontend engineering plan](stage-2-frontend-foundation-plan.md).
 
 ### API
 
-`apps/api` owns HTTP contracts, validation, orchestration, persistence, and
-online recommendation inference. Route functions remain thin:
+`apps/api` owns HTTP contracts, validation, orchestration, and persistence. It
+will own online recommendation inference only after a later stage adds a
+validated artifact. Route functions remain thin:
 
 ```text
 route -> service -> repository/model interface -> database or artifact
@@ -85,16 +98,27 @@ keys.
 
 ### Local development
 
-Docker Compose provides PostgreSQL and the Stage 1 API container while
-preserving the option to run FastAPI directly on the host. Schema migration
-and deterministic seeding remain explicit commands. Stage 2 implementation
-will add a web development server while keeping those lifecycle operations
-explicit.
+Docker Compose provides PostgreSQL, the FastAPI service, and the Next.js
+development server while preserving direct host workflows for both
+applications. Schema migration and deterministic seeding remain explicit
+commands; starting the web service never changes database state.
+
+The web service bind-mounts `apps/web` for source edits and uses separate named
+volumes for Linux `node_modules` and `.next` data. It publishes only to
+`127.0.0.1` and waits for API readiness. Startup compares the bind-mounted and
+image lockfiles, refreshes stale dependencies from the built image, repairs
+volume ownership, clears invalidated Next.js cache data, and then runs the
+development server as the non-root `node` user. A separate E2E Compose project
+uses a `tmpfs` PostgreSQL database, applies migrations and seed data explicitly,
+and runs the locked Playwright suite without touching the persistent
+development database volume.
 
 ### Production direction
 
 The intended deployment is a Node-compatible web host, a containerized API,
 and managed PostgreSQL. The repository must not depend on a specific vendor.
+The current social metadata base is the local development origin; Stage 7 must
+add and validate the public site origin before deployment.
 
 ## Cross-cutting decisions
 
@@ -109,10 +133,14 @@ and managed PostgreSQL. The repository must not depend on a specific vendor.
 
 ## Current state
 
-Stage 1 implements the API and database boundaries. Catalog routes depend on
-services, repositories, and injected SQLAlchemy sessions; PostgreSQL is the
-runtime source of truth. Readiness requires both connectivity and the expected
-Alembic schema head. The recommendation boundary currently exposes only an
-honest `not_configured` status. The web application, active recommender,
-training pipeline, and model artifacts remain future components. The Stage 2
-frontend plan is ready, but no web application code or service exists yet.
+Stages 1 and 2 implement the API, database, and web boundaries. Catalog routes
+depend on services, repositories, and injected SQLAlchemy sessions; PostgreSQL
+is the runtime source of truth. Readiness requires connectivity and the
+expected Alembic schema head. The responsive web application supports catalog
+search, filters, sorting, pagination, and game details with explicit loading,
+empty, unavailable, not-found, and nullable-field states.
+
+The recommendation boundary still exposes only the honest `not_configured`
+status. Authentication, onboarding, feedback, an active recommender, the
+training pipeline, model artifacts, and production deployment remain future
+components.
