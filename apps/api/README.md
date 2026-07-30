@@ -8,6 +8,13 @@ The Stage 2 application in `apps/web` consumes this API through generated
 OpenAPI types and a project-owned browser client. Use the repository
 [README](../../README.md) for complete db/API/web startup.
 
+The
+[Stage 3 content-recommendation engineering plan](../../docs/stage-3-content-recommendation-mvp-plan.md)
+defines a future offline artifact, recommendation service, model-status
+extension, and typed recommendation endpoint. None of those Stage 3 runtime
+capabilities or commands is implemented yet; the contracts and operations
+below remain the current source of truth.
+
 ## Responsibilities
 
 The dependency direction is:
@@ -179,9 +186,11 @@ It emits structured inserted, updated, and unchanged counters.
 ## Current limitations
 
 - No authentication or authorization.
-- No preference or interaction write endpoints.
-- No recommendation, onboarding, or feedback endpoints; the implemented
-  frontend is intentionally limited to catalog and game-detail capabilities.
+- No recommendation endpoint or request-scoped onboarding; these are planned
+  in the
+  [Stage 3 engineering plan](../../docs/stage-3-content-recommendation-mvp-plan.md).
+- No preference, interaction, or feedback write endpoints; persistence begins
+  in Stage 4.
 - No trained or active recommendation model.
 - No external metadata source.
 - The Docker image is development-oriented; production hardening is Stage 7.

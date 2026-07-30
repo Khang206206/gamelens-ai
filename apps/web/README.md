@@ -145,8 +145,9 @@ The acceptance gate on 2026-07-30 produced:
 
 ## Current limitations
 
-- Recommendation ranking, onboarding, preferences, and feedback remain Stage 3 and Stage 4
-  work.
+- Request-scoped onboarding, recommendation ranking, and explained results are planned in
+  the [Stage 3 engineering plan](../../docs/stage-3-content-recommendation-mvp-plan.md).
+  Persisted preferences and feedback remain Stage 4 work.
 - The deterministic catalog has no cover binaries or approved remote image source, so
   every game uses a project-owned generated placeholder.
 - Ratings and popularity are synthetic development signals, not market data or

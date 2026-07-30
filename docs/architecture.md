@@ -38,6 +38,43 @@ flowchart TB
     classDef future stroke-dasharray: 6 4
 ```
 
+### Planned Stage 3 activation
+
+Stage 3 will activate the existing dashed recommendation boundary through an
+explicit offline-to-online artifact flow:
+
+```mermaid
+flowchart LR
+    DB[("Migrated and seeded PostgreSQL")]
+    Snapshot["Canonical read-only catalog snapshot"]
+    Builder["Offline popularity and TF-IDF builder"]
+    Artifact["Validated versioned sparse artifact"]
+    Loader["API lifecycle loader"]
+    Ranker["Immutable online ranker"]
+    API["FastAPI recommendation use case"]
+    Web["Anonymous onboarding and results"]
+
+    DB --> Snapshot
+    Snapshot --> Builder
+    Builder --> Artifact
+    Artifact --> Loader
+    Loader --> Ranker
+    Web -->|"Bounded preference context"| API
+    API -->|"Read one consistent catalog snapshot"| DB
+    API --> Ranker
+    Ranker -->|"Ranked items and structured evidence"| API
+    API --> Web
+```
+
+The browser will not import or execute ranking code. Artifact building remains
+an explicit offline command, while API startup only validates and loads the
+intrinsic contents of an already built bundle. Model-status and recommendation
+requests compare that immutable artifact with one transactionally consistent
+current-catalog snapshot before reporting `ready` or ranking. Missing, corrupt,
+incompatible, or catalog-stale artifacts leave catalog behavior available and
+recommendation capability unavailable. See the
+[Stage 3 engineering plan](stage-3-content-recommendation-mvp-plan.md).
+
 ## Repository boundaries
 
 ### Web
@@ -63,9 +100,11 @@ ranking logic. See the completed
 
 ### API
 
-`apps/api` owns HTTP contracts, validation, orchestration, and persistence. It
-will own online recommendation inference only after a later stage adds a
-validated artifact. Route functions remain thin:
+`apps/api` owns HTTP contracts, validation, orchestration, and persistence. The
+Stage 3 plan adds online inference only after an explicit offline build
+produces an artifact whose integrity, compatibility, and current-catalog
+fingerprint pass validation. The current implementation still uses the
+`not_configured` placeholder. Route functions remain thin:
 
 ```text
 route -> service -> repository/model interface -> database or artifact
@@ -84,9 +123,13 @@ shape would not be stable.
 
 ### Machine learning
 
-`ml` owns preprocessing, training, offline evaluation, reproducibility
-metadata, and artifact generation. Training is never triggered by a request.
-The API loads a known artifact version and exposes its status.
+`ml` owns preprocessing, the popularity baseline, TF-IDF feature construction,
+pure ranking logic, reproducibility metadata, artifact generation, and later
+offline evaluation. Stage 3 will keep the catalog matrix sparse and key
+artifact rows by stable game slug. Training is never triggered by a request or
+ordinary application startup. The API will load one known validated artifact
+version, compare it with the current catalog, and expose an honest
+unconfigured, unavailable, or ready status.
 
 ### External data
 
@@ -141,6 +184,8 @@ search, filters, sorting, pagination, and game details with explicit loading,
 empty, unavailable, not-found, and nullable-field states.
 
 The recommendation boundary still exposes only the honest `not_configured`
-status. Authentication, onboarding, feedback, an active recommender, the
-training pipeline, model artifacts, and production deployment remain future
-components.
+status. The Stage 3 engineering plan is ready, but its anonymous onboarding,
+active recommender, offline builder, model artifact, recommendation endpoint,
+and result experience have not been implemented. Authentication, persisted
+preferences, feedback, recommendation-event logging, and production deployment
+remain later components.

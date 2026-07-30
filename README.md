@@ -10,7 +10,7 @@ game metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 2 complete; Stage 3 ready for implementation**
+**Stage 2 complete; Stage 3 engineering plan ready**
 
 The repository now provides:
 
@@ -27,9 +27,13 @@ The repository now provides:
 - Vitest, React Testing Library, Playwright, axe, pytest, PostgreSQL integration,
   Ruff, and Docker-first quality workflows.
 
-Recommendation-model status remains honestly `not_configured`. Preference
-capture and project-owned content recommendations begin in Stage 3; no current
-screen fabricates a match, score, or personalized result.
+The detailed
+[Stage 3 content-recommendation engineering plan](docs/stage-3-content-recommendation-mvp-plan.md)
+is ready; implementation has not started. Recommendation-model status therefore
+remains honestly `not_configured`, and no current screen fabricates a match,
+score, or personalized result. Stage 3 will add request-scoped anonymous
+onboarding and project-owned content recommendations; persisted preferences and
+feedback remain Stage 4 work.
 
 ## Implemented user experience
 
@@ -56,8 +60,8 @@ flowchart LR
     W -->|"JSON over HTTP"| A["FastAPI application"]
     A --> P[("PostgreSQL")]
     A --> R["Recommendation boundary: not configured"]
-    R -. "Stage 3+" .-> M["Versioned model artifacts"]
-    T["Offline training and evaluation"] -.-> M
+    R -. "Planned Stage 3" .-> M["Versioned model artifacts"]
+    T["Offline model build (Stage 3) and evaluation (Stage 6)"] -.-> M
     D["Seed or imported datasets"] --> T
     D --> P
 ```
@@ -74,7 +78,7 @@ remain separate. Training never runs inside an API request. See
 | Persistence          | PostgreSQL 16, SQLAlchemy 2.x, Psycopg 3, Alembic                                      |
 | Web                  | Node.js 24.18 LTS, Next.js 16.2.12, React 19.2.8, TypeScript 5.9.3, Tailwind CSS 4.3.3 |
 | Web quality          | ESLint 9.39, Prettier 3.9, Vitest 4.1, Testing Library, Playwright 1.62, axe-core      |
-| ML                   | pandas, NumPy, scikit-learn, SciPy, joblib (Stage 3+)                                  |
+| ML                   | NumPy, SciPy, scikit-learn, transparent JSON/NPY/NPZ artifacts (planned Stage 3)        |
 | Local infrastructure | Docker Compose                                                                         |
 | API quality          | pytest, disposable PostgreSQL integration tests, Ruff                                  |
 
@@ -95,7 +99,7 @@ from `apps/api/requirements.lock`.
 |-- infra/
 |   |-- docker-compose.test.yml
 |   `-- docker-compose.e2e.yml
-|-- ml/                      # Reserved offline ML workflow boundary
+|-- ml/                      # Planned Stage 3 offline ML and artifact boundary
 |-- scripts/                 # Reserved cross-project scripts
 |-- .env.example
 |-- docker-compose.yml       # PostgreSQL, API, web, and API quality service
@@ -252,6 +256,7 @@ own the primary catalog/detail feature coverage.
 - [Roadmap](docs/roadmap.md)
 - [Stage 1 engineering plan](docs/stage-1-backend-database-plan.md)
 - [Stage 2 engineering plan and completion record](docs/stage-2-frontend-foundation-plan.md)
+- [Stage 3 content-recommendation engineering plan](docs/stage-3-content-recommendation-mvp-plan.md)
 - [Web application commands and contracts](apps/web/README.md)
 - [API setup and contracts](apps/api/README.md)
 - [Infrastructure workflows](infra/README.md)

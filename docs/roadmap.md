@@ -90,11 +90,41 @@ detailed plan for exact versions, commands, and known limitations.
 
 ## Stage 3 — Content recommendation MVP
 
-**Status:** Ready for implementation
+**Status:** Engineering plan ready; implementation has not started
 
-Create deterministic preprocessing and TF-IDF artifacts, a replaceable
-recommendation service, onboarding, structured explanations, recommendation
-API contracts, and ranking tests.
+Detailed execution plan:
+[`stage-3-content-recommendation-mvp-plan.md`](stage-3-content-recommendation-mvp-plan.md)
+
+Build one reviewable slice at a time:
+
+1. Re-run the Stage 1 and Stage 2 gates, audit the deterministic catalog, and
+   finalize request, response, scoring, artifact, and user-state contracts.
+2. Create the pinned Python 3.12 ML workspace and shared package boundary.
+3. Extract and fingerprint a canonical stable-slug catalog snapshot.
+4. Implement and independently test the versioned popularity baseline.
+5. Build deterministic TF-IDF features and a checksum-covered sparse artifact.
+6. Add bounded online ranking, stable tie-breaking, component scores, and
+   structured deterministic explanations.
+7. Activate an injectable API service with honest unconfigured, unavailable,
+   and ready states plus an explicit stale-artifact reason.
+8. Add the typed recommendation `POST` contract, CORS coverage, OpenAPI types,
+   and project-owned browser client support.
+9. Add accessible anonymous onboarding and explained recommendation results.
+10. Add explicit Docker artifact lifecycle, disposable full-stack browser
+    fixtures, and complete regression gates.
+11. Synchronize documentation and record the Stage 4 persistence handoff.
+
+Stage 3 is complete only when the same canonical data and configuration produce
+the same semantic artifact and ordered rankings; missing, corrupt,
+incompatible, or stale artifacts fail clearly; the real API and web flow pass
+contract, browser, accessibility, and Docker gates; and all Stage 1 and Stage 2
+regressions remain green.
+
+Onboarding selections remain request-scoped in Stage 3. Persistent preferences,
+feedback writes and adjustments, disliked-game exclusion, and
+model-versioned recommendation-event logging remain Stage 4 work. The
+30-game synthetic catalog supports functional and reproducibility acceptance,
+not recommendation-quality claims.
 
 ## Stage 4 — Feedback and persistence
 

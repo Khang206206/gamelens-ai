@@ -39,14 +39,24 @@ explanation capability, and raises a clear error if recommendation execution is
 attempted internally. No recommendation endpoint is exposed until a real model
 is implemented and validated.
 
+The detailed
+[Stage 3 engineering plan](stage-3-content-recommendation-mvp-plan.md) defines
+the activation sequence. Planning completion does not change runtime status:
+`ready` will be reported only after a configured artifact passes integrity,
+compatibility, and current-catalog validation.
+
 ## Popularity baseline
 
-The first baseline will combine rating quality, rating volume, and a
-documented popularity signal. A Bayesian or IMDb-style weighted rating should
-prevent games with one perfect rating from dominating.
+Stage 3 will implement the first baseline by combining rating quality, rating
+volume, and the documented synthetic popularity signal. A Bayesian or
+IMDb-style weighted rating will prevent games with one perfect rating from
+dominating.
 
-The exact formula, inputs, defaults, and normalization will be versioned and
-covered by deterministic tests.
+The exact prior, formula, inputs, missing-value policy, normalization,
+combination weights, defaults, and tie behavior will be versioned and covered
+by deterministic tests. The baseline remains independently rankable and may
+contribute a documented prior to the content result. It is not a silent
+fallback when the configured content artifact is unavailable.
 
 ## Content-based MVP
 
@@ -58,41 +68,81 @@ Stage 3 will build a text representation from:
 - Description
 
 TF-IDF provides the first feature space, with cosine similarity for ranking.
-A user vector combines selected games and weighted taxonomy preferences.
-Preferred platforms contribute a separate interpretable signal rather than
-being hidden in free text.
+A request-scoped anonymous user vector combines selected-game vectors with
+positive genre/tag preference tokens using model-owned versioned weights.
+Clients do not supply arbitrary floating-point weights. Preferred platforms
+contribute a separate interpretable signal rather than being hidden in free
+text.
+
+The Stage 3 request will accept bounded distinct selected game IDs, preferred
+genre/tag/platform slugs, and top-K. At least one selected game, genre, or tag
+is required; platform-only input is not enough to form the content query.
+Unknown or duplicate references are controlled validation errors. No request
+creates a user or writes preferences, interactions, or recommendation events.
 
 Candidate filtering occurs before ranking:
 
-- Exclude explicitly disliked games.
-- Exclude unavailable or invalid records.
-- Optionally reduce scores for played games.
-- Apply deterministic tie-breaking.
+- Resolve database IDs to stable artifact slugs.
+- Exclude selected example games from their own results.
+- Reject stale or structurally invalid artifacts before ranking.
+- Do not promote a zero-content-support candidate through platform or
+  popularity alone.
+- Apply deterministic score and stable-slug tie-breaking.
+
+Feedback-derived disliked-game exclusion and played-game adjustment begin in
+Stage 4 after persistence and write contracts exist. The current data model has
+no general game-availability field, so Stage 3 will not imply an unavailable
+state that the catalog cannot represent.
+
+Stage 3 will combine bounded, independently observable content, explicit
+taxonomy where justified, platform, and popularity components. The exact
+normalization and non-negative weights are part of the model version. A raw
+ranking score is not a probability or calibrated match percentage.
+Components are quantized into versioned fixed-scale units before ordering;
+serialized weighted contributions sum exactly to the serialized final score,
+and stable slugs resolve quantized ties.
 
 ## Response evidence
 
-Each recommendation will eventually return:
+Each Stage 3 recommendation will return:
 
 - Final score and rank.
 - Model name and version.
-- Component scores.
+- Raw component scores, weights, and weighted contributions.
 - Matching genres and tags.
 - Similar selected games where applicable.
 - Preferred-platform contribution.
 - Popularity contribution.
 
 User-facing explanations are deterministically generated from these signals.
+They may not introduce a reason that is absent from structured evidence.
 An optional LLM may rewrite an explanation later, but it cannot determine the
 ranked list and the application must work without it.
 
 ## Training and artifacts
 
-- Preprocessing and training run outside request handling.
-- Random operations use recorded seeds.
-- Artifacts include model version, feature configuration, data fingerprint,
-  creation time, and compatible code/schema metadata.
-- Production code fails clearly when an expected artifact is unavailable.
-- Small deterministic fixtures may be committed only when required by tests.
+The planned Stage 3 artifact lifecycle will:
+
+- Run preprocessing and training outside request handling.
+- Record seeds for any random operation.
+- Store artifact-schema and model versions, feature and ranking configuration,
+  stable slug mapping, data fingerprint, creation time, member sizes and
+  checksums, and compatible code/library/schema metadata.
+- Use transparent non-executable JSON and numeric sparse-array formats for the
+  first artifact rather than pickle-compatible model deserialization.
+- Write to a temporary location and promote only after complete validation.
+- Treat the configured operator-controlled artifact root as the provenance
+  trust boundary; self-recorded checksums detect corruption but do not
+  authenticate who produced a replaced bundle.
+- Distinguish no configuration from configured-but-missing, corrupt,
+  incompatible, or catalog-stale artifacts.
+- Keep catalog behavior available when recommendation capability is not and
+  fail recommendation requests clearly rather than fabricate results.
+- Commit a small deterministic fixture only when tests require it.
+
+Generated development artifacts will remain ignored by Git. Activating a new
+artifact will require an explicit offline build and API restart; request
+handling and ordinary startup will never fit or mutate a model.
 
 ## Evaluation
 
@@ -113,6 +163,8 @@ as machine-readable data and a Markdown report; no result is invented.
 
 ## Deferred work
 
-Collaborative filtering, hybrid weighting, semantic embeddings, exploration,
-LLM explanations, and diversity reranking are intentionally outside the first
-MVP model.
+Persistent preferences, feedback adjustment, disliked-game filtering, and
+recommendation-event logging are Stage 4 work. Collaborative filtering and
+content/collaborative hybrid ranking are Stage 5 work. Formal ranking
+evaluation is Stage 6 work. Semantic embeddings, exploration, LLM
+explanations, and diversity reranking remain outside the first MVP model.
