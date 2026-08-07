@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recommend games from anonymous request-scoped preferences */
+        post: operations["create_recommendations_api_v1_recommendations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -133,6 +150,10 @@ export interface components {
             name: string;
             /** Version */
             version: string;
+            /** Artifact Schema */
+            artifact_schema?: string | null;
+            /** Data Fingerprint */
+            data_fingerprint?: string | null;
         };
         /**
          * CatalogSort
@@ -151,6 +172,13 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorDetail"];
+        };
+        /** EvidenceValue */
+        EvidenceValue: {
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
         };
         /** GameDetail */
         GameDetail: {
@@ -265,9 +293,106 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "ready" | "not_configured";
+            status: "ready" | "not_configured" | "unavailable";
             active_model: components["schemas"]["ActiveModel"] | null;
             capabilities: components["schemas"]["ModelCapabilities"];
+            /** Unavailable Reason */
+            unavailable_reason?: string | null;
+            /** Feature Families */
+            feature_families?: string[] | null;
+        };
+        /** RecommendationEvidenceResponse */
+        RecommendationEvidenceResponse: {
+            /** Matching Genres */
+            matching_genres: components["schemas"]["EvidenceValue"][];
+            /** Matching Tags */
+            matching_tags: components["schemas"]["EvidenceValue"][];
+            /** Preferred Platforms */
+            preferred_platforms: components["schemas"]["EvidenceValue"][];
+            /** Similar Selected Games */
+            similar_selected_games: components["schemas"]["SimilarSelectedGameResponse"][];
+            /** Popularity Score */
+            popularity_score: number;
+        };
+        /** RecommendationExplanationResponse */
+        RecommendationExplanationResponse: {
+            /** Summary */
+            summary: string;
+            /** Reasons */
+            reasons: string[];
+        };
+        /** RecommendationItemResponse */
+        RecommendationItemResponse: {
+            /** Rank */
+            rank: number;
+            /** Ranking Score */
+            ranking_score: number;
+            game: components["schemas"]["GameSummary"];
+            /** Components */
+            components: components["schemas"]["ScoreComponentResponse"][];
+            evidence: components["schemas"]["RecommendationEvidenceResponse"];
+            explanation: components["schemas"]["RecommendationExplanationResponse"];
+        };
+        /** RecommendationModelIdentity */
+        RecommendationModelIdentity: {
+            /** Name */
+            name: string;
+            /** Version */
+            version: string;
+            /** Data Fingerprint */
+            data_fingerprint: string;
+        };
+        /** RecommendationRequest */
+        RecommendationRequest: {
+            /** Selected Game Ids */
+            selected_game_ids?: number[];
+            /** Preferred Genres */
+            preferred_genres?: string[];
+            /** Preferred Tags */
+            preferred_tags?: string[];
+            /** Preferred Platforms */
+            preferred_platforms?: string[];
+            /**
+             * Top K
+             * @default 10
+             */
+            top_k?: number;
+        };
+        /** RecommendationResponse */
+        RecommendationResponse: {
+            model: components["schemas"]["RecommendationModelIdentity"];
+            /**
+             * Response Reason
+             * @enum {string}
+             */
+            response_reason: "recommendations" | "no_content_support";
+            /** Requested Top K */
+            requested_top_k: number;
+            /** Items */
+            items: components["schemas"]["RecommendationItemResponse"][];
+        };
+        /** ScoreComponentResponse */
+        ScoreComponentResponse: {
+            /**
+             * Name
+             * @enum {string}
+             */
+            name: "content" | "platform" | "popularity";
+            /** Raw Score */
+            raw_score: number;
+            /** Weight */
+            weight: number;
+            /** Contribution */
+            contribution: number;
+        };
+        /** SimilarSelectedGameResponse */
+        SimilarSelectedGameResponse: {
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            /** Similarity Score */
+            similarity_score: number;
         };
         /** TaxonomyItem */
         TaxonomyItem: {
@@ -572,6 +697,66 @@ export interface operations {
             };
             /** @description An unexpected internal error occurred. */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The database is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_recommendations_api_v1_recommendations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecommendationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationResponse"];
+                };
+            };
+            /** @description Recommendation request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected internal error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The recommendation model or database is temporarily unavailable. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -2,18 +2,16 @@
 
 ## Stage 3 Engineering Plan: Content Recommendation MVP
 
-- **Document status:** Ready for implementation as of 2026-07-30; no Stage 3
-  model, artifact, recommendation API, or recommendation UI has been added yet.
+- **Document status:** Complete and verified on 2026-08-07; Sections 21–23
+  record final decisions, evidence, known findings, and the Stage 4 handoff.
 - **Stage 2 prerequisite:** Complete and verified on 2026-07-30.
 - **Target branch:** `feat/stage-3-content-recommendation-mvp`
 - **Primary outcome:** A deterministic, artifact-backed content recommender
   exposed through typed API contracts and an accessible anonymous onboarding
   and results experience.
 
-This document intentionally uses forward-looking implementation language.
-Implementation-time decisions must be recorded in Section 21, the Stage 4
-handoff must be updated in Section 22, and completion evidence must be added to
-Section 23 only after the complete acceptance gate passes.
+Sections 1–20 preserve the approved forward-looking engineering plan. Sections
+21–23 are the authoritative as-built decision, handoff, and completion record.
 
 ## 1. Context
 
@@ -683,8 +681,8 @@ will be contract-tested.
 
 Stage 3 will add:
 
-| Route              | Purpose                                                |
-| ------------------ | ------------------------------------------------------ |
+| Route              | Purpose                                                 |
+| ------------------ | ------------------------------------------------------- |
 | `/recommendations` | Anonymous onboarding, submission, and explained results |
 
 The route will use a focused client feature boundary and the existing
@@ -995,7 +993,7 @@ checksum-covered artifact lifecycle before fitting the real model.
 
 1. Add an API-side read-only repository or adapter that loads all model feature
    fields and taxonomies in one explicit PostgreSQL `REPEATABLE READ, READ
-   ONLY` transaction.
+ONLY` transaction.
 2. Convert persistence records into ML-owned canonical catalog schemas without
    exposing ORM objects across the boundary.
 3. Sort games and taxonomy values by stable slug.
@@ -1215,6 +1213,7 @@ validated artifact honestly while preserving catalog availability.
 
    Intrinsic failures construct an unavailable service; catalog mismatch is a
    request/status orchestration outcome over an otherwise loaded artifact.
+
 4. Add validated backend-only `MODEL_ARTIFACT_PATH` configuration without a
    browser-public equivalent.
 5. Build the recommendation service through an injectable factory.
@@ -1232,7 +1231,7 @@ validated artifact honestly while preserving catalog availability.
 9. Keep existing catalog health semantics independent from optional
    recommendation capability.
 10. Extend model status with `unavailable`, safe reason codes, artifact
-   metadata, feature families, and truthful capabilities.
+    metadata, feature families, and truthful capabilities.
 11. Ensure unavailable status never leaks configured paths, stack traces,
     secret environment values, or numeric loader internals.
 12. Add lifecycle disposal only if a selected library owns a real disposable
@@ -1305,7 +1304,7 @@ contract before enabling the web experience.
    remaining or positively content-supported candidates.
 10. Map malformed or insufficient context to controlled HTTP 422 error codes.
 11. Map unconfigured or unavailable model state to controlled HTTP 503 error
-   codes.
+    codes.
 12. Preserve the centralized standard error envelope.
 13. Add `POST` to the explicit CORS method allowlist.
 14. Test allowed-origin and rejected-origin preflight requests.
@@ -1819,22 +1818,22 @@ repository testable and reviewable.
 The exact entrypoint module names will be confirmed in Phase 0. The target
 capabilities are:
 
-| Capability                       | Optional Make wrapper   | Direct equivalent required |
-| -------------------------------- | ----------------------- | -------------------------- |
-| Validate all Compose definitions | `make config`           | `docker compose ... config --quiet` for every file |
-| Build API and ML runtime          | `make build`            | `docker compose build api` |
-| Migrate database                 | `make migrate`          | Existing Alembic container command |
-| Seed catalog                     | `make seed`             | Existing seed container command |
-| Build model artifact             | `make model-build`      | Explicit Python or one-shot Compose builder command |
-| Inspect/validate artifact        | `make model-validate`   | Read-only Python or Compose validation command |
-| Run ML fast tests                | `make test-ml`          | pytest against `ml/tests` |
-| Run API fast tests               | `make test`             | Existing quality-container pytest command |
-| Run PostgreSQL integration tests | `make test-integration` | Existing guarded disposable Compose command |
-| Run web quality gate             | `make test-web`         | Existing npm commands |
-| Run isolated Stage 3 browser gate | `make test-web-e2e`     | E2E Compose command with model setup |
-| Lint/format ML and API            | `make lint` / `make format` | Direct Ruff commands over both boundaries |
-| Refresh OpenAPI types            | `make api-types`        | Existing npm generation command |
-| Start configured stack           | `make up`               | Explicit Compose startup after migrate/seed/model build |
+| Capability                        | Optional Make wrapper       | Direct equivalent required                              |
+| --------------------------------- | --------------------------- | ------------------------------------------------------- |
+| Validate all Compose definitions  | `make config`               | `docker compose ... config --quiet` for every file      |
+| Build API and ML runtime          | `make build`                | `docker compose build api`                              |
+| Migrate database                  | `make migrate`              | Existing Alembic container command                      |
+| Seed catalog                      | `make seed`                 | Existing seed container command                         |
+| Build model artifact              | `make model-build`          | Explicit Python or one-shot Compose builder command     |
+| Inspect/validate artifact         | `make model-validate`       | Read-only Python or Compose validation command          |
+| Run ML fast tests                 | `make test-ml`              | pytest against `ml/tests`                               |
+| Run API fast tests                | `make test`                 | Existing quality-container pytest command               |
+| Run PostgreSQL integration tests  | `make test-integration`     | Existing guarded disposable Compose command             |
+| Run web quality gate              | `make test-web`             | Existing npm commands                                   |
+| Run isolated Stage 3 browser gate | `make test-web-e2e`         | E2E Compose command with model setup                    |
+| Lint/format ML and API            | `make lint` / `make format` | Direct Ruff commands over both boundaries               |
+| Refresh OpenAPI types             | `make api-types`            | Existing npm generation command                         |
+| Start configured stack            | `make up`                   | Explicit Compose startup after migrate/seed/model build |
 
 No wrapper may hide migration, seed, artifact creation, destructive cleanup,
 or network installation. `make up` may load an already configured artifact but
@@ -2103,55 +2102,91 @@ invalidates and retain the rest of the Stage 1 and Stage 2 regression intent.
 
 ## 21. Implementation-Time Decisions
 
-No implementation-time decisions are recorded yet because Stage 3
-implementation has not started. This section must be updated as evidence
-resolves:
-
-1. Exact NumPy, SciPy, scikit-learn, pytest, Ruff, and packaging versions,
-   locks, licenses, and vulnerability findings.
-2. Whether pandas is justified by a measured implementation need.
-3. Exact shared-package installation and API Docker build-context strategy.
-4. Exact canonical Unicode, whitespace, case, numeric, nullable/empty-feature,
-   and serialization policy.
-5. Exact popularity formula, catalog prior, normalization, missing-value
-   behavior, and component weight.
-6. Exact field-aware document construction and title/taxonomy/studio/
-   description weights.
-7. Exact TF-IDF analyzer, token pattern, n-gram, document-frequency,
-   sublinear-TF, dtype, and normalization configuration.
-8. Exact selected-game/taxonomy user-vector formula and zero-vector behavior.
-9. Whether taxonomy overlap remains a separate component and, if so, how
-   double-counting is controlled.
-10. Exact content, taxonomy, platform, and popularity component weights.
-11. Exact raw-float tolerance, fixed-point scale, integer rounding mode, API
-    decimal precision, near-tie fixtures, and constant-range policy.
-12. Confirmed error semantics for the planned request scalar/collection
-    bounds, duplicate policy, `top_k`, zero-content-support, and empty-result
-    response reasons.
-13. Final response component/evidence schemas and explanation-template
-    priority.
-14. Exact schema-v1 member layout and filenames, semantic model version, code
-    compatibility identifier, resource caps, and atomic promotion behavior.
-15. Exact operator-controlled artifact-root validation, transparent
-    JSON/NPY/NPZ loading controls, and documented checksum/provenance boundary.
-16. Exact model-status reason codes and lifecycle construction behavior.
-17. Confirmed `REPEATABLE READ, READ ONLY` snapshot mechanics, status/request
-    freshness behavior, and concurrent-mutation findings.
-18. Confirmed frontend reducer/component boundaries, focus behavior, and
-    whether any transient tab storage is justified.
-19. Confirmed API/web/model Docker topology, read-only mount, and root command
-    names.
-20. Diagnostic artifact size, build/load/request timings, coverage, browser,
-    accessibility, dependency, and security findings.
-21. Any genuine schema or existing-contract blocker and its explicitly
-    approved resolution.
-
-Every resolved decision must be reflected in implementation, tests, and
-documentation.
+1. The ML package targets Python 3.12 and pins NumPy 2.5.1, SciPy 1.18.0,
+   scikit-learn 1.9.0, pytest 9.1.1, pytest-cov 7.1.0, Ruff 0.16.0, and
+   setuptools 83.0.0. The separate ML and API locks include the complete
+   numerical graph. pandas was not justified and was not added. NumPy, SciPy,
+   scikit-learn, Joblib, and threadpoolctl use BSD-family licenses; Narwhals
+   uses MIT.
+2. The API image copies the ML project metadata and source from the root build
+   context, installs it without dependency resolution after the API lock, and
+   then installs the API package. The Dockerfile-specific allowlist admits only
+   the required ML inputs.
+3. Canonical records are ordered by stable slug; text uses NFKC and collapsed
+   whitespace. Canonical JSON is UTF-8, sorted-key, compact, and rejects NaN.
+   Duplicate slugs, non-finite numeric signals, empty catalogs, empty feature
+   documents, or an empty TF-IDF vocabulary fail the build.
+4. Popularity uses a 50-vote Bayesian prior against the vote-weighted catalog
+   rating mean. Missing ratings use that mean. Rating and synthetic popularity
+   are independently min-max normalized, with constant ranges mapped to 0.5,
+   then combined 70%/30%.
+5. Documents repeat normalized title twice; genre and tag field tokens three
+   times; and developer, publisher, and description once. Platforms remain a
+   separate interpretable signal.
+6. TF-IDF is word-based with one- and two-grams, the versioned ASCII field-token
+   pattern, Unicode accent stripping, `min_df=1`, `max_df=1.0`, sublinear term
+   frequency, L2 normalization, and float64 CSR output.
+7. Selected games form a normalized centroid; genres and tags form a vector in
+   the fitted vocabulary. Either receives full weight alone. Together they
+   receive 65%/35% and are renormalized. A zero or platform-only query returns
+   controlled insufficient-context validation.
+8. Final model `gamelens-content-tfidf` version `1.0.0` weights content 80%,
+   preferred-platform overlap 10%, and popularity 10%. Taxonomy stays inside
+   the content query rather than becoming a second final component.
+9. Scores use a 1,000,000 fixed scale and round-half-up. Contributions are
+   integer-reconstructed, so serialized contributions sum to the serialized
+   final score. Ranking ties resolve by final score, content score, popularity
+   score, then ascending stable slug. Selected and zero-content candidates are
+   excluded.
+10. Requests reject unknown fields and duplicates, allow at most 5 games, 5
+    genres, 10 tags, 6 platforms, and `top_k` 1–20, and require a game, genre,
+    or tag. Unknown references are controlled 422 errors. A valid request with
+    no supported candidate returns 200 with `no_content_support` and an empty
+    ordered list.
+11. Responses include model and data identity, rank, final score, raw component
+    scores, weights, contributions, matched taxonomy/platform values, up to
+    three similar selected games, popularity evidence, and deterministic prose.
+    Explanation priority is similar game, genre, tag, platform, then strong
+    popularity support; prose never adds absent evidence.
+12. Artifact schema `1` and code compatibility `stage-3-v1` use
+    `manifest.json`, `catalog-items.json`, `vectorizer-config.json`,
+    `vocabulary.json`, and five NPY members for IDF, CSR data/indices/indptr,
+    and popularity. Builds use a temporary sibling and reject an existing final
+    target instead of overwriting it.
+13. The loader resolves each single-name member beneath the operator-controlled
+    root, requires the exact set, validates size and SHA-256, uses
+    `allow_pickle=False`, verifies dtype/shape/finiteness/canonical CSR
+    structure, non-negative feature weights, L2-normalized rows, and feature
+    configuration, and enforces 12-member, 64 MiB/member, 128 MiB total,
+    100,000-item, 250,000-term, and 20,000,000-nonzero caps. Checksums detect
+    corruption but do not authenticate an operator who can replace the root.
+14. A blank path becomes no configuration. Missing, malformed, incompatible,
+    integrity-failed, resource-limit, and construction failures become safe
+    `unavailable` reason codes. The valid artifact is loaded once and its arrays
+    are immutable; activation requires an API restart. Operators adopting the
+    hardened loader rotate `MODEL_ARTIFACT_PATH`, rebuild and validate a new
+    bundle, and never patch or overwrite the previous artifact directory.
+15. PostgreSQL model reads explicitly use `REPEATABLE READ, READ ONLY`, eager
+    catalog relationships, and one canonical snapshot. Status and recommendation
+    both compare that fingerprint and agree on `catalog_stale` after mutation.
+    A current catalog that cannot be canonicalized produces the controlled
+    `catalog_invalid` unavailable reason on both paths.
+16. The frontend uses one recommendation-flow boundary with local component
+    state only; no transient tab storage or global store was justified. Native
+    fieldsets and controls provide accessible semantics. Abort signals plus a
+    submission key prevent superseded responses from winning.
+17. Development uses an explicit `model-builder` profile and read-only API
+    mount. E2E uses a tmpfs database and disposable named artifact volume; a
+    root init only changes that new volume's owner, while model builder, API,
+    web, and Playwright workloads run non-root. Root commands are
+    `model-build`, `model-validate`, and `test-ml` in addition to existing gates.
+18. No database migration or existing catalog-contract change was required.
+    The Stage 1 unconfigured model-status JSON remains unchanged when optional
+    Stage 3 fields are unset.
 
 ## 22. Stage 4 Handoff
 
-When complete, Stage 3 should leave the feedback and persistence stage with:
+Stage 3 leaves the feedback and persistence stage with:
 
 - A reproducible catalog snapshot and versioned artifact-build workflow.
 - A tested popularity baseline and TF-IDF content ranker.
@@ -2185,29 +2220,108 @@ retention, update, and deletion behavior before activating writes.
 
 ## 23. Verified Completion Record
 
-Pending implementation.
+**Completed:** 2026-08-07 on
+`feat/stage-3-content-recommendation-mvp`.
 
-This section must remain unpopulated until every Stage 3 acceptance criterion
-passes. The final record must include:
+### Runtime, dependencies, and security
 
-- Completion date and actual branch.
-- Exact Python, numerical, API, Node.js, and browser versions.
-- Direct and locked transitive dependency, license, and vulnerability results.
-- Canonical dataset counts, fingerprint policy, and provenance.
-- Final popularity, preprocessing, TF-IDF, user-vector, component-weight,
-  numeric, tie-break, and explanation decisions.
-- Artifact schema, model version, bundle members, size, build time, load time,
-  compatibility, checksum, and repeated-build evidence.
-- ML, API, PostgreSQL, frontend, browser, accessibility, OpenAPI, Ruff,
-  TypeScript, ESLint, Prettier, build, and Compose results.
-- Diagnostic coverage and meaningful gaps.
-- Representative recommendation request and deterministic ordered-result
-  evidence without a quality claim.
-- Allowed and rejected CORS `POST` evidence.
-- Proof that recommendation requests performed no database writes.
-- Full-stack migrate, seed, model-build, ready-status, recommendation, web, and
-  browser smoke results.
-- Confirmation that persistent development database, artifacts, and web
-  volumes were not reset or deleted.
-- Final artifact/secret/generated-output review.
-- Known limitations and the exact Stage 4 handoff.
+- Python 3.12.13 ran the Linux acceptance containers. The numerical runtime is
+  NumPy 2.5.1, SciPy 1.18.0, and scikit-learn 1.9.0. The API lock includes
+  FastAPI 0.140.0, Pydantic 2.13.4, SQLAlchemy 2.0.51, Psycopg 3.3.4, and
+  Uvicorn 0.51.0. Both Python locks install without a resolver escape and
+  `pip check` reports no broken requirements.
+- The web gate uses Node.js 24.18.0, npm 11.16.0, Next.js 16.2.12, React
+  19.2.8, TypeScript 5.9.3, Vitest 4.1.10, and Playwright 1.62.0. A clean
+  `npm ci` passed. Scoped overrides install fixed `brace-expansion` 1.1.18,
+  2.1.4, and 5.0.9 plus `js-yaml` 4.3.1; both full and production npm audits
+  report zero vulnerabilities.
+- Numerical package licenses were reviewed as BSD-family, with Narwhals MIT;
+  existing frontend licenses remain MIT, Apache-2.0, or MPL-2.0.
+- Docker Scout 1.23.1 scanned the 173 MB pinned development API image and 195
+  packages. It reports two critical and two high Debian `perl` advisories, all
+  with no fixed version. The finding is not concealed by an unpinned apt
+  upgrade: the local image remains non-root and loopback-only, and Stage 7 must
+  choose and rescan a production-minimal base before deployment.
+
+### Data, artifact, and deterministic ranking
+
+- The source is the project-authored 30-game, 36-taxonomy deterministic seed.
+  Stable-slug ordering plus NFKC/whitespace normalization and canonical JSON
+  produce SHA-256 fingerprint
+  `1a304ac3686742022ef41828bf48467412e34bd0e882c9b428cc723a5e2685e1`.
+  The final hardened rebuild retained this fingerprint.
+- Model `gamelens-content-tfidf` version `1.0.0`, artifact schema `1`, and code
+  compatibility `stage-3-v1` produced 1,037 vocabulary terms and 1,399 sparse
+  nonzeros. The 9-file bundle is 69,743 bytes. A measured database-to-artifact
+  build took 0.43 seconds; ten complete validation loads from the Docker
+  Desktop bind mount had min/median/max 89.64/95.54/274.79 ms.
+- The repeated-build test fixes the UTC build clock and verifies byte-identical
+  manifests; corruption changes are rejected. The suite also verifies
+  order-independent snapshot identity, sensitivity to model inputs, sparse
+  features, popularity prior behavior, deterministic rank order, selected-game
+  exclusion, score reconstruction, platform-only rejection, and rejection of
+  non-canonical CSR indices and invalid feature-weight invariants.
+- The exact popularity, TF-IDF, user-vector, component, fixed-point, tie-break,
+  artifact, error, and explanation decisions are recorded in Section 21 and
+  `docs/recommendation-design.md`.
+
+### Quality and operational evidence
+
+- ML: 25 tests passed; diagnostic branch-aware package coverage is 81%.
+- API: 104 fast tests passed; diagnostic branch-aware application coverage is
+  92%. Ruff lint and formatting pass over API, migration, ML, and test code.
+- PostgreSQL: 29 integration tests passed on an isolated tmpfs instance. The
+  ready recommendation test records users, preferences, interactions,
+  recommendation events, games, genres, tags, and platforms before and after a
+  request and proves every count unchanged.
+- Web: 45 tests in 8 files pass. Strict TypeScript, ESLint, Prettier, generated
+  OpenAPI contract, and the Next.js production build pass. Diagnostic V8
+  coverage is 53.25% statements overall and 77.51% for the recommendation flow;
+  catalog/detail workflow coverage remains primarily browser-owned.
+- Browser: 25 project tests pass without retry—15 Chromium plus 5 Firefox and 5
+  WebKit smoke cases. The real anonymous flow selects genre/platform context,
+  reviews it, sends the bounded POST, renders ordered explained results, and
+  has no serious or critical axe findings. Recommendation layouts do not
+  overflow at 320, 768, or 1440 CSS pixels.
+- CORS tests prove the configured origin may preflight JSON `POST` while an
+  unknown origin is rejected without an allow-origin header. Status and POST
+  agree on `catalog_stale` and `catalog_invalid`; malformed bounds and unknown
+  references use the standard error envelope.
+- All three Compose files validate. The disposable E2E chain starts tmpfs
+  PostgreSQL, migrates, seeds, initializes artifact ownership, builds and
+  validates the model as non-root, mounts it read-only into the API, reaches
+  ready status, serves web routes, and passes Playwright. Teardown removes only
+  the E2E containers, network, and artifact volume; persistent development
+  database, artifact, and web volumes were not reset or deleted.
+- Twenty local in-container POST measurements using the loaded seed artifact
+  had min/median/p95/max latency 11.57/12.37/13.19/13.55 ms. These figures are
+  diagnostics on one machine and are not service-level objectives.
+
+### Representative functional result
+
+For request `preferred_genres=["rpg"]`,
+`preferred_platforms=["linux"]`, and `top_k=5`, the ready model returned
+`recommendations` in this deterministic order:
+
+1. `moonroot` — 0.354279
+2. `emberfall-tactics` — 0.334685
+3. `runebreaker` — 0.318262
+4. `bramblebound` — 0.219257
+5. `tin-star-sheriff` — 0.187989
+
+The result proves functional integration and reproducibility only. The scores
+are ranking signals, not probabilities, match percentages, or evidence that
+the model performs well on real users.
+
+### Final scope and handoff
+
+Generated model bundles, local environments, caches, coverage output, and E2E
+resources remain ignored or disposable. The committed generated file is only
+the OpenAPI-derived TypeScript contract. No secret, credential, external
+dataset, schema migration, persisted preference, interaction write, or
+recommendation-event write was added.
+
+Known limitations are the synthetic 30-game catalog, request-only anonymous
+state, no feedback adjustment, no collaborative signal, no formal ranking
+evaluation, and the development base-image findings above. Section 22 is the
+authoritative Stage 4 persistence and feedback handoff.

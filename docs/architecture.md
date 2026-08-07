@@ -19,9 +19,10 @@ flowchart TB
     API["FastAPI application"]
     DB[("PostgreSQL")]
     Seed["Deterministic seed data"]
-    Recommender["Recommendation service (future)"]:::future
-    Artifacts["Versioned model artifacts (future)"]:::future
-    Pipeline["Offline training and evaluation (future)"]:::future
+    Recommender["Immutable recommendation service"]
+    Artifacts["Versioned model artifact"]
+    Builder["Explicit offline model builder"]
+    Evaluation["Offline evaluation (Stage 6)"]:::future
     Sources["External adapters (future)"]:::future
 
     User --> Web
@@ -29,19 +30,21 @@ flowchart TB
     API --> DB
     Seed --> DB
     AuthUser -.-> Web
-    API -.-> Recommender
-    Recommender -.-> Artifacts
+    API --> Recommender
+    Recommender --> Artifacts
+    DB --> Builder
+    Builder --> Artifacts
     Sources -.-> DB
-    Sources -.-> Pipeline
-    Pipeline -.-> Artifacts
+    Sources -.-> Evaluation
+    Artifacts -.-> Evaluation
 
     classDef future stroke-dasharray: 6 4
 ```
 
-### Planned Stage 3 activation
+### Implemented Stage 3 activation
 
-Stage 3 will activate the existing dashed recommendation boundary through an
-explicit offline-to-online artifact flow:
+Stage 3 activates the recommendation boundary through an explicit
+offline-to-online artifact flow:
 
 ```mermaid
 flowchart LR
@@ -66,13 +69,14 @@ flowchart LR
     API --> Web
 ```
 
-The browser will not import or execute ranking code. Artifact building remains
+The browser does not import or execute ranking code. Artifact building remains
 an explicit offline command, while API startup only validates and loads the
 intrinsic contents of an already built bundle. Model-status and recommendation
 requests compare that immutable artifact with one transactionally consistent
 current-catalog snapshot before reporting `ready` or ranking. Missing, corrupt,
-incompatible, or catalog-stale artifacts leave catalog behavior available and
-recommendation capability unavailable. See the
+incompatible, or catalog-stale artifacts and catalogs that cannot be
+canonicalized leave catalog behavior available and recommendation capability
+unavailable. The latter is reported as `catalog_invalid`. See the
 [Stage 3 engineering plan](stage-3-content-recommendation-mvp-plan.md).
 
 ## Repository boundaries
@@ -83,12 +87,13 @@ recommendation capability unavailable. See the
 client. It does not connect directly to PostgreSQL, embed secrets, or implement
 recommendation ranking.
 
-Stage 2 implements Next.js App Router routes for `/`, `/games`, and
-`/games/[gameId]`. The root layout and landing page are statically rendered;
+Stages 2 and 3 implement Next.js App Router routes for `/`, `/games`,
+`/games/[gameId]`, and `/recommendations`. The root layout and landing page are statically rendered;
 focused catalog and detail client components own browser-side API requests and
 interactive state. Catalog request state is normalized into URL search
 parameters so reload and browser history restore the same request without a
-global store.
+global store. Recommendation selections deliberately remain local to one
+select-review-results flow and are discarded on restart or navigation.
 
 All browser requests pass through one project-owned client configured by the
 validated `NEXT_PUBLIC_API_URL`. Its compile-time contracts are generated from
@@ -100,11 +105,13 @@ ranking logic. See the completed
 
 ### API
 
-`apps/api` owns HTTP contracts, validation, orchestration, and persistence. The
-Stage 3 plan adds online inference only after an explicit offline build
-produces an artifact whose integrity, compatibility, and current-catalog
-fingerprint pass validation. The current implementation still uses the
-`not_configured` placeholder. Route functions remain thin:
+`apps/api` owns HTTP contracts, validation, orchestration, and persistence.
+Online inference activates only after an explicit offline build produces an
+artifact whose integrity, compatibility, and current-catalog fingerprint pass
+validation. Absent configuration remains `not_configured`; a configured load
+failure, catalog mismatch, or catalog canonicalization failure is
+`unavailable`; the last condition uses `catalog_invalid`. Route functions
+remain thin:
 
 ```text
 route -> service -> repository/model interface -> database or artifact
@@ -112,7 +119,9 @@ route -> service -> repository/model interface -> database or artifact
 
 Database sessions are dependency-injected from the app-local engine, which is
 also used by readiness checks and disposed at shutdown. Database models are
-not returned directly as API responses.
+not returned directly as API responses. Recommendation status and execution
+read one eager `REPEATABLE READ, READ ONLY` snapshot and compare its canonical
+fingerprint with the immutable startup artifact before returning ready data.
 
 ### Database
 
@@ -125,11 +134,15 @@ shape would not be stable.
 
 `ml` owns preprocessing, the popularity baseline, TF-IDF feature construction,
 pure ranking logic, reproducibility metadata, artifact generation, and later
-offline evaluation. Stage 3 will keep the catalog matrix sparse and key
-artifact rows by stable game slug. Training is never triggered by a request or
-ordinary application startup. The API will load one known validated artifact
-version, compare it with the current catalog, and expose an honest
-unconfigured, unavailable, or ready status.
+offline evaluation. The implemented matrix is float64 CSR keyed by stable game
+slug. Transparent JSON/NPY members have manifest sizes and checksums and are
+loaded with pickle disabled under explicit resource caps. The loader rejects
+non-canonical CSR indices, negative feature weights, IDF weights below one,
+and feature rows that are not L2-normalized. Loader-policy changes require
+operators to rotate the configured path and rebuild and validate the immutable
+artifact before an API restart. Training is never triggered by a request or
+ordinary application startup. The API loads one known validated artifact version and exposes an
+honest unconfigured, unavailable, or ready status.
 
 ### External data
 
@@ -154,7 +167,10 @@ volume ownership, clears invalidated Next.js cache data, and then runs the
 development server as the non-root `node` user. A separate E2E Compose project
 uses a `tmpfs` PostgreSQL database, applies migrations and seed data explicitly,
 and runs the locked Playwright suite without touching the persistent
-development database volume.
+development database volume. Stage 3 adds a disposable named artifact volume:
+a short root init changes only that new volume's ownership, the builder runs
+non-root, and the API mounts the result read-only. E2E teardown removes this
+isolated volume.
 
 ### Production direction
 
@@ -176,16 +192,17 @@ add and validate the public site origin before deployment.
 
 ## Current state
 
-Stages 1 and 2 implement the API, database, and web boundaries. Catalog routes
+Stages 1 through 3 implement the API, database, web, and ML boundaries. Catalog routes
 depend on services, repositories, and injected SQLAlchemy sessions; PostgreSQL
 is the runtime source of truth. Readiness requires connectivity and the
 expected Alembic schema head. The responsive web application supports catalog
 search, filters, sorting, pagination, and game details with explicit loading,
 empty, unavailable, not-found, and nullable-field states.
 
-The recommendation boundary still exposes only the honest `not_configured`
-status. The Stage 3 engineering plan is ready, but its anonymous onboarding,
-active recommender, offline builder, model artifact, recommendation endpoint,
-and result experience have not been implemented. Authentication, persisted
-preferences, feedback, recommendation-event logging, and production deployment
+The recommendation boundary now exposes honest `ready`, `not_configured`, and
+`unavailable` states plus the bounded `POST /api/v1/recommendations` vertical
+slice. The offline builder, checksum-validated artifact, immutable ranker,
+generated browser contract, and anonymous explained-result experience are
+active. Authentication, persisted preferences, feedback,
+recommendation-event logging, formal evaluation, and production deployment
 remain later components.

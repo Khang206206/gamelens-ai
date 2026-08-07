@@ -33,6 +33,17 @@ VALIDATION_ERROR_RESPONSES = {
     },
     **DATABASE_ERROR_RESPONSES,
 }
+RECOMMENDATION_ERROR_RESPONSES = {
+    422: {
+        "model": ErrorResponse,
+        "description": "Recommendation request validation failed.",
+    },
+    503: {
+        "model": ErrorResponse,
+        "description": "The recommendation model or database is temporarily unavailable.",
+    },
+    **INTERNAL_SERVER_ERROR_RESPONSES,
+}
 
 
 class UnhandledExceptionMiddleware:
@@ -89,6 +100,16 @@ class DomainError(Exception):
 class ResourceNotFoundError(DomainError):
     status_code = 404
     code = "not_found"
+
+
+class RecommendationValidationError(DomainError):
+    status_code = 422
+    code = "recommendation_validation_error"
+
+
+class RecommendationUnavailableError(DomainError):
+    status_code = 503
+    code = "recommendation_unavailable"
 
 
 def error_payload(

@@ -33,6 +33,7 @@ blob-report/
 data/raw/*
 data/processed/*
 ml/artifacts/*
+!ml/artifacts/.gitkeep
 ml/reports/generated/*
 
 # Local databases, logs, and runtime state

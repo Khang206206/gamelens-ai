@@ -14,7 +14,7 @@ from app.db.session import (
     create_session_factory,
     database_is_ready,
 )
-from app.services.recommendation import NotConfiguredRecommendationService
+from app.services.recommendation import RecommendationService, create_recommendation_service
 
 
 def create_app(
@@ -22,6 +22,7 @@ def create_app(
     *,
     database_engine: Engine | None = None,
     database_health_check: Callable[[Engine], bool] = database_is_ready,
+    recommendation_service: RecommendationService | None = None,
 ) -> FastAPI:
     runtime_settings = settings or get_settings()
     configure_logging(runtime_settings.log_level)
@@ -37,21 +38,23 @@ def create_app(
 
     app = FastAPI(
         title=runtime_settings.app_name,
-        version="0.1.0",
-        description="Catalog and model-readiness API for GameLens AI.",
+        version="0.2.0",
+        description="Catalog and artifact-backed recommendation API for GameLens AI.",
         lifespan=lifespan,
     )
     app.state.settings = runtime_settings
     app.state.database_engine = engine
     app.state.session_factory = session_factory
     app.state.database_health_check = database_health_check
-    app.state.recommendation_service = NotConfiguredRecommendationService()
+    app.state.recommendation_service = recommendation_service or create_recommendation_service(
+        runtime_settings.model_artifact_path
+    )
     app.add_middleware(UnhandledExceptionMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=runtime_settings.cors_origins,
         allow_credentials=False,
-        allow_methods=["GET"],
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
     register_exception_handlers(app)

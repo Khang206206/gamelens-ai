@@ -71,6 +71,14 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://gamelens:gamelens_dev_only@localhost:5432/gamelens"
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    model_artifact_path: Path | None = None
+
+    @field_validator("model_artifact_path", mode="before")
+    @classmethod
+    def empty_artifact_path_is_unconfigured(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @field_validator("cors_origins", mode="before")
     @classmethod

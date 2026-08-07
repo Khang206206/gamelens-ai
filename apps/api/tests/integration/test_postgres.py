@@ -1,4 +1,5 @@
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from app.core.config import Settings
@@ -7,15 +8,23 @@ from app.db.models import (
     Genre,
     Interaction,
     InteractionType,
+    Platform,
     RecommendationEvent,
+    Tag,
     User,
     UserPreference,
+    game_genres,
+    game_platforms,
+    game_tags,
 )
 from app.db.seed import load_seed_file, seed_database
 from app.db.session import create_session_factory, session_scope
 from app.main import create_app
+from app.repositories.recommendation_catalog import RecommendationCatalogRepository
+from app.services.recommendation import create_recommendation_service
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, delete, inspect, select
+from gamelens_recommender import build_artifact
+from sqlalchemy import Engine, delete, func, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -432,3 +441,54 @@ def test_catalog_endpoints_use_postgresql(
     assert genres.status_code == 200
     assert genres.json()
     assert model_status.json()["status"] == "not_configured"
+
+
+def test_ready_recommendation_uses_postgresql_snapshot_without_writes(
+    postgres_session: Session,
+    integration_settings: Settings,
+    tmp_path: Path,
+) -> None:
+    seed_database(postgres_session, load_seed_file())
+    snapshot = RecommendationCatalogRepository(postgres_session).load().model_snapshot
+    postgres_session.rollback()
+    artifact = build_artifact(snapshot, tmp_path / "content-v1")
+    tracked_tables = (
+        Game.__table__,
+        Genre.__table__,
+        Tag.__table__,
+        Platform.__table__,
+        game_genres,
+        game_tags,
+        game_platforms,
+        User.__table__,
+        UserPreference.__table__,
+        Interaction.__table__,
+        RecommendationEvent.__table__,
+    )
+    before = {
+        table.name: postgres_session.scalar(select(func.count()).select_from(table))
+        for table in tracked_tables
+    }
+    game_id = postgres_session.scalar(select(Game.id).order_by(Game.id))
+    assert game_id is not None
+    app = create_app(
+        integration_settings,
+        recommendation_service=create_recommendation_service(artifact),
+    )
+
+    with TestClient(app) as client:
+        status = client.get("/api/v1/models/status")
+        response = client.post(
+            "/api/v1/recommendations",
+            json={"selected_game_ids": [game_id], "preferred_genres": ["strategy"]},
+        )
+
+    postgres_session.rollback()
+    after = {
+        table.name: postgres_session.scalar(select(func.count()).select_from(table))
+        for table in tracked_tables
+    }
+    assert status.json()["status"] == "ready"
+    assert response.status_code == 200
+    assert response.json()["items"]
+    assert before == after

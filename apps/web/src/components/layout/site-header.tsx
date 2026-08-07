@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 
 export function SiteHeader() {
@@ -21,11 +22,14 @@ export function SiteHeader() {
             <li>
               <Link href="/games">Game catalog</Link>
             </li>
+            <li>
+              <Link href={"/recommendations" as Route}>Recommendations</Link>
+            </li>
           </ul>
         </nav>
         <span className="status-chip">
           <span aria-hidden="true" />
-          Stage 2 catalog
+          Stage 3 content model
         </span>
       </div>
     </header>

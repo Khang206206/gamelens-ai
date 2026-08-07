@@ -21,10 +21,13 @@ services:
       start_period: 5s
 
   api:
-    image: gamelens-ai-api:stage1
+    image: gamelens-ai-api:stage3
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      args:
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
     environment:
       APP_NAME: ${APP_NAME:-GameLens AI API}
       ENVIRONMENT: ${ENVIRONMENT:-development}
@@ -33,6 +36,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-gamelens}:${POSTGRES_PASSWORD:-gamelens_dev_only}@db:5432/${POSTGRES_DB:-gamelens}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      MODEL_ARTIFACT_PATH: ${MODEL_ARTIFACT_PATH:-}
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:
@@ -48,9 +52,38 @@ services:
       timeout: 3s
       retries: 10
       start_period: 5s
+    volumes:
+      - ./ml/artifacts:/artifacts:ro
+
+  model-builder:
+    profiles:
+      - model
+    image: gamelens-ai-api:stage3
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      args:
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-gamelens}:${POSTGRES_PASSWORD:-gamelens_dev_only}@db:5432/${POSTGRES_DB:-gamelens}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      MODEL_ARTIFACT_PATH: ${MODEL_ARTIFACT_PATH:-/artifacts/content-v1}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./ml/artifacts:/artifacts
+    command:
+      - python
+      - -m
+      - app.commands.recommendation_artifact
+      - --help
 
   web:
-    image: gamelens-ai-web:stage2
+    image: gamelens-ai-web:stage3
     build:
       context: ./apps/web
       dockerfile: Dockerfile
@@ -79,7 +112,7 @@ services:
   quality:
     profiles:
       - quality
-    image: gamelens-ai-api:stage1
+    image: gamelens-ai-api:stage3
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -89,9 +122,11 @@ services:
       CORS_ORIGINS: http://testserver
       LOG_LEVEL: WARNING
       RUFF_CACHE_DIR: /tmp/ruff-cache
+      PYTHONPATH: /workspace/ml/src
     volumes:
       - ./apps/api:/workspace/apps/api
       - ./data/seed:/workspace/data/seed:ro
+      - ./ml:/workspace/ml
 
 volumes:
   postgres_data:

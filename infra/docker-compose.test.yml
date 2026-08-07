@@ -19,7 +19,7 @@ services:
       start_period: 3s
 
   test-api:
-    image: gamelens-ai-api:stage1
+    image: gamelens-ai-api:stage3-test
     build:
       context: ..
       dockerfile: apps/api/Dockerfile

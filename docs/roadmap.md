@@ -90,7 +90,7 @@ detailed plan for exact versions, commands, and known limitations.
 
 ## Stage 3 — Content recommendation MVP
 
-**Status:** Engineering plan ready; implementation has not started
+**Status:** Complete (verified 2026-08-07)
 
 Detailed execution plan:
 [`stage-3-content-recommendation-mvp-plan.md`](stage-3-content-recommendation-mvp-plan.md)
@@ -106,7 +106,7 @@ Build one reviewable slice at a time:
 6. Add bounded online ranking, stable tie-breaking, component scores, and
    structured deterministic explanations.
 7. Activate an injectable API service with honest unconfigured, unavailable,
-   and ready states plus an explicit stale-artifact reason.
+   and ready states plus explicit stale-artifact and `catalog_invalid` reasons.
 8. Add the typed recommendation `POST` contract, CORS coverage, OpenAPI types,
    and project-owned browser client support.
 9. Add accessible anonymous onboarding and explained recommendation results.
@@ -116,15 +116,26 @@ Build one reviewable slice at a time:
 
 Stage 3 is complete only when the same canonical data and configuration produce
 the same semantic artifact and ordered rankings; missing, corrupt,
-incompatible, or stale artifacts fail clearly; the real API and web flow pass
-contract, browser, accessibility, and Docker gates; and all Stage 1 and Stage 2
-regressions remain green.
+incompatible, or stale artifacts and non-canonical catalog inputs fail clearly;
+the real API and web flow pass contract, browser, accessibility, and Docker
+gates; and all Stage 1 and Stage 2 regressions remain green.
 
 Onboarding selections remain request-scoped in Stage 3. Persistent preferences,
 feedback writes and adjustments, disliked-game exclusion, and
 model-versioned recommendation-event logging remain Stage 4 work. The
 30-game synthetic catalog supports functional and reproducibility acceptance,
 not recommendation-quality claims.
+
+Acceptance passed with 25 ML tests, 104 fast API tests, 29 disposable-PostgreSQL
+integration tests, 45 frontend tests, and 25 Docker-first Playwright passes.
+Ruff, strict TypeScript, ESLint, Prettier, production build, Compose validation,
+OpenAPI generation, accessibility, responsive, CORS, artifact integrity, and
+dependency-integrity checks passed. The disposable full-stack path migrated and
+seeded PostgreSQL, initialized artifact-volume ownership in a root-only setup
+container, built the artifact as a non-root user, loaded it read-only in the
+API, returned real explained recommendations, and removed only E2E resources.
+The completion record documents diagnostic size/timing, coverage, licenses,
+and the unfixed Debian base-image advisories retained for Stage 7.
 
 ## Stage 4 — Feedback and persistence
 
