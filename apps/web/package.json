@@ -1,8 +1,8 @@
 {
   "name": "@gamelens-ai/web",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "GameLens AI catalog frontend",
+  "description": "GameLens AI catalog and recommendation frontend",
   "engines": {
     "node": ">=24.0.0 <25",
     "npm": ">=11.0.0 <12"
@@ -29,6 +29,16 @@
     "react-dom": "19.2.8"
   },
   "overrides": {
+    "js-yaml": "4.3.1",
+    "minimatch@3.1.5": {
+      "brace-expansion": "1.1.18"
+    },
+    "minimatch@5.1.9": {
+      "brace-expansion": "2.1.4"
+    },
+    "minimatch@10.2.6": {
+      "brace-expansion": "5.0.9"
+    },
     "postcss": "8.5.25",
     "sharp": "0.35.3"
   },

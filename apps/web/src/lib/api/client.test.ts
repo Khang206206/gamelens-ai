@@ -52,6 +52,30 @@ describe("ApiClient", () => {
     expect(transport).toHaveBeenCalledOnce();
   });
 
+  it("posts typed recommendation JSON through the project client", async () => {
+    const transport = vi.fn(async () =>
+      jsonResponse({
+        model: { name: "content", version: "1", data_fingerprint: "abc" },
+        response_reason: "no_content_support",
+        requested_top_k: 5,
+        items: [],
+      }),
+    );
+    const client = new ApiClient({ baseUrl: "http://api.test", fetch: transport });
+    const body = { preferred_genres: ["strategy"] };
+
+    await client.recommend(body);
+
+    expect(transport).toHaveBeenCalledWith(
+      "http://api.test/api/v1/recommendations",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: expect.objectContaining({ "content-type": "application/json" }),
+      }),
+    );
+  });
+
   it.each([
     [404, "not_found"],
     [422, "validation"],

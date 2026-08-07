@@ -1,6 +1,8 @@
 FROM python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
 
 ARG PIP_VERSION=26.1.2
+ARG APP_UID=1000
+ARG APP_GID=1000
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -10,13 +12,21 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /workspace/apps/api
 
-RUN groupadd --system gamelens \
-    && useradd --system --gid gamelens --create-home gamelens
+RUN test "${APP_UID}" -ne 0 \
+    && test "${APP_GID}" -ne 0 \
+    && groupadd --non-unique --gid "${APP_GID}" gamelens \
+    && useradd --non-unique --uid "${APP_UID}" --gid gamelens --create-home \
+        --shell /usr/sbin/nologin gamelens
 
 COPY apps/api/requirements.lock ./
 
 RUN python -m pip install --upgrade "pip==${PIP_VERSION}" \
     && python -m pip install -r requirements.lock
+
+COPY --chown=gamelens:gamelens ml/pyproject.toml ml/README.md /workspace/ml/
+COPY --chown=gamelens:gamelens ml/src /workspace/ml/src
+
+RUN python -m pip install --no-deps --no-build-isolation /workspace/ml
 
 COPY --chown=gamelens:gamelens apps/api/pyproject.toml apps/api/README.md ./
 COPY --chown=gamelens:gamelens apps/api/app ./app

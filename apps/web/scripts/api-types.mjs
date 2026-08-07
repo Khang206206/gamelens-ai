@@ -66,7 +66,7 @@ try {
 
   const result = spawnSync(
     process.execPath,
-    [cliPath, schemaPath, "--output", candidatePath],
+    [cliPath, schemaPath, "--output", candidatePath, "--default-non-nullable", "false"],
     {
       cwd: projectDirectory,
       encoding: "utf8",

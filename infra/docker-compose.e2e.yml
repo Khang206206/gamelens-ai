@@ -37,6 +37,41 @@ services:
       - python -m alembic upgrade head && python -m app.db.seed
     restart: "no"
 
+  e2e-artifact-init:
+    image: gamelens-ai-api:e2e
+    user: root
+    depends_on:
+      e2e-setup:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact:/artifacts
+    command:
+      - /bin/sh
+      - -c
+      - chown gamelens:gamelens /artifacts
+    restart: "no"
+
+  e2e-model:
+    image: gamelens-ai-api:e2e
+    environment:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@e2e-db:5432/gamelens_e2e
+      CORS_ORIGINS: http://e2e-web:3000
+      LOG_LEVEL: WARNING
+    depends_on:
+      e2e-artifact-init:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact:/artifacts
+    command:
+      - python
+      - -m
+      - app.commands.recommendation_artifact
+      - build
+      - --output
+      - /artifacts/content-v1
+    restart: "no"
+
   e2e-api:
     image: gamelens-ai-api:e2e
     environment:
@@ -46,9 +81,12 @@ services:
       DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@e2e-db:5432/gamelens_e2e
       CORS_ORIGINS: http://e2e-web:3000
       LOG_LEVEL: WARNING
+      MODEL_ARTIFACT_PATH: /artifacts/content-v1
     depends_on:
-      e2e-setup:
+      e2e-model:
         condition: service_completed_successfully
+    volumes:
+      - e2e_artifact:/artifacts:ro
     healthcheck:
       test:
         - CMD
@@ -75,14 +113,14 @@ services:
         - CMD
         - node
         - -e
-        - "Promise.all([fetch('http://localhost:3000'), fetch('http://localhost:3000/games')]).then((responses) => { if (responses.some((response) => !response.ok)) process.exit(1) })"
+        - "Promise.all([fetch('http://localhost:3000'), fetch('http://localhost:3000/games'), fetch('http://localhost:3000/recommendations')]).then((responses) => { if (responses.some((response) => !response.ok)) process.exit(1) })"
       interval: 3s
       timeout: 3s
       retries: 30
       start_period: 8s
 
   e2e:
-    image: gamelens-ai-playwright:stage2
+    image: gamelens-ai-playwright:stage3
     build:
       context: ../apps/web
       dockerfile: Dockerfile.e2e
@@ -93,3 +131,6 @@ services:
       e2e-web:
         condition: service_healthy
     ipc: host
+
+volumes:
+  e2e_artifact:

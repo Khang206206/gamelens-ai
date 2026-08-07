@@ -13,11 +13,11 @@ export const metadata: Metadata = {
     template: "%s · GameLens AI",
   },
   description:
-    "Explore a transparent game catalog while GameLens AI's recommendation system is built in public.",
+    "Explore a transparent game catalog and build deterministic, explained, request-scoped recommendations.",
   openGraph: {
     title: "GameLens AI · Catalog lab",
     description:
-      "Browse a transparent game catalog today. Recommendation intelligence arrives in a later stage.",
+      "Browse a transparent game catalog and build deterministic, explained content recommendations without saved identity.",
     type: "website",
     images: [
       {

@@ -1,8 +1,9 @@
 # GameLens AI web application
 
-The Stage 2 web application is a Next.js 16.2 App Router project using React 19.2, strict
-TypeScript 5.9, and Tailwind CSS 4. It presents the verified Stage 1 catalog without
-implying that recommendations, preferences, feedback, or authentication exist.
+The Stage 3 web application is a Next.js 16.2 App Router project using React 19.2, strict
+TypeScript 5.9, and Tailwind CSS 4. It presents the catalog plus real artifact-backed,
+request-scoped recommendations without implying persisted preferences, feedback, or
+authentication.
 
 ## Responsibilities
 
@@ -19,11 +20,12 @@ credentials, proxy requests through Next.js, or rank games.
 
 ## Routes
 
-| Route             | Implemented behavior                                                            |
-| ----------------- | ------------------------------------------------------------------------------- |
-| `/`               | Server-rendered product introduction and catalog call to action                 |
-| `/games`          | URL-backed title search, one genre/tag/platform filter, sorting, and pagination |
-| `/games/[gameId]` | Numeric-ID game details with explicit nullable-field states                     |
+| Route              | Implemented behavior                                                            |
+| ------------------ | ------------------------------------------------------------------------------- |
+| `/`                | Server-rendered product introduction and catalog call to action                 |
+| `/games`           | URL-backed title search, one genre/tag/platform filter, sorting, and pagination |
+| `/games/[gameId]`  | Numeric-ID game details with explicit nullable-field states                     |
+| `/recommendations` | Accessible select, review, and explained-results flow                           |
 
 Catalog state uses `q`, `genre`, `tag`, `platform`, `sort`, and `page` search parameters.
 The runtime parser rejects malformed values before an API request, while reload,
@@ -80,9 +82,17 @@ cancellation. It maps validation, not-found, unavailable, malformed, network, ab
 unexpected failures to safe categories while preserving status and backend error code for
 application logic.
 
+The recommendation feature keeps selections in component state only. It caps game, genre,
+tag, and platform choices to the API bounds, requires a content signal, submits through
+the shared API client, aborts superseded work, and prevents stale responses from
+overwriting current state. Results remain in API rank order and expose ranking score,
+structured reasons, and component details. The score is deliberately not rendered as a
+match percentage.
+
 ## Docker workflows
 
-From the repository root, after explicit migration and seed:
+From the repository root, after the explicit migration, seed, model build, and
+model validation sequence in the [root README](../../README.md):
 
 ```powershell
 docker compose build web
@@ -112,42 +122,44 @@ try {
         --abort-on-container-exit --exit-code-from e2e e2e
     $e2eExitCode = $LASTEXITCODE
 } finally {
-    docker compose -f infra/docker-compose.e2e.yml down --remove-orphans
+    docker compose -f infra/docker-compose.e2e.yml down --volumes --remove-orphans
 }
 if ($e2eExitCode -ne 0) { exit $e2eExitCode }
 ```
 
 It creates a tmpfs PostgreSQL database, migrates and seeds it in an explicit setup
-service, starts a network-only API and web application, then runs the locked Playwright
-1.62 image. The complete Chromium suite and critical Firefox/WebKit smoke paths use the
-deterministic 30-game catalog.
+service, initializes a disposable named artifact volume, builds the Stage 3 model as the
+non-root application user, mounts it read-only in the API, and then starts network-only
+API and web services. The locked Playwright 1.62 image runs the complete Chromium suite
+and critical Firefox/WebKit smoke paths against the deterministic 30-game catalog. E2E
+teardown removes only this isolated project's containers, network, and artifact volume.
 
-## Verified Stage 2 quality
+## Verified Stage 3 quality
 
-The acceptance gate on 2026-07-30 produced:
+The acceptance gate on 2026-08-07 produced:
 
-- 40 fast tests across query parsing, formatting, configuration, API errors, request
-  transport, shared UI, and truthful landing content.
+- 45 fast tests across query parsing, formatting, configuration, API errors, request
+  transport, shared UI, truthful landing content, and the recommendation flow.
 - Strict TypeScript, ESLint, Prettier, clean install, OpenAPI drift, and production build
   passes.
-- Targeted npm overrides resolve Next.js to PostCSS 8.5.25 and Sharp 0.35.3. The
-  production audit reports zero vulnerabilities.
-- 21 Playwright passes without retry: 13 complete Chromium tests and four critical smoke
+- Targeted npm overrides resolve Next.js to PostCSS 8.5.25 and Sharp 0.35.3, `js-yaml` to
+  4.3.1, and each `brace-expansion` consumer to its fixed patch line. Clean install plus
+  full and production audits report zero vulnerabilities.
+- 25 Playwright passes without retry: 15 complete Chromium tests and five critical smoke
   tests in each of Firefox and WebKit.
-- No serious or critical axe violations on landing, populated catalog/detail, invalid-ID,
-  and 404 states.
-- Mobile primary navigation is visible and keyboard reachable. Catalog and detail routes
-  have no horizontal page overflow at 320, 768, or 1440 CSS pixels.
-- Diagnostic V8 coverage of 41.48% statements overall. Pure configuration, formatting,
-  route, and API modules report 82.35% through 100% statement coverage; client feature
-  workflows are intentionally exercised by the real browser suite and remain the main
-  fast-suite coverage gap.
+- No serious or critical axe violations on landing, populated catalog/detail,
+  recommendation results, invalid-ID, and 404 states.
+- Mobile primary navigation is visible and keyboard reachable. Catalog, detail, and
+  recommendation routes have no horizontal page overflow at 320, 768, or 1440 CSS pixels.
+- Diagnostic V8 coverage of 53.25% statements overall; the recommendation flow reports
+  77.51%. Real-browser tests remain the primary catalog/detail workflow coverage.
 
 ## Current limitations
 
-- Request-scoped onboarding, recommendation ranking, and explained results are planned in
-  the [Stage 3 engineering plan](../../docs/stage-3-content-recommendation-mvp-plan.md).
-  Persisted preferences and feedback remain Stage 4 work.
+- Onboarding selections and results are not persisted. Durable preferences, feedback,
+  dislike/played adjustment, and recommendation-event logging remain Stage 4 work.
+- The synthetic 30-game fixture verifies functionality and reproducibility, not
+  recommendation quality; formal evaluation remains Stage 6.
 - The deterministic catalog has no cover binaries or approved remote image source, so
   every game uses a project-owned generated placeholder.
 - Ratings and popularity are synthetic development signals, not market data or
@@ -159,8 +171,3 @@ The acceptance gate on 2026-07-30 produced:
   IDs missing from the API use a client not-found state. The streamed dynamic route shell
   returns HTTP 200 in both cases. The missing-ID API response remains 404; true
   server-route status propagation requires the later internal-origin/deployment design.
-- The full npm audit retains 11 high-severity development-tooling paths through
-  `brace-expansion`; production audit is clean. Run the affected lint and OpenAPI tools
-  only on trusted project source and a trusted local schema endpoint. The finding remains
-  documented until compatible upstream releases replace it without forcing breaking
-  Next.js, ESLint, or OpenAPI tool downgrades/upgrades.

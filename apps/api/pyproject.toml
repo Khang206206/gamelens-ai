@@ -4,17 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gamelens-api"
-version = "0.1.0"
-description = "GameLens AI catalog API"
+version = "0.2.0"
+description = "GameLens AI catalog and content recommendation API"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "alembic==1.18.5",
   "fastapi==0.140.0",
+  "gamelens-recommender==0.1.0",
+  "numpy==2.5.1",
   "psycopg[binary]==3.3.4",
   "pydantic==2.13.4",
   "pydantic-settings==2.14.2",
   "SQLAlchemy==2.0.51",
+  "scikit-learn==1.9.0",
+  "scipy==1.18.0",
   "uvicorn[standard]==0.51.0",
 ]
 

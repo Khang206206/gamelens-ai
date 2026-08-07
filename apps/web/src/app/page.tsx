@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { Route } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -19,7 +20,7 @@ const capabilityCards = [
   {
     index: "03",
     title: "Watch the system grow",
-    copy: "The catalog foundation is implemented. Preference capture and project-owned recommendations begin in Stage 3.",
+    copy: "Build an anonymous request from games and taxonomy preferences, then inspect project-owned ranking evidence.",
   },
 ];
 
@@ -29,20 +30,23 @@ export default function HomePage() {
       <section className="hero shell">
         <div className="hero__copy">
           <p className="eyebrow">
-            <span aria-hidden="true">●</span> Stage 2 · Catalog foundation
+            <span aria-hidden="true">●</span> Stage 3 · Content recommendations
           </p>
           <h1>
             Find your next world.
             <span>For now, start with the map.</span>
           </h1>
           <p className="hero__lede">
-            GameLens AI is building a recommendation system in the open. Explore the
-            working catalog today—without fabricated matches, mystery scores, or pretend
-            personalization.
+            GameLens AI now turns request-scoped choices into deterministic, explained
+            content recommendations—without saved identity, mystery scores, or pretend
+            feedback.
           </p>
           <div className="hero__actions">
             <Link className="button button--primary" href="/games">
               Explore the catalog <span aria-hidden="true">↗</span>
+            </Link>
+            <Link className="button button--secondary" href={"/recommendations" as Route}>
+              Build a shortlist <span aria-hidden="true">↗</span>
             </Link>
             <a className="text-link" href="#how-it-works">
               See what works now
@@ -69,8 +73,8 @@ export default function HomePage() {
               <dd>36</dd>
             </div>
             <div>
-              <dt>Stage 2 mode</dt>
-              <dd>Catalog only</dd>
+              <dt>Stage 3 model</dt>
+              <dd>Content TF-IDF</dd>
             </div>
           </dl>
         </div>
@@ -79,18 +83,18 @@ export default function HomePage() {
       <section className="signal-strip" aria-label="Product status">
         <div className="shell signal-strip__inner">
           <span>Implemented</span>
-          <strong>Catalog search, filters, sorting, pagination, and game details</strong>
-          <span className="signal-strip__future">Recommendations · Stage 3</span>
+          <strong>Catalog plus anonymous artifact-backed content ranking</strong>
+          <span className="signal-strip__future">Feedback persistence · Stage 4</span>
         </div>
       </section>
 
       <section className="capabilities shell" id="how-it-works">
         <div className="section-heading">
           <p className="eyebrow">What you can do</p>
-          <h2>A real foundation, before the ranking.</h2>
+          <h2>Observable signals, through the ranking.</h2>
           <p>
-            Each current interaction maps to an implemented API contract. Later
-            intelligence will build on this observable base.
+            Each recommendation maps to an implemented API contract, fixed component
+            weights, and structured evidence you can inspect.
           </p>
         </div>
         <div className="capability-grid">
@@ -112,8 +116,8 @@ export default function HomePage() {
         </blockquote>
         <div className="manifesto__aside">
           <span>Current mode</span>
-          <strong>Catalog exploration</strong>
-          <p>Anonymous · deterministic · no tracking</p>
+          <strong>Request-scoped recommendations</strong>
+          <p>Anonymous · deterministic · no persistence</p>
         </div>
       </section>
     </>

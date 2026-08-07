@@ -2,7 +2,7 @@
 
 ## Objective
 
-GameLens AI will produce ranked game recommendations using project-owned
+GameLens AI produces ranked game recommendations using project-owned
 signals. The first usable model must work from a small local dataset and an
 anonymous user's onboarding choices, without paid services or an external
 recommendation API.
@@ -24,7 +24,7 @@ baselines.
 
 ## Recommendation interface
 
-The API recommendation service will depend on a replaceable model contract
+The API recommendation service depends on a replaceable model contract
 with the following conceptual capabilities:
 
 - Fit or build an artifact in an offline process.
@@ -32,49 +32,54 @@ with the following conceptual capabilities:
 - Expose a stable model name and version.
 - Report artifact readiness and feature metadata.
 
-Stage 1 implements this interface as a replaceable service protocol and exposes
-its state through `GET /api/v1/models/status`. The current implementation
-reports `not_configured`, has no active model, advertises no recommendation or
-explanation capability, and raises a clear error if recommendation execution is
-attempted internally. No recommendation endpoint is exposed until a real model
-is implemented and validated.
+Stage 1 introduced this interface as a replaceable service protocol. Stage 3
+implements it with an immutable content service and exposes state through
+`GET /api/v1/models/status`: no path configured is `not_configured`; a failed
+load, catalog mismatch, or catalog canonicalization failure is `unavailable`;
+the last condition uses reason `catalog_invalid`. Only a validated artifact
+matching the current catalog is `ready`. `POST /api/v1/recommendations` never
+falls back to invented results.
 
 The detailed
-[Stage 3 engineering plan](stage-3-content-recommendation-mvp-plan.md) defines
-the activation sequence. Planning completion does not change runtime status:
-`ready` will be reported only after a configured artifact passes integrity,
-compatibility, and current-catalog validation.
+[Stage 3 plan and completion record](stage-3-content-recommendation-mvp-plan.md)
+defines the activation sequence and verified implementation decisions. `ready`
+is reported only after a configured artifact passes integrity, compatibility,
+and current-catalog validation.
 
 ## Popularity baseline
 
-Stage 3 will implement the first baseline by combining rating quality, rating
-volume, and the documented synthetic popularity signal. A Bayesian or
-IMDb-style weighted rating will prevent games with one perfect rating from
-dominating.
-
-The exact prior, formula, inputs, missing-value policy, normalization,
-combination weights, defaults, and tie behavior will be versioned and covered
-by deterministic tests. The baseline remains independently rankable and may
-contribute a documented prior to the content result. It is not a silent
-fallback when the configured content artifact is unavailable.
+The first baseline combines rating quality and volume with the documented
+synthetic popularity signal. A Bayesian weighted rating uses a 50-vote prior
+and the vote-weighted catalog rating mean. A missing rating uses that mean.
+Weighted rating and synthetic popularity are independently min-max normalized;
+a constant range maps to 0.5. The final baseline is 70% rating and 30%
+popularity. It contributes a documented prior to content results but is never a
+silent fallback when the configured artifact is unavailable.
 
 ## Content-based MVP
 
-Stage 3 will build a text representation from:
+Stage 3 builds a text representation from:
 
 - Title
 - Genres and tags
 - Developer and publisher
 - Description
 
-TF-IDF provides the first feature space, with cosine similarity for ranking.
-A request-scoped anonymous user vector combines selected-game vectors with
-positive genre/tag preference tokens using model-owned versioned weights.
+Field-aware documents repeat title twice; each genre and tag token three times;
+and developer, publisher, and description once. Word TF-IDF uses Unicode accent
+stripping, one- and two-grams, `min_df=1`, `max_df=1.0`, sublinear term
+frequency, L2 normalization, and float64 sparse values. Cosine-equivalent dot
+products over normalized vectors provide content similarity.
+
+A request-scoped anonymous user vector combines the normalized selected-game
+centroid with positive genre/tag preference tokens using model-owned versioned
+weights. Either source receives 100% when alone; together they receive 65% and
+35% before the result is normalized again.
 Clients do not supply arbitrary floating-point weights. Preferred platforms
 contribute a separate interpretable signal rather than being hidden in free
 text.
 
-The Stage 3 request will accept bounded distinct selected game IDs, preferred
+The Stage 3 request accepts bounded distinct selected game IDs, preferred
 genre/tag/platform slugs, and top-K. At least one selected game, genre, or tag
 is required; platform-only input is not enough to form the content query.
 Unknown or duplicate references are controlled validation errors. No request
@@ -91,20 +96,22 @@ Candidate filtering occurs before ranking:
 
 Feedback-derived disliked-game exclusion and played-game adjustment begin in
 Stage 4 after persistence and write contracts exist. The current data model has
-no general game-availability field, so Stage 3 will not imply an unavailable
+no general game-availability field, so Stage 3 does not imply an unavailable
 state that the catalog cannot represent.
 
-Stage 3 will combine bounded, independently observable content, explicit
-taxonomy where justified, platform, and popularity components. The exact
-normalization and non-negative weights are part of the model version. A raw
-ranking score is not a probability or calibrated match percentage.
-Components are quantized into versioned fixed-scale units before ordering;
+Model version `1.0.0` combines content at 80%, preferred-platform overlap at
+10%, and popularity at 10%. Genre/tag preferences contribute to the content
+query rather than appearing as a second final-score component, avoiding hidden
+double counting. A raw ranking score is not a probability or calibrated match
+percentage. Components are quantized to a 1,000,000 fixed scale with
+round-half-up before ordering;
 serialized weighted contributions sum exactly to the serialized final score,
-and stable slugs resolve quantized ties.
+and ties resolve by final score, content score, popularity score, then stable
+slug.
 
 ## Response evidence
 
-Each Stage 3 recommendation will return:
+Each Stage 3 recommendation returns:
 
 - Final score and rank.
 - Model name and version.
@@ -121,28 +128,35 @@ ranked list and the application must work without it.
 
 ## Training and artifacts
 
-The planned Stage 3 artifact lifecycle will:
+The implemented Stage 3 artifact lifecycle:
 
-- Run preprocessing and training outside request handling.
-- Record seeds for any random operation.
-- Store artifact-schema and model versions, feature and ranking configuration,
+- Runs preprocessing and training outside request handling.
+- Uses no random operation in the version-1 builder.
+- Stores artifact-schema and model versions, feature and ranking configuration,
   stable slug mapping, data fingerprint, creation time, member sizes and
   checksums, and compatible code/library/schema metadata.
-- Use transparent non-executable JSON and numeric sparse-array formats for the
+- Uses transparent non-executable JSON and numeric sparse-array formats for the
   first artifact rather than pickle-compatible model deserialization.
-- Write to a temporary location and promote only after complete validation.
-- Treat the configured operator-controlled artifact root as the provenance
+- Rejects non-canonical CSR indices, negative feature weights, IDF weights
+  below one, and feature rows that are not L2-normalized before activating the
+  ranker.
+- Writes to a temporary sibling and promotes only after complete validation.
+- Treats the configured operator-controlled artifact root as the provenance
   trust boundary; self-recorded checksums detect corruption but do not
   authenticate who produced a replaced bundle.
-- Distinguish no configuration from configured-but-missing, corrupt,
-  incompatible, or catalog-stale artifacts.
-- Keep catalog behavior available when recommendation capability is not and
-  fail recommendation requests clearly rather than fabricate results.
-- Commit a small deterministic fixture only when tests require it.
+- Distinguishes no configuration from configured-but-missing, corrupt,
+  incompatible, catalog-stale, or `catalog_invalid` states.
+- Keeps catalog behavior available when recommendation capability is not and
+  fails recommendation requests clearly rather than fabricate results.
+- Keeps generated bundles ignored; tests build their deterministic fixture in a
+  temporary directory.
 
-Generated development artifacts will remain ignored by Git. Activating a new
-artifact will require an explicit offline build and API restart; request
-handling and ordinary startup will never fit or mutate a model.
+Generated development artifacts remain ignored by Git. Activating a new
+artifact requires an explicit offline build and API restart; request
+handling and ordinary startup will never fit or mutate a model. Operators
+adopting stricter loader rules rotate `MODEL_ARTIFACT_PATH`, rebuild and
+validate the bundle, and restart the API instead of changing an artifact in
+place.
 
 ## Evaluation
 

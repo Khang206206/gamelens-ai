@@ -15,3 +15,8 @@
 !data
 !data/seed
 !data/seed/**
+!ml
+!ml/pyproject.toml
+!ml/README.md
+!ml/src
+!ml/src/**
