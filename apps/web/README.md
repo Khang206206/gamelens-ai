@@ -5,6 +5,12 @@ TypeScript 5.9, and Tailwind CSS 4. It presents the catalog plus real artifact-b
 request-scoped recommendations without implying persisted preferences, feedback, or
 authentication.
 
+The detailed
+[Stage 4 feedback-and-persistence plan](../../docs/stage-4-feedback-persistence-plan.md)
+is ready; implementation has not started. The current browser still creates no identity,
+sends no credentialed persistence request, and stores no onboarding or feedback state
+across reloads.
+
 ## Responsibilities
 
 The browser dependency direction is:
@@ -157,7 +163,9 @@ The acceptance gate on 2026-08-07 produced:
 ## Current limitations
 
 - Onboarding selections and results are not persisted. Durable preferences, feedback,
-  dislike/played adjustment, and recommendation-event logging remain Stage 4 work.
+  dislike/played adjustment, and recommendation-event logging are specified by the
+  [Stage 4 engineering plan](../../docs/stage-4-feedback-persistence-plan.md) but are not
+  implemented.
 - The synthetic 30-game fixture verifies functionality and reproducibility, not
   recommendation quality; formal evaluation remains Stage 6.
 - The deterministic catalog has no cover binaries or approved remote image source, so

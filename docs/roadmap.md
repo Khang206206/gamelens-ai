@@ -139,10 +139,49 @@ and the unfixed Debian base-image advisories retained for Stage 7.
 
 ## Stage 4 — Feedback and persistence
 
-**Status:** Planned
+**Status:** Engineering plan ready; implementation has not started
 
-Persist interactions and preferences, adjust results from feedback, exclude
-disliked games, and log model-versioned recommendation events.
+Detailed execution plan:
+[`stage-4-feedback-persistence-plan.md`](stage-4-feedback-persistence-plan.md)
+
+Build one reviewable slice at a time:
+
+1. Re-run the Stage 1–3 gates and freeze consent, identity, preference,
+   feedback, ranking, event, retention, deletion, and privacy contracts.
+2. Add data-preserving migrations for consent-aware token digests, temporal
+   interaction state, and model/data/policy-versioned recommendation events.
+3. Add explicit-consent anonymous sessions with host-only HttpOnly cookies,
+   fixed expiry, credentialed CORS, exact-origin checks, and CSRF protection.
+4. Add bounded atomic preference replacement and canonical like/dislike,
+   played, wishlist, and rating state contracts.
+5. Add a deterministic feedback policy that hard-excludes dislikes, exposes
+   bounded positive affinity, applies a played adjustment, and leaves wishlist
+   neutral in version 1.
+6. Add a separate saved-context recommendation endpoint whose success commits
+   exactly one bounded event while the Stage 3 stateless endpoint stays
+   cookie-agnostic and read-only.
+7. Add accessible opt-in, rehydration, saved-preference, feedback, expiry, and
+   clear-data behavior while retaining the complete opt-out flow.
+8. Add explicit dry-run-first retention operations with bounded batches and no
+   startup or scheduled side effect.
+9. Extend the disposable full stack with real same-site cookie, origin, CSRF,
+   persistence, event, deletion, and retention fixtures.
+10. Pass migration, concurrency, ML, API, web, browser, accessibility, privacy,
+    security, Docker, OpenAPI, and complete Stage 1–3 regression gates.
+11. Synchronize verified documentation and record the exact Stage 5
+    interaction-data handoff.
+
+Stage 4 is complete only when no identity exists before current-version
+consent; raw credentials never leave the HttpOnly-cookie boundary; preference
+and feedback state is bounded, atomic, idempotent, isolated, and deletable;
+dislikes, affinity, and played adjustment are deterministic and observable;
+every successful personalized generation has one matching bounded event; the
+opt-out endpoint remains read-only; and all earlier-stage regressions pass.
+
+The 30-game synthetic catalog and local feedback prove lifecycle,
+reproducibility, integration, and explanation behavior only. Collaborative and
+hybrid ranking remain Stage 5 work, while comparative ranking evaluation and
+quality claims remain Stage 6 work.
 
 ## Stage 5 — Collaborative and hybrid ranking
 

@@ -79,6 +79,49 @@ canonicalized leave catalog behavior available and recommendation capability
 unavailable. The latter is reported as `catalog_invalid`. See the
 [Stage 3 engineering plan](stage-3-content-recommendation-mvp-plan.md).
 
+### Planned Stage 4 activation
+
+The
+[Stage 4 feedback-and-persistence plan](stage-4-feedback-persistence-plan.md)
+adds a separate explicit-consent path without changing the Stage 3 stateless
+route:
+
+```mermaid
+flowchart LR
+    User["Anonymous user"]
+    Consent["Explicit current-version consent"]
+    Cookie["Host-only HttpOnly session cookie"]
+    API["Protected /api/v1/me contracts"]
+    State[("Consent, preferences, feedback")]
+    Base["Immutable Stage 3 artifact"]
+    Policy["Versioned feedback policy"]
+    Event[("Bounded recommendation event")]
+
+    User --> Consent
+    Consent --> Cookie
+    Cookie --> API
+    API --> State
+    API --> Base
+    State --> Policy
+    Base --> Policy
+    Policy --> API
+    API --> Event
+    API --> User
+```
+
+Only the session-creation contract may create identity. The raw token remains
+in the browser cookie; PostgreSQL will store a keyed digest plus explicit
+consent and expiry. Protected unsafe requests will use exact-origin,
+credentialed CORS, and CSRF checks. Saved preferences and temporal feedback
+remain user-scoped relational state and never enter the artifact.
+
+The stateless endpoint retains one repeatable-read read-only snapshot. The
+planned personalized endpoint owns one bounded repeatable-read read-write
+transaction from identity/context resolution through ranking and insertion of
+the exact matching model/data/policy-versioned event. Deletion and explicit
+retention remove user-owned state through tested cascades. None of this Stage 4
+runtime behavior is implemented merely because the plan is ready.
+
 ## Repository boundaries
 
 ### Web
@@ -94,6 +137,12 @@ interactive state. Catalog request state is normalized into URL search
 parameters so reload and browser history restore the same request without a
 global store. Recommendation selections deliberately remain local to one
 select-review-results flow and are discarded on restart or navigation.
+
+Stage 4 plans an opt-in durable branch of `/recommendations` with consent,
+rehydration, feedback, expiry, and clear-data states. The opt-out branch will
+retain the current request-only behavior. Credentials remain in an HttpOnly
+cookie; profile data will not be copied into URLs or browser persistent
+storage, and the browser will continue to render rather than calculate ranks.
 
 All browser requests pass through one project-owned client configured by the
 validated `NEXT_PUBLIC_API_URL`. Its compile-time contracts are generated from
@@ -123,12 +172,23 @@ not returned directly as API responses. Recommendation status and execution
 read one eager `REPEATABLE READ, READ ONLY` snapshot and compare its canonical
 fingerprint with the immutable startup artifact before returning ready data.
 
+Stage 4 plans protected `/api/v1/me` contracts whose application services own
+identity, validation, locking, transaction, persistence, and event semantics.
+This new read-write path will not weaken the existing stateless read-only path.
+Routes remain thin and repositories remain explicitly user-scoped.
+
 ### Database
 
 PostgreSQL stores games, taxonomy, users, preferences, interactions, and
 recommendation events. Schema changes use Alembic migrations. Flexible JSON
 is limited to request context and compact result summaries where a relational
 shape would not be stable.
+
+Stage 4 plans to replace plaintext anonymous-key semantics with a consented,
+expiring token digest; add temporal active/superseded interaction rules; and
+extend recommendation events with data and personalization-policy identity.
+Legacy placeholder rows must be preserved but cannot be treated as consented
+sessions.
 
 ### Machine learning
 
@@ -143,6 +203,11 @@ operators to rotate the configured path and rebuild and validate the immutable
 artifact before an API restart. Training is never triggered by a request or
 ordinary application startup. The API loads one known validated artifact version and exposes an
 honest unconfigured, unavailable, or ready status.
+
+The planned feedback policy will consume bounded saved/interaction context as
+per-request immutable input, use existing artifact vectors, and expose its own
+identity and contribution. User identity and mutable state will never be
+written into an artifact or application-lifecycle ranker singleton.
 
 ### External data
 
@@ -187,8 +252,9 @@ add and validate the public site origin before deployment.
 - Secrets and local datasets are excluded from version control.
 - Structured logging and centralized error handling begin in Stage 1.
 - Model names, versions, and component scores remain observable.
-- Authentication is deferred, but user identifiers are not embedded into
-  recommendation algorithms.
+- Account authentication remains deferred. Stage 4 plans only a
+  possession-based anonymous session credential, and user identifiers are not
+  embedded into recommendation algorithms.
 
 ## Current state
 
@@ -206,3 +272,7 @@ generated browser contract, and anonymous explained-result experience are
 active. Authentication, persisted preferences, feedback,
 recommendation-event logging, formal evaluation, and production deployment
 remain later components.
+
+The Stage 4 engineering plan is ready, but its consented identity, durable
+preferences, feedback writes/adjustments, event logging, retention operations,
+and persistent browser experience have not been implemented.

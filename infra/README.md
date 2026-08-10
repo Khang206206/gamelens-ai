@@ -51,6 +51,22 @@ containers, network, and artifact volume; it never touches persistent
 development data. The verified matrix contains 25 Playwright passes: 15
 Chromium plus five smoke cases in each of Firefox and WebKit.
 
+The
+[Stage 4 feedback-and-persistence plan](../docs/stage-4-feedback-persistence-plan.md)
+will extend this disposable stack with real anonymous-cookie, exact-origin,
+CSRF, preference, feedback, event, and clear-data acceptance. The plan uses web
+and API aliases under one reserved test site so browser SameSite behavior is
+exercised rather than replaced by a fabricated auth header. This topology and
+its session secret/cookie settings are not implemented yet.
+
+Stage 4 also plans an explicit dry-run-first retention command. Retention will
+never run from Compose startup, migration, seed, model build, general tests, or
+ordinary teardown. Automated purge acceptance may target only the guarded
+disposable database; it may not mount or delete development data. Fixed session
+expiry makes owned state purge-eligible rather than pretending an unscheduled
+command deletes it at an exact instant. Permanent bulk session revocation will
+use a separately confirmed direct command with no general Make wrapper.
+
 The API image is a non-root Python 3.12 development image built from a
 transitive dependency lock. The `quality` Compose service bind-mounts the
 working tree for current-source test, lint, and format commands. Production

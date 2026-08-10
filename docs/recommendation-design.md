@@ -109,6 +109,46 @@ serialized weighted contributions sum exactly to the serialized final score,
 and ties resolve by final score, content score, popularity score, then stable
 slug.
 
+## Planned feedback and persistence layer
+
+The detailed
+[Stage 4 engineering plan](stage-4-feedback-persistence-plan.md) defines a
+separate explicit-consent personalized path. Planning does not activate it:
+the current `POST /api/v1/recommendations` remains request-scoped, ignores any
+future identity cookie, and performs no write.
+
+The planned personalized endpoint will use canonical saved preferences as its
+base context and apply a separately versioned feedback policy before top-K
+truncation:
+
+- Explicit dislikes are hard exclusions.
+- Active likes and, when no reaction exists, ratings of at least 7 form a
+  deduplicated recent-five positive feedback profile.
+- Positive source games are excluded from their own results.
+- When a profile exists, 90% of the Stage 3 base score combines with 10%
+  artifact-vector affinity; without a profile the exact base score/order is
+  retained.
+- Played candidates remain eligible and receive a fixed 0.5 adjustment.
+- Wishlist is persisted but has no ranking effect in policy version 1.
+- Every intermediate and final value uses the existing fixed scale and
+  round-half-up policy with a complete stable tie-break.
+
+The intended feedback policy identity is distinct from content model
+`gamelens-content-tfidf` version `1.0.0`. Base content, platform, and popularity
+components remain visible; personalized responses add affinity and played
+adjustment details that reconstruct the final score. If implementation changes
+artifact-owned feature or base-ranking semantics, it must instead bump the
+model/code compatibility, rotate the artifact path, rebuild, and record that
+decision. It may not silently redefine the existing artifact.
+
+User IDs, token digests, consent, preferences, interactions, and events never
+enter the immutable artifact. A successful personalized generation will commit
+one bounded event carrying exact model, data-fingerprint, policy, bounded
+context metadata, a fingerprint of the complete effective state, and compact
+result identity. The event is audit/correlation data for server generation,
+not a standalone replay snapshot, impression, click, conversion, or positive
+label.
+
 ## Response evidence
 
 Each Stage 3 recommendation returns:
@@ -158,6 +198,10 @@ adopting stricter loader rules rotate `MODEL_ARTIFACT_PATH`, rebuild and
 validate the bundle, and restart the API instead of changing an artifact in
 place.
 
+Stage 4 feedback computation will consume the loaded artifact read-only. User
+state remains bounded per-request input and is never serialized back into the
+bundle or retained on the application-lifecycle ranker.
+
 ## Evaluation
 
 After an interaction pipeline exists, offline evaluation will compare models
@@ -178,7 +222,8 @@ as machine-readable data and a Markdown report; no result is invented.
 ## Deferred work
 
 Persistent preferences, feedback adjustment, disliked-game filtering, and
-recommendation-event logging are Stage 4 work. Collaborative filtering and
-content/collaborative hybrid ranking are Stage 5 work. Formal ranking
-evaluation is Stage 6 work. Semantic embeddings, exploration, LLM
-explanations, and diversity reranking remain outside the first MVP model.
+recommendation-event logging are specified by the Stage 4 engineering plan but
+are not implemented yet. Collaborative filtering and content/collaborative
+hybrid ranking are Stage 5 work. Formal ranking evaluation is Stage 6 work.
+Semantic embeddings, exploration, LLM explanations, and diversity reranking
+remain outside the first MVP model.

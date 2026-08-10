@@ -13,6 +13,12 @@ The completed
 artifact, scoring, contract, and verification decisions. Anonymous selections
 are request-scoped; persistence and feedback are Stage 4 work.
 
+The detailed
+[Stage 4 feedback-and-persistence plan](../../docs/stage-4-feedback-persistence-plan.md)
+is ready; none of its identity, preference, feedback, personalized-event, or
+retention runtime contracts is implemented yet. The endpoint and command
+tables below remain the current source of truth.
+
 ## Responsibilities
 
 The dependency direction is:
@@ -24,6 +30,14 @@ route -> application service -> repository/model service -> PostgreSQL/artifact
 Routes parse HTTP input, services own use cases, repositories own queries,
 Pydantic schemas define external contracts, and SQLAlchemy models remain
 internal.
+
+The Stage 4 plan will add a distinct protected `/api/v1/me` boundary after
+explicit consent. It keeps `POST /api/v1/recommendations` cookie-agnostic and
+read-only, while planned session, preference, feedback, and personalized
+recommendation services own their user-scoped validation, locking,
+transactions, persistence, and bounded event writes. Raw anonymous credentials
+will remain in a host-only HttpOnly cookie and never enter response models,
+logs, PostgreSQL, or model artifacts.
 
 ## Docker-first setup
 
@@ -243,7 +257,10 @@ It emits structured inserted, updated, and unchanged counters.
 
 - No authentication or authorization.
 - No preference, interaction, or feedback write endpoints; persistence begins
-  in Stage 4.
+  in the
+  [Stage 4 engineering plan](../../docs/stage-4-feedback-persistence-plan.md).
+- No explicit-consent anonymous session, personalized `/me` recommendation,
+  recommendation-event write, or retention command is implemented yet.
 - No online fit, background rebuild, hot reload, or automatic artifact
   promotion. Operators build explicitly and restart the API to activate.
 - No formal recommendation-quality evaluation on the synthetic seed; that is
