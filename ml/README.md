@@ -9,6 +9,11 @@ orchestration, and catalog response models; the browser never trains or ranks.
 The complete decision and verification record is in the
 [Stage 3 plan](../docs/stage-3-content-recommendation-mvp-plan.md).
 
+The
+[Stage 4 feedback-and-persistence plan](../docs/stage-4-feedback-persistence-plan.md)
+is ready; its feedback policy is not implemented. The current package still
+ranks request-scoped context only and has no user identity or durable state.
+
 ## Package and reproducibility
 
 `gamelens-recommender` targets Python 3.12 and exactly pins NumPy 2.5.1, SciPy
@@ -39,6 +44,23 @@ round-half-up. Ties resolve by final score, content score, popularity score,
 then stable slug. Selected games and candidates with zero content support are
 excluded. Returned prose is generated only from the same structured evidence
 that accompanies each score.
+
+## Planned Stage 4 feedback policy
+
+Stage 4 plans a separately identified pure policy over the immutable Stage 3
+artifact. Saved preferences will produce the base context; dislikes will be
+hard exclusions; bounded likes/high ratings will produce positive
+artifact-vector affinity; played state will apply an observable adjustment;
+wishlist will remain neutral in policy version 1. Filtering and adjustment will occur
+before top-K, use the existing fixed scale, and preserve exact Stage 3 score/
+order when no effective feedback exists.
+
+The policy will receive only stable slugs and bounded feedback context. It will
+never receive an internal user ID, raw/digested credential, consent metadata,
+or mutable database object, and it will never write into an artifact. Exact
+weights, evidence, tie behavior, and whether artifact compatibility remains
+unchanged must pass the Stage 4 acceptance gate before this section becomes an
+implemented contract.
 
 ## Artifact contract
 
@@ -88,5 +110,6 @@ database in 0.43 seconds. Ten complete validation loads from the Docker Desktop
 bind mount had min/median/max latency of 89.64/95.54/274.79 ms. These are local
 diagnostics, not performance guarantees or recommendation-quality evidence.
 
-Persistent preferences and feedback begin in Stage 4, collaborative filtering
-in Stage 5, and formal offline ranking evaluation in Stage 6.
+Persistent preferences and feedback are planned for Stage 4, collaborative
+filtering begins in Stage 5, and formal offline ranking evaluation remains
+Stage 6 work.

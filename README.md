@@ -10,7 +10,7 @@ game metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 3 complete (verified 2026-08-07)**
+**Stage 3 complete (verified 2026-08-07); Stage 4 engineering plan ready**
 
 The repository now provides:
 
@@ -43,6 +43,13 @@ corrupt, incompatible, or stale artifacts and invalid current catalog data fail
 clearly without affecting catalog routes. Invalid catalog data is reported as
 `catalog_invalid`. Scores are deterministic ranking signals, not probabilities
 or claims of real-world recommendation quality.
+
+The detailed
+[Stage 4 feedback-and-persistence engineering plan](docs/stage-4-feedback-persistence-plan.md)
+is ready; implementation has not started. The current runtime therefore still
+creates no anonymous identity, persists no onboarding choice or feedback, and
+logs no recommendation event. Stage 4 will add only an explicit-consent durable
+path while preserving the current request-scoped recommendation contract.
 
 ## Implemented user experience
 
@@ -319,13 +326,17 @@ for Stage 7 rather than hidden behind an unpinned build-time upgrade.
 - [Stage 1 engineering plan](docs/stage-1-backend-database-plan.md)
 - [Stage 2 engineering plan and completion record](docs/stage-2-frontend-foundation-plan.md)
 - [Stage 3 plan and completion record](docs/stage-3-content-recommendation-mvp-plan.md)
+- [Stage 4 feedback-and-persistence engineering plan](docs/stage-4-feedback-persistence-plan.md)
 - [Web application commands and contracts](apps/web/README.md)
 - [API setup and contracts](apps/api/README.md)
 - [Infrastructure workflows](infra/README.md)
 
 ## Current limitations
 
-- No authentication or authorization.
+- No authentication or authorization. The explicit-consent anonymous identity
+  lifecycle is planned in the
+  [Stage 4 engineering plan](docs/stage-4-feedback-persistence-plan.md), not
+  implemented.
 - No preference, interaction, feedback, or recommendation-event write APIs.
 - Recommendation context is anonymous and request-scoped; there is no durable
   history or feedback adjustment.
