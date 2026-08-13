@@ -21,7 +21,7 @@ services:
       start_period: 5s
 
   api:
-    image: gamelens-ai-api:stage3
+    image: gamelens-ai-api:stage4
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -37,6 +37,16 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       MODEL_ARTIFACT_PATH: ${MODEL_ARTIFACT_PATH:-}
+      ANONYMOUS_SESSION_SECRET: ${ANONYMOUS_SESSION_SECRET:-development-only-stage-4-session-secret-change-me}
+      ANONYMOUS_SESSION_COOKIE_NAME: ${ANONYMOUS_SESSION_COOKIE_NAME:-gamelens_session}
+      ANONYMOUS_SESSION_COOKIE_PATH: ${ANONYMOUS_SESSION_COOKIE_PATH:-/api/v1}
+      ANONYMOUS_SESSION_COOKIE_SECURE: ${ANONYMOUS_SESSION_COOKIE_SECURE:-false}
+      ANONYMOUS_SESSION_COOKIE_SAMESITE: ${ANONYMOUS_SESSION_COOKIE_SAMESITE:-lax}
+      ANONYMOUS_SESSION_TTL_SECONDS: ${ANONYMOUS_SESSION_TTL_SECONDS:-15552000}
+      CONSENT_VERSION: ${CONSENT_VERSION:-stage-4-v1}
+      CSRF_HEADER_NAME: ${CSRF_HEADER_NAME:-X-CSRF-Token}
+      RECOMMENDATION_EVENT_RETENTION_DAYS: ${RECOMMENDATION_EVENT_RETENTION_DAYS:-90}
+      RETENTION_BATCH_SIZE: ${RETENTION_BATCH_SIZE:-500}
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:
@@ -58,7 +68,7 @@ services:
   model-builder:
     profiles:
       - model
-    image: gamelens-ai-api:stage3
+    image: gamelens-ai-api:stage4
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -83,12 +93,13 @@ services:
       - --help
 
   web:
-    image: gamelens-ai-web:stage3
+    image: gamelens-ai-web:stage4
     build:
       context: ./apps/web
       dockerfile: Dockerfile
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_CONSENT_VERSION: ${NEXT_PUBLIC_CONSENT_VERSION:-stage-4-v1}
     ports:
       - "127.0.0.1:${WEB_PORT:-3000}:3000"
     depends_on:
@@ -112,7 +123,7 @@ services:
   quality:
     profiles:
       - quality
-    image: gamelens-ai-api:stage3
+    image: gamelens-ai-api:stage4
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -120,6 +131,7 @@ services:
       ENVIRONMENT: test
       DATABASE_URL: postgresql+psycopg://gamelens_test:gamelens_test_only@localhost:5432/gamelens_test
       CORS_ORIGINS: http://testserver
+      ANONYMOUS_SESSION_SECRET: stage-4-fast-tests-only-session-secret
       LOG_LEVEL: WARNING
       RUFF_CACHE_DIR: /tmp/ruff-cache
       PYTHONPATH: /workspace/ml/src

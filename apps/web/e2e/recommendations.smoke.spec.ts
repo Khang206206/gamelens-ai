@@ -44,7 +44,7 @@ test("keyboard user receives explained artifact-backed recommendations", async (
   await expect(
     page.getByRole("heading", { name: "Ready for the content model" }),
   ).toBeFocused();
-  await expect(page.getByText(/not saved to an account/)).toBeVisible();
+  await expect(page.getByText(/does not create a user/)).toBeVisible();
 
   const submit = page.getByRole("button", { name: "Get recommendations" });
   await tabTo(page, submit);

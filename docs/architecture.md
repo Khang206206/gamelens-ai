@@ -79,11 +79,11 @@ canonicalized leave catalog behavior available and recommendation capability
 unavailable. The latter is reported as `catalog_invalid`. See the
 [Stage 3 engineering plan](stage-3-content-recommendation-mvp-plan.md).
 
-### Planned Stage 4 activation
+### Stage 4 activation (verified 2026-08-13)
 
 The
 [Stage 4 feedback-and-persistence plan](stage-4-feedback-persistence-plan.md)
-adds a separate explicit-consent path without changing the Stage 3 stateless
+implements a separate explicit-consent path without changing the Stage 3 stateless
 route:
 
 ```mermaid
@@ -110,17 +110,20 @@ flowchart LR
 ```
 
 Only the session-creation contract may create identity. The raw token remains
-in the browser cookie; PostgreSQL will store a keyed digest plus explicit
-consent and expiry. Protected unsafe requests will use exact-origin,
-credentialed CORS, and CSRF checks. Saved preferences and temporal feedback
-remain user-scoped relational state and never enter the artifact.
+in the host-only HttpOnly browser cookie; PostgreSQL stores a domain-separated
+HMAC-SHA-256 digest plus explicit consent, expiry, and revocation state.
+Protected unsafe requests use exact-origin, credentialed CORS, and CSRF checks.
+Saved preferences and temporal feedback remain user-scoped relational state
+and never enter the artifact.
 
 The stateless endpoint retains one repeatable-read read-only snapshot. The
-planned personalized endpoint owns one bounded repeatable-read read-write
+personalized endpoint owns one bounded repeatable-read read-write
 transaction from identity/context resolution through ranking and insertion of
 the exact matching model/data/policy-versioned event. Deletion and explicit
-retention remove user-owned state through tested cascades. None of this Stage 4
-runtime behavior is implemented merely because the plan is ready.
+retention remove user-owned state through relational cascades. Fast tests cover
+the application boundaries, and 49 disposable-PostgreSQL integration tests
+verify the Stage 4 schema, populated legacy upgrade, transaction/concurrency,
+event/delete correlation, cascades, and retention behavior.
 
 ## Repository boundaries
 
@@ -138,11 +141,13 @@ parameters so reload and browser history restore the same request without a
 global store. Recommendation selections deliberately remain local to one
 select-review-results flow and are discarded on restart or navigation.
 
-Stage 4 plans an opt-in durable branch of `/recommendations` with consent,
-rehydration, feedback, expiry, and clear-data states. The opt-out branch will
-retain the current request-only behavior. Credentials remain in an HttpOnly
-cookie; profile data will not be copied into URLs or browser persistent
-storage, and the browser will continue to render rather than calculate ranks.
+Stage 4 adds an opt-in durable branch of `/recommendations` with consent,
+rehydration, feedback, expiry, and clear-data states. The opt-out branch
+retains the request-only behavior. Credentials remain in an HttpOnly cookie;
+profile data is not copied into URLs or Web Storage, and the browser renders
+rather than calculates ranks. Component and client tests pass. The
+full-Chromium and critical Firefox/WebKit acceptance matrix passes 38/38 in 1.3
+minutes without retry against the exact-host `gamelens.test` topology.
 
 All browser requests pass through one project-owned client configured by the
 validated `NEXT_PUBLIC_API_URL`. Its compile-time contracts are generated from
@@ -172,10 +177,12 @@ not returned directly as API responses. Recommendation status and execution
 read one eager `REPEATABLE READ, READ ONLY` snapshot and compare its canonical
 fingerprint with the immutable startup artifact before returning ready data.
 
-Stage 4 plans protected `/api/v1/me` contracts whose application services own
-identity, validation, locking, transaction, persistence, and event semantics.
-This new read-write path will not weaken the existing stateless read-only path.
-Routes remain thin and repositories remain explicitly user-scoped.
+Stage 4 implements protected `/api/v1/me`, `/api/v1/me/preferences`,
+`/api/v1/me/feedback`, `/api/v1/me/games/{game_id}/feedback`, and
+`/api/v1/me/recommendations` contracts. Application services own identity,
+validation, locking, transaction, persistence, and event semantics. This
+read-write path does not replace the stateless read-only path. Routes remain
+thin and repositories remain explicitly user-scoped.
 
 ### Database
 
@@ -184,11 +191,14 @@ recommendation events. Schema changes use Alembic migrations. Flexible JSON
 is limited to request context and compact result summaries where a relational
 shape would not be stable.
 
-Stage 4 plans to replace plaintext anonymous-key semantics with a consented,
-expiring token digest; add temporal active/superseded interaction rules; and
+Stage 4 migrations replace plaintext anonymous-key semantics with a consented,
+expiring token digest, add temporal active/superseded interaction rules, and
 extend recommendation events with data and personalization-policy identity.
-Legacy placeholder rows must be preserved but cannot be treated as consented
-sessions.
+The expected Alembic head is `0005_stage_4_event_contract`. Legacy placeholder
+rows are deterministically converted to unique revoked, inaccessible
+identities and are not treated as consented sessions. The populated `0002` to
+head PostgreSQL upgrade passes; complete downgrade evidence remains a final
+documentation gate.
 
 ### Machine learning
 
@@ -204,10 +214,11 @@ artifact before an API restart. Training is never triggered by a request or
 ordinary application startup. The API loads one known validated artifact version and exposes an
 honest unconfigured, unavailable, or ready status.
 
-The planned feedback policy will consume bounded saved/interaction context as
-per-request immutable input, use existing artifact vectors, and expose its own
-identity and contribution. User identity and mutable state will never be
-written into an artifact or application-lifecycle ranker singleton.
+The implemented `gamelens-feedback-adjustment/1.0.0` policy consumes bounded
+saved/interaction context as immutable per-request input, uses existing
+artifact vectors, and exposes its own identity and contribution. User identity
+and mutable state never enter an artifact or the application-lifecycle ranker
+singleton. The Stage 3 model and artifact identity remain unchanged.
 
 ### External data
 
@@ -252,7 +263,7 @@ add and validate the public site origin before deployment.
 - Secrets and local datasets are excluded from version control.
 - Structured logging and centralized error handling begin in Stage 1.
 - Model names, versions, and component scores remain observable.
-- Account authentication remains deferred. Stage 4 plans only a
+- Account authentication remains deferred. Stage 4 implements only a
   possession-based anonymous session credential, and user identifiers are not
   embedded into recommendation algorithms.
 
@@ -273,6 +284,24 @@ active. Authentication, persisted preferences, feedback,
 recommendation-event logging, formal evaluation, and production deployment
 remain later components.
 
-The Stage 4 engineering plan is ready, but its consented identity, durable
-preferences, feedback writes/adjustments, event logging, retention operations,
-and persistent browser experience have not been implemented.
+Stage 4 is complete and verified. Its consented identity, durable
+preferences, temporal feedback writes, deterministic feedback adjustment,
+personalized recommendation-event logging, retention/revocation operations,
+and persistent browser components are present on the implementation branch.
+The E2E topology uses the exact hostname `gamelens.test` for the web origin on
+port 3000 and API on port 8000. The web container shares the API network
+namespace, preserving a first-party cookie while exercising credentialed
+cross-origin requests across ports. The disposable PostgreSQL suite passes 49
+tests; companion fast gates pass 184 API, 52 ML, and 76 web tests. The Docker
+browser gate passes 38/38 with 28 Chromium, 5 Firefox, and 5 WebKit cases,
+including a real WebKit consent `201`, active axe, and real Origin/CSRF `403`
+paths. Teardown removes the isolated containers, network, and volume and leaves
+an empty Compose process list. The API Dockerfile removes unused Debian
+`perl-base` after all install steps, resolving
+the earlier two critical and two high findings. The comprehensive scan of
+rebuilt no-cache `gamelens-ai-api:stage4-test` digest prefix `11b2f940731e`
+reports 0 critical, 0 high, 3 medium, 27 low, and 2 unspecified findings across
+193 packages; its only-fixed scan reports no actionable fixed advisory.
+Runtime imports, `pip check`, and all 49 PostgreSQL passes remain green. Final
+generated-output, credential, trace, coverage, and unrelated-diff review is
+clean.

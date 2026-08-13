@@ -19,7 +19,7 @@ services:
       start_period: 3s
 
   test-api:
-    image: gamelens-ai-api:stage3-test
+    image: gamelens-ai-api:stage4-test
     build:
       context: ..
       dockerfile: apps/api/Dockerfile
@@ -28,6 +28,7 @@ services:
       DATABASE_URL: postgresql+psycopg://gamelens_test:gamelens_test_only@test-db:5432/gamelens_test
       GAMELENS_TEST_DATABASE_URL: postgresql+psycopg://gamelens_test:gamelens_test_only@test-db:5432/gamelens_test
       CORS_ORIGINS: http://testserver
+      ANONYMOUS_SESSION_SECRET: stage-4-postgres-tests-only-session-secret
       LOG_LEVEL: WARNING
       GAMELENS_ALLOW_TEST_DATABASE_RESET: "true"
     depends_on:

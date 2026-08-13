@@ -1,7 +1,7 @@
 from typing import Protocol
 
-from gamelens_recommender import CatalogSnapshot, UserContext
-from gamelens_recommender.schemas import RankingResult
+from gamelens_recommender import ActiveGameFeedback, CatalogSnapshot, UserContext
+from gamelens_recommender.schemas import PersonalizedRankingResult, RankingResult
 
 from app.schemas.model_status import ModelStatusResponse
 
@@ -23,3 +23,11 @@ class RecommendationService(Protocol):
     ) -> ModelStatusResponse: ...
 
     def recommend(self, *, snapshot: CatalogSnapshot, context: UserContext) -> RankingResult: ...
+
+    def recommend_personalized(
+        self,
+        *,
+        snapshot: CatalogSnapshot,
+        context: UserContext,
+        feedback: tuple[ActiveGameFeedback, ...],
+    ) -> PersonalizedRankingResult: ...

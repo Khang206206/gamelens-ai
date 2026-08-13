@@ -12,7 +12,7 @@ def test_json_formatter_redacts_database_credentials_and_passwords() -> None:
         lineno=1,
         msg=(
             "Failed postgresql+psycopg://gamelens:super-secret@db:5432/gamelens "
-            "password=another-secret"
+            "password=another-secret token=" + "A" * 43
         ),
         args=(),
         exc_info=None,
@@ -23,6 +23,7 @@ def test_json_formatter_redacts_database_credentials_and_passwords() -> None:
 
     assert "super-secret" not in payload["message"]
     assert "another-secret" not in payload["message"]
+    assert "A" * 43 not in payload["message"]
     assert "postgresql+psycopg://gamelens:***@db:5432/gamelens" in payload["message"]
     assert payload["error_type"] == "OperationalError"
 

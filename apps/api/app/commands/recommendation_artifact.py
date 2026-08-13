@@ -6,7 +6,7 @@ from gamelens_recommender import CatalogSnapshot, build_artifact
 from gamelens_recommender.training import inspect_artifact
 
 from app.core.config import get_settings
-from app.db.session import create_database_engine, create_session_factory
+from app.db.session import begin_repeatable_read, create_database_engine, create_session_factory
 from app.repositories.recommendation_catalog import (
     RecommendationCatalogRepository,
     RecommendationCatalogSnapshot,
@@ -27,6 +27,7 @@ def build(output: Path) -> dict[str, object]:
     try:
         session_factory = create_session_factory(engine)
         with session_factory() as session:
+            begin_repeatable_read(session, read_only=True)
             snapshot = _buildable_snapshot(RecommendationCatalogRepository(session).load())
             path = build_artifact(snapshot, output)
         return inspect_artifact(path)

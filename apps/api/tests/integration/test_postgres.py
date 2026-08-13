@@ -1,8 +1,10 @@
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
 import pytest
 from app.core.config import Settings
+from app.core.security import generate_session_token, session_token_digest
 from app.db.models import (
     Game,
     Genre,
@@ -27,6 +29,8 @@ from gamelens_recommender import build_artifact
 from sqlalchemy import Engine, delete, func, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
+from tests.conftest import make_consented_user, make_recommendation_event
 
 pytestmark = pytest.mark.integration
 
@@ -210,7 +214,7 @@ def test_duplicate_association_pair_is_rejected(postgres_session: Session) -> No
 
 
 def test_invalid_preference_weight_is_rejected(postgres_session: Session) -> None:
-    user = User(anonymous_key="constraint-user")
+    user = make_consented_user("constraint-user")
     user.preferences.append(
         UserPreference(preference_type="genre", value="rpg", weight=Decimal("1.5"))
     )
@@ -221,7 +225,7 @@ def test_invalid_preference_weight_is_rejected(postgres_session: Session) -> Non
 
 
 def test_invalid_preference_type_is_rejected(postgres_session: Session) -> None:
-    user = User(anonymous_key="invalid-preference-type-user")
+    user = make_consented_user("invalid-preference-type-user")
     user.preferences.append(
         UserPreference(preference_type="unknown", value="rpg", weight=Decimal("1"))
     )
@@ -232,7 +236,7 @@ def test_invalid_preference_type_is_rejected(postgres_session: Session) -> None:
 
 
 def test_duplicate_user_preference_is_rejected(postgres_session: Session) -> None:
-    user = User(anonymous_key="duplicate-preference-user")
+    user = make_consented_user("duplicate-preference-user")
     user.preferences.extend(
         [
             UserPreference(preference_type="genre", value="rpg", weight=Decimal("1")),
@@ -274,7 +278,7 @@ def test_invalid_interaction_type_or_value_is_rejected(
     value: Decimal | None,
     slug: str,
 ) -> None:
-    user = User(anonymous_key=f"{slug}-user")
+    user = make_consented_user(f"{slug}-user")
     game = make_game(slug)
     postgres_session.add_all([user, game])
     postgres_session.flush()
@@ -292,27 +296,28 @@ def test_invalid_interaction_type_or_value_is_rejected(
 
 
 def test_valid_interaction_value_boundaries_are_accepted(postgres_session: Session) -> None:
-    user = User(anonymous_key="valid-interaction-user")
-    game = make_game("valid-interaction-game")
-    postgres_session.add_all([user, game])
+    user = make_consented_user("valid-interaction-user")
+    lower_game = make_game("valid-interaction-lower-game")
+    upper_game = make_game("valid-interaction-upper-game")
+    postgres_session.add_all([user, lower_game, upper_game])
     postgres_session.flush()
     postgres_session.add_all(
         [
             Interaction(
                 user_id=user.id,
-                game_id=game.id,
+                game_id=lower_game.id,
                 interaction_type=InteractionType.RATED,
                 value=Decimal("0"),
             ),
             Interaction(
                 user_id=user.id,
-                game_id=game.id,
+                game_id=upper_game.id,
                 interaction_type=InteractionType.RATED,
                 value=Decimal("10"),
             ),
             Interaction(
                 user_id=user.id,
-                game_id=game.id,
+                game_id=lower_game.id,
                 interaction_type=InteractionType.LIKED,
             ),
         ]
@@ -328,7 +333,7 @@ def test_valid_interaction_value_boundaries_are_accepted(postgres_session: Sessi
 def test_user_delete_cascades_but_game_delete_is_restricted(
     postgres_session: Session,
 ) -> None:
-    user = User(anonymous_key="delete-policy-user")
+    user = make_consented_user("delete-policy-user")
     game = make_game("delete-policy-game")
     postgres_session.add_all([user, game])
     postgres_session.flush()
@@ -355,7 +360,7 @@ def test_user_delete_cascades_but_game_delete_is_restricted(
 
 
 @pytest.mark.parametrize(
-    ("request_context", "result_summary", "anonymous_key"),
+    ("request_context", "result_summary", "identity"),
     [
         ([], None, "json-context-array-user"),
         ({}, {"game_id": 1}, "json-summary-object-user"),
@@ -365,33 +370,31 @@ def test_recommendation_event_jsonb_shapes_are_enforced(
     postgres_session: Session,
     request_context: object,
     result_summary: object,
-    anonymous_key: str,
+    identity: str,
 ) -> None:
-    user = User(anonymous_key=anonymous_key)
+    user = make_consented_user(identity)
     postgres_session.add(user)
     postgres_session.flush()
-    postgres_session.add(
-        RecommendationEvent(
-            user_id=user.id,
-            model_name="test",
-            model_version="1",
-            request_context=request_context,
-            result_summary=result_summary,
-        )
+    event = make_recommendation_event(
+        user.id,
+        identity,
+        request_context=request_context,
+        result_summary=[],
     )
+    event.result_summary = result_summary
+    postgres_session.add(event)
 
     with pytest.raises(IntegrityError):
         postgres_session.commit()
 
 
 def test_recommendation_event_jsonb_defaults_and_arrays(postgres_session: Session) -> None:
-    user = User(anonymous_key="valid-json-shape-user")
+    user = make_consented_user("valid-json-shape-user")
     postgres_session.add(user)
     postgres_session.flush()
-    event = RecommendationEvent(
-        user_id=user.id,
-        model_name="test",
-        model_version="1",
+    event = make_recommendation_event(
+        user.id,
+        "valid-json-shape-user",
         result_summary=[{"game_id": 1}],
     )
     postgres_session.add(event)
@@ -452,6 +455,23 @@ def test_ready_recommendation_uses_postgresql_snapshot_without_writes(
     snapshot = RecommendationCatalogRepository(postgres_session).load().model_snapshot
     postgres_session.rollback()
     artifact = build_artifact(snapshot, tmp_path / "content-v1")
+    raw_token = generate_session_token()
+    consented_at = datetime.now(UTC)
+    user = make_consented_user(
+        "stateless-valid-cookie-user",
+        consent_version=integration_settings.consent_version,
+        consented_at=consented_at,
+        expires_at=consented_at + timedelta(days=1),
+    )
+    user.anonymous_token_digest = session_token_digest(
+        integration_settings.anonymous_session_secret,
+        raw_token,
+    )
+    user.preferences.append(
+        UserPreference(preference_type="genre", value="rpg", weight=Decimal("1"))
+    )
+    postgres_session.add(user)
+    postgres_session.commit()
     tracked_tables = (
         Game.__table__,
         Genre.__table__,
@@ -480,6 +500,14 @@ def test_ready_recommendation_uses_postgresql_snapshot_without_writes(
         status = client.get("/api/v1/models/status")
         response = client.post(
             "/api/v1/recommendations",
+            headers={
+                "Cookie": (f"{integration_settings.anonymous_session_cookie_name}={raw_token}")
+            },
+            json={"selected_game_ids": [game_id], "preferred_genres": ["strategy"]},
+        )
+        malformed_cookie_response = client.post(
+            "/api/v1/recommendations",
+            headers={"Cookie": (f"{integration_settings.anonymous_session_cookie_name}=malformed")},
             json={"selected_game_ids": [game_id], "preferred_genres": ["strategy"]},
         )
 
@@ -491,4 +519,8 @@ def test_ready_recommendation_uses_postgresql_snapshot_without_writes(
     assert status.json()["status"] == "ready"
     assert response.status_code == 200
     assert response.json()["items"]
+    assert "set-cookie" not in response.headers
+    assert malformed_cookie_response.status_code == 200
+    assert malformed_cookie_response.json()["items"]
+    assert "set-cookie" not in malformed_cookie_response.headers
     assert before == after

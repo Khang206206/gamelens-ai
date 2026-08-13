@@ -7,7 +7,9 @@ import re
 import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from gamelens_recommender.config import FEATURE_CONFIG
 
@@ -270,6 +272,15 @@ class ScoreComponent:
 
 
 @dataclass(frozen=True)
+class BaseCandidateScore:
+    slug: str
+    base_score_units: int
+    content_score_units: int
+    platform_score_units: int
+    popularity_score_units: int
+
+
+@dataclass(frozen=True)
 class SimilarSelectedGame:
     slug: str
     title: str
@@ -300,3 +311,105 @@ class RankedRecommendation:
 class RankingResult:
     items: tuple[RankedRecommendation, ...]
     reason: str
+
+
+FeedbackReaction = Literal["liked", "disliked"]
+PositiveFeedbackSourceKind = Literal["liked", "rating"]
+PersonalizedRankingReason = Literal[
+    "recommendations",
+    "no_content_support",
+    "no_eligible_candidates",
+]
+
+
+def _validate_aware_datetime(value: datetime | None, *, field: str) -> None:
+    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError(f"{field} must be a timezone-aware datetime")
+
+
+@dataclass(frozen=True)
+class ActiveGameFeedback:
+    game_slug: str
+    reaction: FeedbackReaction | None = None
+    reaction_occurred_at: datetime | None = None
+    played: bool = False
+    wishlisted: bool = False
+    rating: Decimal | None = None
+    rating_occurred_at: datetime | None = None
+
+    def validate(self) -> None:
+        if type(self.game_slug) is not str or SLUG_PATTERN.fullmatch(self.game_slug) is None:
+            raise ValueError("Feedback game slug is invalid")
+        if self.reaction not in {None, "liked", "disliked"}:
+            raise ValueError("Feedback reaction is invalid")
+        if type(self.played) is not bool or type(self.wishlisted) is not bool:
+            raise ValueError("Feedback state flags must be booleans")
+        if self.reaction is None:
+            if self.reaction_occurred_at is not None:
+                raise ValueError("Reaction timestamp requires an active reaction")
+        else:
+            _validate_aware_datetime(
+                self.reaction_occurred_at,
+                field="reaction_occurred_at",
+            )
+        if self.rating is None:
+            if self.rating_occurred_at is not None:
+                raise ValueError("Rating timestamp requires an active rating")
+        else:
+            if not isinstance(self.rating, Decimal) or not self.rating.is_finite():
+                raise ValueError("Feedback rating must be a finite Decimal")
+            if not Decimal("0") <= self.rating <= Decimal("10"):
+                raise ValueError("Feedback rating must be between 0 and 10")
+            _validate_aware_datetime(
+                self.rating_occurred_at,
+                field="rating_occurred_at",
+            )
+        if (
+            self.reaction is None
+            and not self.played
+            and not self.wishlisted
+            and self.rating is None
+        ):
+            raise ValueError("Feedback state must contain at least one active value")
+
+
+@dataclass(frozen=True)
+class PositiveFeedbackSource:
+    game_slug: str
+    kind: PositiveFeedbackSourceKind
+    occurred_at: datetime
+
+
+@dataclass(frozen=True)
+class FeedbackPolicyIdentity:
+    name: str
+    version: str
+
+
+@dataclass(frozen=True)
+class PersonalizedRecommendation:
+    slug: str
+    rank: int
+    base_score_units: int
+    base_components: tuple[ScoreComponent, ...]
+    base_evidence: RecommendationEvidence
+    explanation_summary: str
+    explanation_reasons: tuple[str, ...]
+    base_weight_units: int
+    base_contribution_units: int
+    affinity_score_units: int
+    affinity_weight_units: int
+    affinity_contribution_units: int
+    pre_played_score_units: int
+    played_factor_units: int
+    played_delta_units: int
+    final_score_units: int
+    adjustment_reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class PersonalizedRankingResult:
+    items: tuple[PersonalizedRecommendation, ...]
+    reason: PersonalizedRankingReason
+    policy: FeedbackPolicyIdentity
+    positive_sources: tuple[PositiveFeedbackSource, ...]

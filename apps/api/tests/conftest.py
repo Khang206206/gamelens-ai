@@ -1,17 +1,72 @@
+import hashlib
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 import pytest
+from app.commands.operator_safety import ALLOWED_DESTRUCTIVE_TEST_DATABASE_HOSTS
 from app.core.config import Settings
+from app.db.models import RecommendationEvent, User
 from app.main import create_app
 from fastapi.testclient import TestClient
 from sqlalchemy.engine import make_url
 
-ALLOWED_DESTRUCTIVE_TEST_DATABASE_HOSTS = frozenset(
-    {
-        "127.0.0.1",
-        "::1",
-        "localhost",
-        "test-db",
-    }
-)
+TEST_CONSENTED_AT = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def _test_digest(identity: str) -> str:
+    return hashlib.sha256(f"gamelens-test-user:{identity}".encode()).hexdigest()
+
+
+def make_consented_user(
+    identity: str,
+    *,
+    consent_version: str = "stage-4-v1",
+    consented_at: datetime = TEST_CONSENTED_AT,
+    expires_at: datetime | None = None,
+    revoked_at: datetime | None = None,
+) -> User:
+    return User(
+        anonymous_token_digest=_test_digest(identity),
+        consent_version=consent_version,
+        consented_at=consented_at,
+        expires_at=expires_at or consented_at + timedelta(days=180),
+        revoked_at=revoked_at,
+    )
+
+
+def make_revoked_legacy_user(
+    identity: str,
+    *,
+    revoked_at: datetime = TEST_CONSENTED_AT,
+) -> User:
+    return User(
+        anonymous_token_digest=_test_digest(identity),
+        consent_version=None,
+        consented_at=None,
+        expires_at=None,
+        revoked_at=revoked_at,
+    )
+
+
+def make_recommendation_event(
+    user_id: int,
+    identity: str,
+    *,
+    request_context: Any | None = None,
+    result_summary: Any | None = None,
+) -> RecommendationEvent:
+    return RecommendationEvent(
+        user_id=user_id,
+        generation_id=f"test-generation-{identity}",
+        event_schema_version="stage-4-v1",
+        model_name="gamelens-content-tfidf",
+        model_version="1.0.0",
+        data_fingerprint="a" * 64,
+        ranking_policy_name="gamelens-feedback-adjustment",
+        ranking_policy_version="1.0.0",
+        request_context={} if request_context is None else request_context,
+        result_summary=[] if result_summary is None else result_summary,
+    )
 
 
 def validate_test_database_reset(

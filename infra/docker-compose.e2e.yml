@@ -26,7 +26,8 @@ services:
     environment:
       ENVIRONMENT: test
       DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@e2e-db:5432/gamelens_e2e
-      CORS_ORIGINS: http://e2e-web:3000
+      CORS_ORIGINS: http://gamelens.test:3000
+      ANONYMOUS_SESSION_SECRET: stage-4-e2e-only-session-secret-not-production
       LOG_LEVEL: WARNING
     depends_on:
       e2e-db:
@@ -56,7 +57,8 @@ services:
     environment:
       ENVIRONMENT: test
       DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@e2e-db:5432/gamelens_e2e
-      CORS_ORIGINS: http://e2e-web:3000
+      CORS_ORIGINS: http://gamelens.test:3000
+      ANONYMOUS_SESSION_SECRET: stage-4-e2e-only-session-secret-not-production
       LOG_LEVEL: WARNING
     depends_on:
       e2e-artifact-init:
@@ -79,9 +81,12 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: 8000
       DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@e2e-db:5432/gamelens_e2e
-      CORS_ORIGINS: http://e2e-web:3000
+      CORS_ORIGINS: http://gamelens.test:3000
       LOG_LEVEL: WARNING
       MODEL_ARTIFACT_PATH: /artifacts/content-v1
+      ANONYMOUS_SESSION_SECRET: stage-4-e2e-only-session-secret-not-production
+      ANONYMOUS_SESSION_COOKIE_SECURE: "false"
+      CONSENT_VERSION: stage-4-v1
     depends_on:
       e2e-model:
         condition: service_completed_successfully
@@ -97,6 +102,11 @@ services:
       timeout: 3s
       retries: 20
       start_period: 5s
+    networks:
+      default:
+        aliases:
+          - gamelens.test
+          - api.gamelens.test
 
   e2e-web:
     image: gamelens-ai-web:e2e
@@ -104,7 +114,8 @@ services:
       context: ../apps/web
       dockerfile: Dockerfile
     environment:
-      NEXT_PUBLIC_API_URL: http://e2e-api:8000
+      NEXT_PUBLIC_API_URL: http://gamelens.test:8000
+      NEXT_PUBLIC_CONSENT_VERSION: stage-4-v1
     depends_on:
       e2e-api:
         condition: service_healthy
@@ -118,14 +129,18 @@ services:
       timeout: 3s
       retries: 30
       start_period: 8s
+    # Share the API network namespace so both browser-visible ports use the
+    # exact same host. This keeps the cookie first-party in WebKit while still
+    # exercising a credentialed cross-origin request across ports.
+    network_mode: service:e2e-api
 
   e2e:
-    image: gamelens-ai-playwright:stage3
+    image: gamelens-ai-playwright:stage4
     build:
       context: ../apps/web
       dockerfile: Dockerfile.e2e
     environment:
-      WEB_BASE_URL: http://e2e-web:3000
+      WEB_BASE_URL: http://gamelens.test:3000
       PLAYWRIGHT_EXTERNAL_SERVER: "1"
     depends_on:
       e2e-web:

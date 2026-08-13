@@ -2,8 +2,7 @@
 
 ## Stage 4 Engineering Plan: Feedback and Persistence
 
-- **Document status:** Engineering plan ready on 2026-08-10;
-  implementation has not started.
+- **Document status:** Complete and verified on 2026-08-13.
 - **Stage 3 prerequisite:** Complete and verified on 2026-08-07.
 - **Planning branch:** `docs/stage-4-plan`
 - **Target implementation branch:** `feat/stage-4-feedback-persistence`
@@ -12,12 +11,46 @@
   recommendations, bounded recommendation-event logging, and an accessible
   opt-in experience that preserves the Stage 3 stateless contract.
 
-Sections 1–20 are the proposed forward-looking engineering plan. Section 21
-must record decisions only as implementation evidence resolves them. Section
-22 is a provisional Stage 5 handoff that must be finalized from implemented
-data semantics. Section 23 alone remains pending and unpopulated until every
-acceptance gate passes. Plan readiness does not make any Stage 4 runtime
-capability available.
+Sections 1–20 retain the approved forward-looking engineering plan. Section 21
+records the implemented decisions, Section 22 is the verified Stage 5 handoff,
+and Section 23 records the completed acceptance evidence.
+
+### Current implementation snapshot
+
+The `feat/stage-4-feedback-persistence` worktree currently contains:
+
+- Alembic revisions `0003_stage_4_anonymous_identity`,
+  `0004_stage_4_interaction_state`, and expected head
+  `0005_stage_4_event_contract`.
+- Explicit-consent anonymous sessions, protected `/api/v1/me` lifecycle,
+  preference, temporal-feedback, and personalized-recommendation routes.
+- Feedback policy `gamelens-feedback-adjustment/1.0.0` over the unchanged Stage
+  3 model/artifact contract, plus bounded `stage-4-v1` recommendation events.
+- An opt-in browser flow for rehydration, saved preferences, feedback,
+  personalized results, expiry recovery, and clear-data behavior while the
+  request-only branch remains available.
+- Dry-run-first retention and separately confirmed bulk-revocation commands,
+  plus an exact-host `gamelens.test` E2E topology on ports 3000 and 8000.
+
+Fast API (184 tests, 89% diagnostic coverage), ML (52 tests, 83%), and web (76
+tests, 67.15% statements/71.4% lines) checks are passing in the implementation
+worktree. All 49 disposable-PostgreSQL integration tests pass in 4.53 seconds,
+covering the populated legacy upgrade, Stage 4
+constraints/indexes, concurrent feedback serialization, personalized HTTP
+event correlation, deletion cascades, and bounded retention. Ruff passes across
+112 Python files; strict TypeScript, ESLint, Prettier, production build,
+generated OpenAPI drift, production/full npm audits, and all three Compose
+definitions pass. The 38-case exact-host Docker browser matrix passes in 1.3
+minutes without retry using two workers: 28 Chromium, 5 Firefox, and 5 WebKit.
+Final release diff/privacy review is clean.
+The Dockerfile removes unused
+Debian `perl-base` after all install steps, resolving the earlier two critical
+and two high findings. The rebuilt no-cache `gamelens-ai-api:stage4-test` image
+with digest prefix `11b2f940731e` passes runtime imports and `pip check`, retains
+all 49 PostgreSQL integration passes, and its comprehensive Docker Scout scan
+reports 0 critical, 0 high, 3 medium, 27 low, and 2 unspecified findings across
+193 packages. Its only-fixed scan reports no actionable fixed advisory. Stage 4
+is verified complete.
 
 ## 1. Context
 
@@ -28,29 +61,30 @@ accessible request-scoped recommendation flow. Their completed behavior and
 verification evidence are recorded in the
 [Stage 3 engineering plan](stage-3-content-recommendation-mvp-plan.md).
 
-The current recommendation path is deliberately stateless. A request to
+The Stage 3 recommendation path remains deliberately stateless. A request to
 `POST /api/v1/recommendations` supplies selected games and positive taxonomy
 or platform context for that request only. The route reads one consistent
 catalog snapshot, invokes the validated Stage 3 artifact, returns explained
 results, and writes no user, preference, interaction, or recommendation-event
-row. The browser keeps onboarding state only inside the current component
-flow and discards it on restart or navigation.
+row. The browser retains that request-only branch alongside the new opt-in
+Stage 4 branch.
 
-The Stage 1 schema already contains future-facing `users`,
-`user_preferences`, `interactions`, and `recommendation_events` tables. Those
-tables are not yet a usable persistence contract:
+The Stage 1 schema introduced future-facing `users`, `user_preferences`,
+`interactions`, and `recommendation_events` tables. The Stage 4 implementation
+activates them as a persistence contract:
 
-- `users.anonymous_key` has no consent, expiry, revocation, retention, or
-  safe token-digest lifecycle.
-- `user_preferences` has relational uniqueness and bounded weights, but no
-  write API, reference-validation service, replace semantics, or rehydration
-  contract.
-- `interactions` preserves repeatable rows, but it has no definition of the
-  active like/dislike/played/wishlist/rating state, no mutual-exclusion rule,
-  and no state-transition concurrency policy.
-- `recommendation_events` records model name/version and JSON objects, but it
-  does not yet identify the catalog fingerprint or feedback policy, enforce
-  application payload bounds, or receive writes.
+- `users.anonymous_key` is replaced by consent, expiry, revocation, and a keyed
+  token-digest lifecycle.
+- `user_preferences` has a bounded replace/clear/rehydration contract with
+  reference validation and server-owned weights.
+- `interactions` has explicit active/superseded like/dislike, played,
+  wishlist, and rating semantics with partial unique indexes.
+- `recommendation_events` records generation, event-schema, model, catalog
+  fingerprint, feedback-policy, bounded context, and compact result identity.
+
+These schema and application boundaries are implemented, and the 49-test
+disposable-PostgreSQL gate verifies their populated migration, concurrency,
+cascade, event, and retention behavior.
 
 The Stage 3 handoff authorizes Stage 4 to activate those boundaries only after
 consent, retention, update, and deletion behavior are defined. It also
@@ -351,17 +385,16 @@ stateless recommendation contracts remain supported. In particular:
 - Generated TypeScript types remain sourced from live OpenAPI. New schemas do
   not replace old stateless request/response schemas.
 
-The intended personalization identity is
-`gamelens-feedback-adjustment` version `1.0.0`. Phase 0 must confirm the exact
-name and version before code is merged. If implementation requires changing
-artifact-owned feature or base-ranking configuration, it must instead bump the
+The implemented personalization identity is
+`gamelens-feedback-adjustment` version `1.0.0`. If implementation requires
+changing artifact-owned feature or base-ranking configuration, it must instead bump the
 content model/code compatibility, rotate `MODEL_ARTIFACT_PATH`, rebuild and
 validate a new artifact, and record that decision. An existing `1.0.0`
 artifact may never be made to mean something different.
 
 ### 5.2 Anonymous Session and Consent Contract
 
-Stage 4 will add:
+Stage 4 implements:
 
 | Method | Path                         | Purpose                                      |
 | ------ | ---------------------------- | -------------------------------------------- |
@@ -386,15 +419,16 @@ The server generates at least 256 bits of entropy with the Python standard
 library and encodes it as unpadded URL-safe text. The cookie is host-only,
 `HttpOnly`, `SameSite=Lax`, scoped to `/api/v1`, and uses `Secure=true` in an
 HTTPS/production configuration. Local loopback development HTTP may explicitly
-configure `Secure=false`. A second narrow exception permits allowlisted
-reserved `.test` aliases only when `ENVIRONMENT=test`; all other non-loopback
+configure `Secure=false`. A second narrow exception permits an allowlisted
+reserved `.test` host only when `ENVIRONMENT=test`; all other non-loopback
 insecure combinations fail validation. Cookie `Max-Age` and authentication
 expiry agree.
 
 PostgreSQL stores only
-`HMAC-SHA-256(ANONYMOUS_SESSION_SECRET, "session-v1" || raw_token)` as lowercase
-hex. CSRF values are domain-separated HMAC outputs derived from the same raw
-token and secret, returned through session bootstrap but never stored. Changing
+`HMAC-SHA-256(ANONYMOUS_SESSION_SECRET, "gamelens:session:v1\x00" || raw_token)`
+as lowercase hex. CSRF uses the separate `gamelens:csrf:v1\x00` domain with
+the same raw token and secret, returned through session bootstrap but never
+stored. Changing
 the secret makes existing digests unresolvable while the previous secret is
 absent; restoring that secret can make them resolvable again. Permanent bulk
 revocation therefore requires the explicit revoke operation to set
@@ -435,7 +469,7 @@ is reused, and retention removes the orphan. Session responses expose only
 consent status/time, authentication expiry, and CSRF metadata, never internal
 identity.
 
-The initial planned authentication and cookie lifetime is a fixed 180 days
+The implemented anonymous-session cookie lifetime is a fixed 180 days
 from consent, with no sliding refresh on reads or ordinary writes. At that time
 owned data becomes cleanup-eligible; Stage 4 does not claim deletion occurs at
 the exact second because it supplies an operator-run command rather than a
@@ -445,16 +479,17 @@ retention-cadence design.
 
 ### 5.3 Identity Migration and Legacy Rows
 
-The migration sequence will replace plaintext-key semantics without assuming
+The migration sequence replaces plaintext-key semantics without assuming
 that placeholder tables are empty:
 
 1. Add `anonymous_token_digest`, `consent_version`, `consented_at`,
-   `expires_at`, and nullable `revoked_at` through a new revision such as
+   `expires_at`, and nullable `revoked_at` through revision
    `0003_stage_4_anonymous_identity`.
-2. Give every legacy row a deterministic, domain-separated revocation digest
-   and handle any uniqueness collision during migration. It is
-   non-authenticating because consent is null and `revoked_at` is set, not
-   because cryptographic output equality is claimed impossible.
+2. Give every legacy row the deterministic 64-character revocation digest
+   `md5('legacy-revoked-v1:' || anonymous_key) || lpad(to_hex(id), 32, '0')`.
+   The ID suffix guarantees uniqueness. It is non-authenticating because
+   consent is null and `revoked_at` is set, not because the MD5 prefix is an
+   authentication primitive.
 3. Leave consent fields null and set `revoked_at` to the migration time for
    legacy rows. A null-consent/revoked row is inactive and cannot resolve
    through the protected API.
@@ -483,7 +518,7 @@ behavior in the same slice.
 
 ### 5.4 Persistent Preference Contract
 
-Stage 4 will add:
+Stage 4 implements:
 
 | Method | Path                     | Purpose                                  |
 | ------ | ------------------------ | ---------------------------------------- |
@@ -525,7 +560,7 @@ changes observable and prevents hidden profile mutation.
 
 ### 5.5 Feedback and Temporal Interaction Contract
 
-Stage 4 will add:
+Stage 4 implements:
 
 | Method | Path                                  | Purpose                             |
 | ------ | ------------------------------------- | ----------------------------------- |
@@ -558,8 +593,8 @@ two-decimal values without rounding or deletion. Stage 5 must use the stored
 exact numeric value and documented policy thresholds rather than assume every
 historical rating came from the Stage 4 UI.
 
-The existing `interactions` table will become a temporal state ledger through
-a revision such as `0004_stage_4_interaction_state`:
+The existing `interactions` table becomes a temporal state ledger through
+revision `0004_stage_4_interaction_state`:
 
 - Add nullable `superseded_at` and require it to be no earlier than
   `occurred_at`.
@@ -693,7 +728,7 @@ whether another user's token, preference, interaction, or event exists.
 
 ### 5.9 Recommendation Event Contract
 
-A revision such as `0005_stage_4_recommendation_event_contract` will add:
+Revision `0005_stage_4_event_contract` adds:
 
 - A unique server-generated `generation_id` also returned in a successful
   personalized response.
@@ -737,9 +772,8 @@ adds and fully specifies an idempotency-key contract.
 
 ### 5.10 Transaction Ownership
 
-The current recommendation catalog helper establishes a read-only transaction
-internally. Stage 4 will move transaction-mode ownership to the application
-use case before any query executes:
+Transaction-mode ownership now sits in the application use case before any
+query executes:
 
 - HTTP dependencies may parse cookie/header/origin material and derive a token
   digest, but they do not query for a user. The transaction-owning application
@@ -765,7 +799,7 @@ level objective.
 
 ### 5.11 Retention and Deletion
 
-The initial planned policy is:
+The implemented retention policy is:
 
 - Anonymous authentication expires 180 days after explicit consent with no
   silent sliding extension.
@@ -784,8 +818,8 @@ The initial planned policy is:
 - Revoked/legacy rows with null expiry are excluded from default expiry purge
   and require an explicit `--revoked-before` preview/execution selection.
 
-An explicit command will provide preview and execution modes. Preview is the
-default and reports only bounded counts and cutoff metadata, not user content
+The explicit retention command provides preview and execution modes. Preview
+is the default and reports only bounded counts and cutoff metadata, not user content
 or token digests. Execution requires an unmistakable flag, uses small ordered
 batches, rechecks the cutoff in each transaction, and is idempotent. It deletes
 eligible events first and expired consented users through cascade. Revoked rows
@@ -832,7 +866,7 @@ only frontend contract source.
 
 ### 5.13 Cookie, CORS, CSRF, and Privacy Boundary
 
-Credentialed CORS will use exact normalized origins, `allow_credentials=true`,
+Credentialed CORS uses exact normalized origins, `allow_credentials=true`,
 explicit `GET`, `POST`, `PUT`, and `DELETE` methods, and only required headers.
 Wildcard origins are invalid. Every unsafe cookie-authenticated route verifies
 the exact `Origin` and the domain-separated CSRF token before mutation.
@@ -843,14 +877,14 @@ preflight as authentication evidence. JSON-only body handling and custom CSRF
 headers cause browser preflights where applicable. CORS is defense-in-depth and
 is not described as authentication.
 
-Configuration will cover:
+Configuration covers:
 
 - Session HMAC secret and current consent version.
 - Cookie name, path, SameSite, Secure, and TTL.
 - Exact CORS/unsafe-origin allowlist.
 - Retention durations and batch cap.
 - Environment mode required for secure-cookie validation, including the narrow
-  allowlisted reserved-host exception available only in tests.
+  allowlisted reserved `.test` host exception available only in tests.
 
 No configuration contains a user token. Settings validators reject blank or
 weak secrets, invalid cookie names/paths, wildcard credentialed origins,
@@ -861,12 +895,13 @@ and committed fixtures.
 
 ### 5.14 Docker and Same-Site Browser Topology
 
-The current E2E stack addresses web and API by different service hostnames.
-Because browser same-site rules use scheme and registrable domain rather than
-Docker network membership, Stage 4 will add explicit test aliases under one
-reserved suffix, for example `web.gamelens.test` and `api.gamelens.test`.
-`WEB_BASE_URL`, `NEXT_PUBLIC_API_URL`, CORS origins, and cookie tests must use
-the same documented topology.
+The current E2E stack addresses web and API with the exact hostname
+`gamelens.test`: web origin `http://gamelens.test:3000` and API URL
+`http://gamelens.test:8000`. The web service shares the API network namespace
+so both browser-visible ports resolve to one endpoint. This keeps the cookie
+first-party while still exercising a credentialed cross-origin request across
+ports. `WEB_BASE_URL`, `NEXT_PUBLIC_API_URL`, CORS origins, and cookie tests use
+this same documented topology.
 
 Disposable E2E continues to use a tmpfs PostgreSQL database and a disposable
 model artifact volume. HTTP test configuration may use `Secure=false` only for
@@ -1358,7 +1393,7 @@ personalized generation.
 
 ### Work
 
-1. Add `0005_stage_4_recommendation_event_contract` with unique generation ID,
+1. Add `0005_stage_4_event_contract` with unique generation ID,
    event-schema, data-fingerprint, policy identity, conditional legacy/new-
    event integrity, and query indexes.
 2. Update ORM models and event repository with typed context/result builders,
@@ -1526,8 +1561,13 @@ general development commands.
    as an explicit direct Python/Compose command so a broad Make target cannot
    accidentally purge the configured development database.
 9. Add a separate preview/execute bulk-revocation command, with no Make wrapper,
-   that marks selected active sessions with `revoked_at` before permanent HMAC
-   key retirement. It preserves owned data until explicit deletion/retention.
+   that selects the immutable identity-creation cohort through
+   `--created-before` and marks selected active sessions with `revoked_at`. Key
+   retirement must quiesce creation/re-consent on the old secret, drain in-flight
+   requests, capture the database-time cutover while switching issuance to the
+   new secret, preview/execute the cohort until `remaining` is zero, and only
+   then retire the old secret. It preserves owned data until explicit
+   deletion/retention.
 10. Confirm `make up`, API/web startup, migration, seed, model build, and broad
     test targets never call purge or revocation execution.
 11. Document that Stage 4 provides no scheduler and that production scheduling,
@@ -1544,8 +1584,10 @@ general development commands.
 - Interrupted execution resumes without duplicate work or expanded scope.
 - Concurrent renewal/delete/generation follows documented locking and cutoff
   behavior.
-- Bulk-revocation preview changes no row; confirmed execution marks only the
-  selected active rows, and restoring an old HMAC secret cannot reactivate them.
+- Bulk-revocation preview changes no row; `--created-before` remains stable when
+  re-consent updates `consented_at`; confirmed execution marks only the selected
+  active creation cohort; `remaining` reaches zero before old-secret retirement;
+  and restoring an old HMAC secret cannot reactivate revoked rows.
 - Batch size, duration, cutoff, confirmation, and unsafe database identity are
   validated and bounded.
 - Execution acceptance runs only against disposable PostgreSQL.
@@ -1573,7 +1615,7 @@ data.
    Compose interpolation without printing real secret values.
 3. Preserve explicit migrate, seed, model-build, model-validate, and startup
    ordering; none may create an anonymous user.
-4. Add same-site reserved-domain network aliases for web and API in E2E and
+4. Add one reserved-domain E2E hostname for web and API on distinct ports and
    align browser base URL, public API URL, CORS origins, and cookie expectations.
 5. Keep the E2E database in `tmpfs`, model artifact in a disposable named
    volume, API artifact mount read-only, and all app/test workloads non-root
@@ -1602,8 +1644,8 @@ data.
 - The dedicated post-flow database audit proves the stateless path created no
   user and clear-data left no owned row, without exposing database state to the
   browser application.
-- Browser cookie transport works through the actual same-site aliases rather
-  than a mocked header.
+- Browser cookie transport works through exact host `gamelens.test` on ports
+  3000/8000 rather than a mocked header.
 - HTTP E2E uses its explicit insecure test setting while production-profile
   configuration tests reject `Secure=false`.
 - Persistent development database/artifact/web volumes are never mounted into
@@ -1719,10 +1761,14 @@ The complete Chromium path and critical Firefox/WebKit smoke paths cover:
 - Explicit consent, save, personalized generation, reload rehydration, feedback
   persistence, dislike exclusion, played evidence, and clear data.
 - A second isolated browser context with no cross-user data.
-- Invalid/expired session recovery, origin/CSRF rejection, API/network failure,
-  stale state, and rapid/double actions.
-- Keyboard-only consent, selections, feedback, rating, retry, delete, and focus
-  recovery.
+- Invalid-cookie recovery, API/network failure, and rapid/double-action
+  behavior. A hybrid re-consent case injects an outdated `GET /me` response
+  while its protected `POST` uses the real stack. Real Origin and CSRF
+  rejections are also browser-tested; expiry/re-consent mutation remains
+  API/PostgreSQL evidence.
+- Keyboard-accessible consent, selections, feedback, retry, delete, and focus
+  recovery. Rating bounds and keyboard-operable control semantics are covered
+  by component/API tests rather than claimed as a dedicated browser path.
 - Useful status/live-region announcements and no serious/critical axe findings.
 - No page-level overflow at 320, 768, and 1440 CSS pixels.
 - No unhandled page errors, hydration failures, console credential output, or
@@ -1780,7 +1826,7 @@ claims into facts prematurely.
 4. Update `ml/README.md` with final policy identity, source classification,
    exclusions, blend, played adjustment, numeric/tie behavior, fixtures, and
    artifact-identity boundary.
-5. Update `infra/README.md` with same-site aliases, environment-aware cookie
+5. Update `infra/README.md` with exact-host topology, environment-aware cookie
    settings, disposable lifecycle, retention-test safety, and teardown scope.
 6. Update architecture, data model, recommendation design, and roadmap from
    planned to verified behavior only after tests pass.
@@ -1843,7 +1889,7 @@ capabilities are:
 | Run API fast tests                 | `make test`                                | Existing quality-container pytest command                 |
 | Run PostgreSQL integration tests   | `make test-integration`                    | Existing guarded disposable Compose command               |
 | Run web quality gate               | `make test-web`                            | Existing npm type/lint/format/test/build/drift commands   |
-| Run isolated browser acceptance    | `make test-web-e2e`                        | E2E Compose command with same-site Stage 4 topology       |
+| Run isolated browser acceptance    | `make test-web-e2e`                        | E2E Compose command with exact-host Stage 4 topology      |
 | Lint/format Python and web         | Existing lint/format targets               | Existing Ruff/Prettier direct commands                    |
 | Refresh generated OpenAPI types    | `make api-types`                           | Existing npm generation command                           |
 | Preview expired data               | `make retention-preview`                   | Explicit Python/Compose dry-run retention command         |
@@ -2011,14 +2057,17 @@ Stage 4 is complete only when all of the following are true:
 - Browser code never ranks, filters, reweights, or reorders recommendations.
 - Token, internal user ID, preferences, feedback, and CSRF are absent from URL,
   `localStorage`, and `sessionStorage`.
-- Consent, saving, feedback, expiry, retry, stale state, withdrawal, and clear
-  data are keyboard-accessible with visible focus and useful announcements.
+- Consent, saving, feedback, retry, withdrawal, and clear data are
+  keyboard-accessible with visible focus and useful announcements. Expiry and
+  stale-state recovery semantics are additionally verified at component and
+  API/PostgreSQL layers.
 - Automated accessibility checks pass under the documented serious/critical
   policy.
 - Complete Chromium and critical Firefox/WebKit opt-in/opt-out flows pass.
 - Stage 4 layouts have no page-level overflow at 320, 768, and 1440 CSS pixels.
-- E2E proves real same-site cookie transport through reserved aliases and does
-  not replace it with a fabricated authentication header.
+- E2E proves real first-party cookie transport through exact host
+  `gamelens.test` on ports 3000/8000 and does not replace it with a fabricated
+  authentication header.
 - Fresh full-stack setup migrates, seeds, builds/validates the artifact, starts
   ready services, completes stateless and persistent flows, writes an event,
   rehydrates feedback, and deletes state.
@@ -2033,8 +2082,9 @@ Stage 4 is complete only when all of the following are true:
   purge-eligible then and is removed on the next explicit operator run. No
   exact-time storage deletion is claimed without the deferred scheduler.
 - Bulk revocation is separately previewable and confirmed, records
-  `revoked_at`, has no general Make wrapper, and cannot be undone by restoring
-  an old HMAC secret.
+  `revoked_at`, selects the immutable creation cohort with `--created-before`,
+  has no general Make wrapper, reaches zero remaining rows before old-secret
+  retirement, and cannot be undone by restoring an old HMAC secret.
 - No startup, migration, seed, model, broad test, or ordinary Make target
   performs retention execution.
 - Production scheduling is not claimed or implemented.
@@ -2083,20 +2133,23 @@ writes vulnerable to CSRF.
 domain-separated CSRF header, JSON/custom-header preflight, explicit methods,
 no wildcard origins, and mutation-count tests for every rejection.
 
-**Risk:** Local browser tests pass with mocked headers but real SameSite cookie
+**Risk:** Local browser tests pass with mocked headers but real browser cookie
 transport fails under Docker hostnames.
 
-**Mitigation:** Use web/API aliases under one reserved test site, exercise real
-browser cookies, align public/CORS URLs, and separately validate secure
-production cookie configuration.
+**Mitigation:** Use exact host `gamelens.test` for web/API on distinct ports,
+exercise real browser cookies, align public/CORS URLs, and separately validate
+secure production cookie configuration.
 
 **Risk:** Session fixation, token collision, or secret rotation attaches state
 to the wrong user.
 
 **Mitigation:** Never accept a client token/user ID, use server CSPRNG, unique
-keyed digests and bounded collision retry, treat secret change only as key
-invalidation, explicitly mark selected rows revoked before permanent key
-retirement, and prove an old key cannot resurrect them.
+keyed digests and bounded collision retry, and treat secret change only as a
+coordinated key-retirement operation. Quiesce creation/re-consent, drain
+in-flight requests, capture a database-time cutover while switching issuance to
+the new secret, revoke the immutable `--created-before` creation cohort until
+`remaining` is zero, retire the old secret, and prove an old key cannot
+resurrect revoked rows.
 
 **Risk:** Expired or invalid identity is silently replaced and unexpectedly
 resumes tracking.
@@ -2285,71 +2338,121 @@ metrics to Stage 6.
 
 ## 21. Implementation-Time Decisions
 
-No implementation-time decisions are recorded yet because Stage 4
-implementation has not started. This section must be updated as evidence
-resolves:
+The verified implementation resolves these contract decisions:
 
-1. Final session cookie name/path/SameSite/Secure settings for local, E2E, and
-   future HTTPS profiles.
-2. Exact entropy encoding, HMAC secret minimum/format, domain-separation
-   labels, collision retry, CSRF encoding, key-invalidation procedure, and
-   confirmed bulk-revocation contract before permanent key retirement.
-3. Exact consent version identifier/copy, fixed session expiry, expired-session
-   new-identity behavior, unexpired outdated-consent re-consent without token
-   rotation, ambiguous-response recovery, and cookie clearing response.
-4. Final legacy plaintext-key revocation digest and data-preserving migration
-   procedure.
-5. Exact new Alembic revision identifiers, downgrade guarantees, expected-head
-   constants, and populated-migration findings.
-6. Exact active interaction partial-index predicates, supersession backfill,
-   timestamp tie policy, and concurrent lock/upsert implementation.
-7. Final API half-step rating rule, preserved database precision for legacy
-   values, full feedback request/response schema, and exact bounded pagination
-   envelope/order/snapshot behavior.
-8. Final preference response, stable ordering, stale-reference details, and
-   no-op timestamp behavior.
-9. Exact protected endpoint paths, HTTP success/status/error codes, no-store
-   headers, CORS methods/headers, Origin rules, and OpenAPI security description.
-10. Final positive-source definition, reaction/rating precedence, source cap,
-    source selection ordering, and exclusion policy.
-11. Confirmed 90/10 blend, played factor, fixed-point intermediate rounding,
-    final range, contribution schema, and complete tie-break.
-12. Confirmed policy name/version and proof whether the Stage 3 artifact/model
-    remains unchanged or requires explicit version/path rotation.
-13. Final personalized request options, response reasons, component/
-    adjustment/evidence schemas, and empty-result behavior.
-14. Exact event-schema version, new columns/indexes, legacy nullability, context
-    fields, result fields, full effective-state fingerprint, audit-only meaning,
-    string/list/byte limits, and canonical JSON policy.
-15. Confirmed personalized transaction isolation, user lock mode, catalog
-    snapshot ownership, deletion race behavior, missing-commit-acknowledgement
-    mapping, retry rule, and whether a full idempotency-key contract is needed.
-16. Exact event-retention window, identity window, revoked-row cutoff,
-    preview/execute and bulk-revocation commands, database confirmation, batch
-    cap, and interruption behavior.
-17. Final API log-redaction, protected-trace policy, diagnostic trace disposal,
-    and retained browser/test artifact scan strategy.
-18. Final same-site E2E aliases, host resolution, cookie Secure exception, and
-    browser-context isolation strategy.
-19. Confirmed frontend component/state ownership, consent/re-consent flow,
-    feedback pending/rollback behavior, focus behavior, and clear-data copy.
-20. Confirmed Make/direct command names and proof that broad/startup commands
-    contain no hidden writes or retention execution.
-21. Exact Python/API/ML/Node/browser dependency versions, locks, licenses,
-    audit/vulnerability findings, and whether any new dependency was justified.
-22. Actual migration/generation/event/retention timings, diagnostic coverage,
-    browser/accessibility counts, privacy scans, and known performance gaps.
-23. Any earlier-stage contract assertion changed deliberately and the preserved
-    regression intent that replaced it.
+1. The host-only cookie is `gamelens_session`, scoped to `/api/v1`, HttpOnly,
+   `SameSite=Lax`, fixed at 15,552,000 seconds (180 days), and configurable as
+   Secure. Production requires Secure, HTTPS CORS origins, and a non-default
+   secret; loopback development and reserved `.test` origins may use HTTP.
+2. Sessions use 32 random bytes encoded as a 43-character URL-safe token.
+   PostgreSQL stores only HMAC-SHA-256 with domain
+   `gamelens:session:v1\x00`; CSRF uses the same token and separate domain
+   `gamelens:csrf:v1\x00`. Secrets are 32-512 characters and token allocation
+   retries a digest collision three times.
+3. Consent version is `stage-4-v1`. New consent creates identity; a current
+   unexpired session is a no-op; an unexpired outdated session requires its
+   derived CSRF value, keeps the token, updates consent/time/expiry, and
+   reissues the cookie. Missing, revoked, malformed, or expired credentials do
+   not recover the old state. Session/deletion responses are `no-store`, and
+   deletion expires the same cookie path.
+4. Revisions are `0003_stage_4_anonymous_identity`,
+   `0004_stage_4_interaction_state`, and
+   `0005_stage_4_event_contract`; readiness expects the last identifier.
+   Legacy plaintext identities receive exactly
+   `md5('legacy-revoked-v1:' || anonymous_key) || lpad(to_hex(id), 32, '0')`
+   plus revocation timestamps without fabricated consent; the ID suffix makes
+   the 64-character value unique. The downgrade recreates unique
+   non-authenticating placeholder keys.
+5. Active reaction uniqueness covers null-`superseded_at` liked/disliked rows;
+   active state-type uniqueness covers played/wishlisted/rated rows. Legacy
+   duplicates are ordered by occurrence then ID, older rows are superseded,
+   and application writes lock the user and affected state before one commit.
+6. Preferences use bounded replace-all semantics with maximums 5 games, 5
+   genres, 10 tags, and 6 platforms. At least one game/genre/tag is required;
+   all references are validated before mutation, weights remain server-owned,
+   responses are stable, and stale stored references are explicit conflicts.
+7. Feedback represents nullable liked/disliked reaction, booleans for played
+   and wishlisted, and an optional 0-10 rating in half-point increments.
+   `GET /me/feedback` is ordered and bounded to page sizes 1-100. Replacement,
+   clearing, mutual exclusion, and identical-write no-ops retain temporal
+   history rather than deleting superseded rows.
+8. Protected routes are `/api/v1/me`, `/api/v1/me/preferences`,
+   `/api/v1/me/feedback`, `/api/v1/me/games/{game_id}/feedback`, and
+   `/api/v1/me/recommendations`; identity creation is
+   `/api/v1/anonymous-sessions`. Unsafe requests require exact normalized
+   Origin plus `X-CSRF-Token`. Credentialed CORS permits explicit origins and
+   `GET`, `POST`, `PUT`, and `DELETE`; protected successes are `no-store`.
+9. Positive sources are likes or ratings at least 7 only when no reaction is
+   active. The policy selects at most five sources by newest occurrence with a
+   stable-slug tie-break, hard-excludes dislikes and positive source games,
+   leaves wishlist neutral, blends base/affinity 90/10, and applies a 0.5
+   played factor before top-K.
+10. The policy is `gamelens-feedback-adjustment/1.0.0`. Fixed-point scale,
+    half-up contributions, and final/pre-played/base/affinity/content/
+    popularity/slug tie-break are explicit. The Stage 3 model
+    `gamelens-content-tfidf/1.0.0`, artifact schema `1`, and compatibility
+    `stage-3-v1` remain unchanged.
+11. Personalized requests accept only `top_k` 1-20. Responses expose generation,
+    model/data/policy identity, response reason, positive sources, base and
+    affinity contributions, pre-played score, played factor/delta, final score,
+    base evidence, and deterministic explanations. Empty eligible results are
+    successful bounded generations.
+12. New recommendation events use schema `stage-4-v1`, a unique 32-character
+    generation ID, complete model/data/policy identity, bounded effective
+    context plus SHA-256 effective-state fingerprint, and at most 20 compact
+    result identities. Existing events become `legacy-v1`. Events are server
+    generation audit/correlation records, not impressions or feedback labels.
+13. Personalized work uses one repeatable-read read-write transaction from
+    locked identity through catalog/context/feedback reads, ranking, event
+    insertion, flush, and commit. A DBAPI commit error maps to an outcome-unknown
+    error carrying the generation ID; no automatic retry or idempotency-key
+    contract is added in version 1.
+14. Recommendation events are cleanup-eligible after 90 days; sessions have a
+    fixed 180-day expiry; default batches are 500 with a hard maximum of 10,000.
+    `app.commands.retention` previews by default and requires explicit event and
+    user cutoffs plus a database-fingerprinted confirmation to execute.
+    `app.commands.anonymous_sessions` separately previews or confirms bounded
+    bulk revocation selected by immutable identity `created_at` through
+    `--created-before`. Key retirement quiesces old-secret creation/re-consent,
+    drains requests, captures the database-time cutover while switching new
+    issuance, revokes the cohort until `remaining` is zero, and then retires the
+    old secret; online dual-key rotation is not implemented.
+15. `make retention-preview` is the only Make retention wrapper. Startup,
+    migration, seed, artifact, broad test, and teardown paths contain no purge
+    or revocation execution. There is no scheduler.
+16. The web owns Stage 4 state inside the recommendations feature, uses the
+    generated contract and one project API client, rehydrates through `/me`,
+    rolls back failed feedback updates, clears route memory after deletion, and
+    keeps credentials/profile state out of URLs and Web Storage.
+17. E2E uses exact host `gamelens.test` with web on port 3000 and API on port
+    8000. The web service shares the API network namespace so both ports resolve
+    to one endpoint; exact matching origins, `stage-4-v1`, a test-only secret,
+    and Secure disabled only in the test profile remain explicit. The API
+    remains network-only and the database/artifact lifecycle stays disposable.
+18. No new direct Python or browser runtime dependency was required. The API
+    package version advances to `0.3.0`. The Dockerfile removes unused Debian
+    `perl-base` after all install steps, resolving its earlier two critical and
+    two high findings. Rebuilt no-cache image `gamelens-ai-api:stage4-test` with
+    digest prefix `11b2f940731e` passes runtime imports, `pip check`, and all 49
+    PostgreSQL integration tests. Its comprehensive Docker Scout scan reports 0
+    critical, 0 high, 3 medium, 27 low, and 2 unspecified findings across 193
+    packages; its only-fixed scan reports no actionable fixed advisory. The
+    remaining findings stay documented.
 
-Every resolved decision must be reflected in implementation, tests, generated
-contracts, configuration examples, and documentation. An unresolved item may
-not be converted into a silent default during implementation.
+The populated `0002` upgrade and downgrade/re-upgrade, partial indexes,
+transaction/concurrency, event/delete correlation, cascades, and bounded
+retention pass in the 49-test PostgreSQL suite. The browser matrix covers real
+first-party cookie transport, isolation, rehydration, feedback,
+invalid-cookie recovery, clear-data, real Origin/CSRF rejection, and
+stateless/active axe behavior. Its re-consent case is deliberately hybrid: an
+injected outdated `GET /me` drives the UI while the protected `POST` reaches a
+real current session. Actual expiry and re-consent mutation are proved by the
+API/PostgreSQL suites. Commit identity and draft-PR URL will be recorded by the
+publication step; this document does not invent them before commit creation.
 
 ## 22. Stage 5 Handoff
 
-When complete, Stage 4 should leave the collaborative and hybrid-ranking stage
-with:
+Stage 4 leaves the collaborative and hybrid-ranking stage with:
 
 - Explicit-consent anonymous identities with documented credential, expiry,
   retention, revocation, and deletion semantics.
@@ -2392,47 +2495,69 @@ quality claims remain Stage 6 work.
 
 ## 23. Verified Completion Record
 
-Pending implementation.
+Stage 4 completed on 2026-08-13. Planning used `docs/stage-4-plan`; implementation
+used `feat/stage-4-feedback-persistence`. Commit identity and draft-PR URL are
+created by the publication step and therefore are not fabricated here.
 
-This section must remain unpopulated until every Stage 4 acceptance criterion
-passes. The final record must include:
+- Runtime/locks: Python 3.12.13, API 0.3.0, PostgreSQL 16.14, Node.js 24.18.0,
+  npm 11.16.0, Next.js 16.2.12, React 19.2.8, TypeScript 5.9.3, Playwright
+  1.62.0, Git 2.47.0.windows.2, gh 2.96.0, and exact committed Python/npm
+  locks. `pip check`, runtime imports, and both
+  production/full npm audits pass; npm reports zero vulnerabilities. Reviewed
+  dependency licenses remain MIT, Apache-2.0, MPL-2.0, and BSD-family as
+  documented in the repository.
+- Image: no-cache `gamelens-ai-api:stage4-test` digest prefix `11b2f940731e`
+  passes runtime checks and the 49 PostgreSQL tests. Docker Scout reports 0
+  critical, 0 high, 3 medium, 27 low, and 2 unspecified findings across 193
+  packages; the only-fixed scan reports no actionable fixed advisory. Final
+  E2E API/web digest prefixes are `a7c94365` and `aadf9c3d`.
+- Schema: Alembic head is `0005_stage_4_event_contract` after revisions `0003`
+  and `0004`. Empty/populated upgrade and populated downgrade/re-upgrade pass;
+  legacy identities are preserved but revoked without fabricated consent.
+  Current-state partial indexes, temporal supersession, constraints, cascades,
+  event correlation, concurrency, retention, and revocation pass.
+- Identity/privacy: the host-only `gamelens_session` cookie is HttpOnly,
+  `SameSite=Lax`, scoped to `/api/v1`, 180 days, and Secure in production.
+  HMAC-SHA-256 lookup and CSRF domains are distinct; consent is `stage-4-v1`.
+  Exact Origin/CORS and CSRF checks, no implicit identity, stateless-with-cookie
+  no-write, expiry/revocation, deletion, and secure-profile validation pass.
+  Final scans found no raw token/CSRF, credential, personal data, database dump,
+  trace, coverage output, browser artifact, local path, or unrelated file in
+  committed output. Protected traces stay disabled by default.
+- Data/policy: bounded replace-all preferences and temporal reaction, played,
+  wishlist, and half-step rating state pass reference, no-op, concurrency,
+  isolation, stale-catalog, and cascade tests. Policy
+  `gamelens-feedback-adjustment/1.0.0` preserves no-feedback Stage 3 order,
+  excludes dislikes/sources, blends base/affinity 90/10, applies played 0.5,
+  leaves wishlist neutral, and exposes deterministic fixed-point evidence.
+  Base model `gamelens-content-tfidf/1.0.0`, artifact schema 1, and
+  compatibility `stage-3-v1` remain unchanged.
+- Events/operations: `stage-4-v1` events record one bounded committed
+  generation with model/data/policy identity and correlation ID; they are not
+  impressions or labels. Retention preview is read-only and completed in
+  6.305 ms on the disposable stack; purge and revocation require explicit
+  fingerprinted confirmation and bounded batches. No scheduler or startup
+  purge exists.
+- Automated gates: 52 ML tests pass with 83% diagnostic coverage; 184 API
+  tests pass with 89%; 49 PostgreSQL tests pass in 4.53 seconds; 76 web tests
+  pass with 67.15% statements and 71.4% lines. Ruff checks 112 files. Strict
+  TypeScript, ESLint, Prettier, production build, generated OpenAPI drift, and
+  all three Compose definitions pass.
+- Browser: 38/38 pass in 1.3 minutes without retry with two workers: 28
+  Chromium, 5 Firefox, and 5 WebKit. Coverage includes opt-out/opt-in,
+  persistence, isolation, reload, feedback, dislike/played evidence,
+  invalid-cookie recovery, clear-data, responsive and stateless/active axe
+  paths. WebKit active axe creates a real session with `201`; real Origin and
+  CSRF rejections return `403`. The re-consent UI case is hybrid; real expiry
+  and re-consent mutation are API/PostgreSQL evidence.
+- Full-stack lifecycle: tmpfs PostgreSQL migrates/seeds, the artifact builds,
+  API/web become ready, browser scenarios complete, and teardown removes only
+  E2E containers, network, and volume. The final Compose process list is empty;
+  persistent development database, artifact, and web volumes are untouched.
 
-- Completion date, actual planning/integration branches, PR/merge structure,
-  and final commit identity.
-- Exact Python, API, ML, PostgreSQL, Node.js, browser, and container versions.
-- Final direct/transitive dependency locks, licenses, `pip check`, npm audits,
-  container scan, and unresolved vulnerability findings.
-- Final migration revisions/head, populated upgrade/downgrade evidence,
-  constraints/indexes, legacy-row outcome, and data-preservation findings.
-- Exact token/CSRF digest policy, cookie attributes, consent version, expiry,
-  retention, deletion, origin/CORS, and secure-profile validation.
-- Proof that no implicit route creates identity and no raw token/CSRF appears
-  in database, JSON, logs, Web Storage, fixtures, retained test artifacts, or
-  committed output; protected trace handling and disposal are recorded.
-- Final preference/feedback request, current/temporal state, reference,
-  concurrency, no-op, isolation, cascade, and stale-catalog behavior.
-- Final personalization policy identity, source classification, exclusions,
-  affinity blend, played adjustment, wishlist behavior, numeric scale,
-  rounding, tie-break, evidence, and no-feedback compatibility.
-- Final base model, artifact schema/code identity, data fingerprint, and proof
-  of unchanged or intentionally rotated artifact behavior.
-- Final event schema, fields, byte/count bounds, transaction meaning, exact
-  response correlation, failure behavior, and retention result.
-- ML, API, PostgreSQL, web, browser, accessibility, OpenAPI, Ruff, TypeScript,
-  ESLint, Prettier, build, Compose, Docker, and full regression counts.
-- Diagnostic coverage plus meaningful lifecycle/error/concurrency gaps.
-- Diagnostic migration, personalized generation, event commit, and retention
-  timings without unsupported SLO claims.
-- Representative deterministic opt-in saved state and ordered personalized
-  result as functional evidence only.
-- Opt-out no-cookie/no-write and stateless-with-cookie no-write evidence.
-- Allowed/rejected cookie, CORS, Origin, and CSRF browser/API evidence.
-- Cross-session isolation, reload rehydration, dislike exclusion, played
-  evidence, expiry recovery, and clear-data browser evidence.
-- Full-stack migrate, seed, artifact, ready API, opt-out, opt-in, feedback,
-  event, retention-preview, deletion, and teardown results.
-- Confirmation that persistent development database, artifacts, and web
-  volumes were not reset, purged, or deleted.
-- Final generated-output, secret, credential, personal-data, trace, log,
-  local-path, and unrelated-diff review.
-- Known limitations and the exact Stage 5 handoff.
+Known limitations: the anonymous session is possession-based and same-device,
+with no account, role model, recovery, identity provider, scheduler, online
+dual-key rotation, production deployment, or quality claim. The 30-game seed
+is functional evidence only. Stage 5 receives consent/retention-aware feedback
+semantics and bounded generation events but must audit interaction sufficiency
+before collaborative or hybrid modeling; formal evaluation remains Stage 6.

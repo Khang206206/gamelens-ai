@@ -10,7 +10,7 @@ game metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 3 complete (verified 2026-08-07); Stage 4 engineering plan ready**
+**Stage 4 complete and verified 2026-08-13**
 
 The repository now provides:
 
@@ -31,6 +31,18 @@ The repository now provides:
   content, platform, and popularity components plus structured evidence.
 - Accessible anonymous onboarding and explained results at `/recommendations`;
   selections remain request-scoped and are not persisted.
+- An opt-in anonymous-session path with a host-only `HttpOnly` cookie,
+  explicit versioned consent, HMAC-digested lookup, exact-origin checks, and
+  CSRF protection for protected mutations.
+- User-scoped replace-all preferences; temporal like/dislike, played,
+  wishlist, and half-step rating state; and clear-all deletion.
+- A separately versioned `gamelens-feedback-adjustment` `1.0.0` ranker plus a
+  protected personalized endpoint that records one bounded model/data/policy
+  event in the same committed use case.
+- An accessible opt-in, rehydration, feedback, expiry/re-consent, and
+  clear-data experience that leaves the Stage 3 request-only flow available.
+- Preview-by-default, bounded retention and bulk-session-revocation commands;
+  execution requires explicit cutoffs and the confirmation emitted by preview.
 - Vitest, React Testing Library, Playwright, axe, pytest, PostgreSQL integration,
   Ruff, and Docker-first quality workflows.
 
@@ -46,10 +58,17 @@ or claims of real-world recommendation quality.
 
 The detailed
 [Stage 4 feedback-and-persistence engineering plan](docs/stage-4-feedback-persistence-plan.md)
-is ready; implementation has not started. The current runtime therefore still
-creates no anonymous identity, persists no onboarding choice or feedback, and
-logs no recommendation event. Stage 4 will add only an explicit-consent durable
-path while preserving the current request-scoped recommendation contract.
+now tracks the implementation on `feat/stage-4-feedback-persistence`. The
+source, migrations, generated contract, and local fast-test surfaces are in
+place. Final evidence passes 184 fast API tests with 89%
+diagnostic coverage, 52 ML tests with 83%, 76 web tests with 67.15% statement/
+71.4% line coverage, and 49 disposable-PostgreSQL integration tests in 4.53
+seconds. Ruff checks 112 Python files; strict TypeScript, ESLint, Prettier,
+production build, generated OpenAPI drift, both npm audits, and all three
+Compose definitions pass. The exact-host Docker browser gate passes 38/38 in
+1.3 minutes without retry using two workers: 28 Chromium, 5 Firefox, and 5
+WebKit. Its isolated containers, network, and volume were removed, and the
+post-teardown Compose process list was empty.
 
 ## Implemented user experience
 
@@ -67,10 +86,16 @@ An anonymous development user can:
 7. Select up to five example games and bounded positive genre, tag, and platform
    preferences, review them, and request ranked recommendations.
 8. Inspect component scores and evidence, adjust the request, or start over.
+9. Explicitly opt in to a 180-day anonymous saved session, rehydrate it after
+   reload, replace the complete saved preference set, and generate a
+   feedback-aware shortlist.
+10. Save or clear like/dislike, played, wishlist, and half-step rating state,
+    renew outdated consent explicitly, or delete the anonymous session and all
+    owned data.
 
-Preferences, feedback writes, recommendation-event logging, and authentication
-remain future capabilities. Stage 3 does not create users or write onboarding
-state.
+The request-only Stage 3 path still omits credentials and writes no user-owned
+state. Saved behavior is a separate explicit-consent path; it is not account
+authentication and has no cross-device recovery.
 
 ## Architecture
 
@@ -81,6 +106,9 @@ flowchart LR
     A --> P[("PostgreSQL")]
     A --> R["Immutable recommendation service"]
     R --> M["Versioned JSON/NPY artifact"]
+    A --> F["Feedback policy 1.0.0"]
+    P --> F
+    R --> F
     T["Explicit offline model build"] --> M
     T -. "Formal evaluation in Stage 6" .-> E["Evaluation reports"]
     D["Seed or imported datasets"] --> T
@@ -225,6 +253,7 @@ development and contract checks use the same API base URL.
 | `make logs` / `make api` / `make web` | Follow logs or run API/full stack in the foreground               |
 | `make migrate` / `make seed`          | Upgrade schema or idempotently load the catalog                   |
 | `make model-build` / `model-validate` | Build or validate the configured recommendation artifact          |
+| `make retention-preview`              | Preview eligible event/session retention rows without mutation    |
 | `make test-ml`                        | Run deterministic ML, artifact, and ranking tests                 |
 | `make test` / `make test-integration` | Run fast API or disposable-PostgreSQL tests                       |
 | `make test-web`                       | Run web type, lint, format, test, build, and contract-drift gates |
@@ -250,14 +279,23 @@ Every optional Make target has a direct equivalent in the
 | `CORS_ORIGINS`                                        | Comma-separated explicit browser origins                                      |
 | `LOG_LEVEL`                                           | API structured logging level                                                  |
 | `MODEL_ARTIFACT_PATH`                                 | Builder/API container path to the validated recommendation artifact           |
+| `ANONYMOUS_SESSION_SECRET`                            | Server-only HMAC key; replace the development default outside local use       |
+| `ANONYMOUS_SESSION_COOKIE_NAME` / `_PATH`             | Host-only cookie name and API path scope                                      |
+| `ANONYMOUS_SESSION_COOKIE_SECURE` / `_SAMESITE`       | Cookie transport policy; production requires `Secure=true`                    |
+| `ANONYMOUS_SESSION_TTL_SECONDS`                       | Fixed anonymous-session lifetime; default 15,552,000 seconds (180 days)       |
+| `CONSENT_VERSION` / `NEXT_PUBLIC_CONSENT_VERSION`     | Matching API/browser identifier for the accepted consent copy                 |
+| `CSRF_HEADER_NAME`                                    | Protected-request CSRF header; default `X-CSRF-Token`                         |
+| `RECOMMENDATION_EVENT_RETENTION_DAYS`                 | Default event preview cutoff; default 90 days                                 |
+| `RETENTION_BATCH_SIZE`                                | Bounded retention/revocation batch size; default 500                          |
 | `APP_UID` / `APP_GID`                                 | Linux numeric owner used by the non-root API/model-builder image              |
 | `NEXT_PUBLIC_API_URL`                                 | Browser-visible absolute FastAPI base URL                                     |
 | `WEB_PORT`                                            | Loopback web host port, default 3000                                          |
 | `OPENAPI_URL`                                         | Optional trusted OpenAPI document URL for type tooling                        |
 | `OPENAPI_TIMEOUT_MS`                                  | OpenAPI tooling timeout, default 15000; allowed 1000–120000                   |
 
-Only `NEXT_PUBLIC_API_URL` enters the browser bundle. Never commit `.env`,
-`.env.local`, production credentials, or database URLs.
+Only `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_CONSENT_VERSION` enter the browser
+bundle. Never commit `.env`, `.env.local`, production credentials, session
+secrets, or database URLs.
 
 When changing published ports, keep the associated browser origin aligned:
 `WEB_PORT` must match the port in `CORS_ORIGINS`, and `API_PORT` must match the
@@ -299,7 +337,7 @@ Docker Compose 5.3.1 on 2026-08-07:
 | Fast API suite                 | 104 passed; 92% diagnostic branch-aware application coverage                                    |
 | PostgreSQL integration         | 29 passed, including read-only recommendation proof                                             |
 | Frontend quality               | 45 passed; TypeScript, ESLint, Prettier, and production build passed                            |
-| Browser/accessibility          | 25 passed: 15 Chromium, 5 Firefox, and 5 WebKit; no serious/critical axe findings                |
+| Browser/accessibility          | 25 passed: 15 Chromium, 5 Firefox, and 5 WebKit; no serious/critical axe findings               |
 | Responsive recommendation flow | No page overflow at 320, 768, or 1440 CSS pixels                                                |
 | Docker artifact flow           | Fresh tmpfs DB migrated/seeded, named artifact built, API became ready, web and E2E passed      |
 | Seed artifact diagnostics      | 30 items, 1,037 terms, 1,399 nonzeros, 69,743 bytes, build 0.43 s                               |
@@ -311,11 +349,41 @@ recommendation flow. Artifact-load timings used the Docker Desktop bind mount;
 the POST sample ran inside the local container stack.
 
 Coverage and latency are diagnostics on the synthetic local fixture, not
-service-level objectives. Docker Scout found two critical and two high Debian
-`perl` advisories in the pinned development base image, with no fixed package
-version reported at verification time. The API runs non-root and publishes to
-loopback locally; replacing or minimizing the production base image is tracked
-for Stage 7 rather than hidden behind an unpinned build-time upgrade.
+service-level objectives. At Stage 3 verification, Docker Scout found two
+critical and two high Debian Perl advisories in the pinned development base.
+The Stage 4 Dockerfile now removes unused `perl-base` after all install steps,
+resolving those critical/high findings. A comprehensive scan of the rebuilt
+no-cache `gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e`
+reports 0 critical, 0 high, 3 medium, 27 low, and 2 unspecified findings across
+193 packages. Its only-fixed scan reports no actionable fixed advisory;
+runtime imports, `pip check`, and all 49 PostgreSQL integration tests remain
+green. The remaining findings stay documented. The API runs non-root and
+publishes to loopback locally; choosing and rescanning a production-minimal
+image remains Stage 7 work.
+
+## Stage 4 verification
+
+The Stage 4 acceptance gate completed on 2026-08-13 on branch
+`feat/stage-4-feedback-persistence`:
+
+| Check | Verified result |
+| --- | --- |
+| ML | 52 passed; 83% diagnostic coverage |
+| API | 184 passed; 89% diagnostic coverage; Ruff clean across 112 files |
+| PostgreSQL | 49 passed in 4.53 s, including populated downgrade/re-upgrade, concurrency, cascades, retention, and revocation |
+| Web | 76 passed; 67.15% statements and 71.4% lines; type, lint, format, build, and OpenAPI drift passed |
+| Browser/accessibility | 38/38 in 1.3 min without retry: 28 Chromium, 5 Firefox, 5 WebKit; stateless and active axe paths passed |
+| Security/dependencies | `pip check` passed; full and production npm audits reported zero vulnerabilities |
+| Compose/privacy | All three Compose definitions passed; final review found no retained credential, trace, coverage, or browser artifact |
+| Teardown | E2E containers, network, and volume removed; `compose ps` empty |
+
+The browser suite uses `gamelens.test` on ports 3000/8000. WebKit active-state
+accessibility includes a real consent `201`; real Origin and CSRF rejection
+paths return `403`. The browser re-consent scenario intentionally injects an
+outdated profile read before a real CSRF-protected post; actual expiry and
+re-consent mutation are verified in the API/PostgreSQL suites. These are
+functional and safety results on synthetic fixtures, not quality or
+service-level claims.
 
 ## Project documentation
 
@@ -333,15 +401,20 @@ for Stage 7 rather than hidden behind an unpinned build-time upgrade.
 
 ## Current limitations
 
-- No authentication or authorization. The explicit-consent anonymous identity
-  lifecycle is planned in the
-  [Stage 4 engineering plan](docs/stage-4-feedback-persistence-plan.md), not
-  implemented.
-- No preference, interaction, feedback, or recommendation-event write APIs.
-- Recommendation context is anonymous and request-scoped; there is no durable
-  history or feedback adjustment.
+- The possession-based anonymous session is not authentication or an account:
+  there is no authorization role model, cross-device recovery, or identity
+  provider.
+- Retention and bulk revocation are explicit operator commands, not scheduled
+  jobs. Bulk key retirement selects the immutable identity-creation cohort with
+  `--created-before`: quiesce creation/re-consent and drain in-flight requests,
+  capture the database-time cutover while switching issuance to the new secret,
+  revoke that cohort until `remaining` is zero, then retire the old secret.
+  Expiry prevents access immediately, while eligible rows are removed by a later
+  confirmed cleanup run.
 - The 30-game synthetic seed supports functional and reproducibility checks,
-  not recommendation-quality evaluation; formal evaluation remains Stage 6.
+  including feedback lifecycle behavior, not recommendation-quality
+  evaluation; collaborative/hybrid work remains Stage 5 and formal evaluation
+  remains Stage 6.
 - No external metadata service or approved remote cover-image source.
 - Seed ratings and popularity values are synthetic development signals.
 - Social metadata currently uses a localhost development base. A validated
@@ -352,9 +425,12 @@ for Stage 7 rather than hidden behind an unpinned build-time upgrade.
   internal-origin/deployment design.
 - Production deployment, monitoring, CI, and hardened production images remain
   Stage 7 work.
-- The pinned development API base currently inherits two critical and two high
-  Debian `perl` advisories for which Docker Scout reported no fixed package.
-  Stage 7 must select and rescan a production-minimal base before deployment.
+- The Stage 4 development API image removes the unused vulnerable Debian
+  `perl-base` package after its final install step; the clean no-cache candidate
+  currently scans at zero critical/high, three medium, 27 low, and two
+  unspecified findings; its only-fixed scan reports no actionable fixed
+  advisory. Stage 7 must still select and rescan a production-minimal base
+  before deployment.
 
 ## License
 

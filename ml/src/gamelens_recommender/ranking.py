@@ -9,6 +9,7 @@ from gamelens_recommender.artifacts import LoadedArtifact
 from gamelens_recommender.config import RANKING_CONFIG, SCORE_SCALE, RankingConfig
 from gamelens_recommender.features import build_preference_document
 from gamelens_recommender.schemas import (
+    BaseCandidateScore,
     RankedRecommendation,
     RankingResult,
     RecommendationEvidence,
@@ -73,7 +74,7 @@ class ContentRanker:
         )
         return _normalized(combined)
 
-    def rank(self, context: UserContext) -> RankingResult:
+    def score_candidates(self, context: UserContext) -> tuple[BaseCandidateScore, ...]:
         context.validate()
         missing = [
             slug for slug in context.selected_game_slugs if slug not in self.artifact.slug_to_row
@@ -84,7 +85,7 @@ class ContentRanker:
         similarities = (self.artifact.matrix @ user_vector.T).toarray().ravel()
         selected = set(context.selected_game_slugs)
         platform_slugs = set(context.preferred_platforms)
-        sortable: list[tuple[int, int, int, str, int]] = []
+        candidates: list[BaseCandidateScore] = []
         for row, item in enumerate(self.artifact.items):
             if item.slug in selected:
                 continue
@@ -103,76 +104,99 @@ class ContentRanker:
                     (popularity_units, self.config.popularity_weight_units),
                 )
             )
-            sortable.append((-final_units, -content_units, -popularity_units, item.slug, row))
-        sortable.sort(key=lambda value: value[:4])
-        ranked: list[RankedRecommendation] = []
-        for rank, sortable_row in enumerate(sortable[: context.top_k], start=1):
-            final_units = -sortable_row[0]
-            content_units = -sortable_row[1]
-            popularity_units = -sortable_row[2]
-            row = sortable_row[4]
-            item = self.artifact.items[row]
-            platform_matches = tuple(
-                value for value in item.platforms if value.slug in platform_slugs
-            )
-            platform_raw = len(platform_matches) / len(platform_slugs) if platform_slugs else 0
-            platform_units = quantize(platform_raw)
-            components = tuple(
-                ScoreComponent(
-                    name=name,
-                    raw_units=raw,
-                    weight_units=weight,
-                    contribution_units=contribution(raw, weight),
-                )
-                for name, raw, weight in (
-                    ("content", content_units, self.config.content_weight_units),
-                    ("platform", platform_units, self.config.platform_weight_units),
-                    ("popularity", popularity_units, self.config.popularity_weight_units),
-                )
-            )
-            matching_genres = tuple(
-                value for value in item.genres if value.slug in context.preferred_genres
-            )
-            matching_tags = tuple(
-                value for value in item.tags if value.slug in context.preferred_tags
-            )
-            similar_selected: list[SimilarSelectedGame] = []
-            for slug in context.selected_game_slugs:
-                selected_row = self.artifact.slug_to_row[slug]
-                similarity = float(
-                    self.artifact.matrix[row].multiply(self.artifact.matrix[selected_row]).sum()
-                )
-                units = quantize(similarity)
-                if units:
-                    similar_selected.append(
-                        SimilarSelectedGame(
-                            slug=slug,
-                            title=self.artifact.items[selected_row].title,
-                            similarity_units=units,
-                        )
-                    )
-            similar_selected.sort(key=lambda value: (-value.similarity_units, value.slug))
-            evidence = RecommendationEvidence(
-                matching_genres=matching_genres,
-                matching_tags=matching_tags,
-                preferred_platforms=platform_matches,
-                similar_selected_games=tuple(similar_selected[:3]),
-                popularity_percentile_units=popularity_units,
-            )
-            summary, reasons = _explain(evidence)
-            ranked.append(
-                RankedRecommendation(
+            candidates.append(
+                BaseCandidateScore(
                     slug=item.slug,
-                    rank=rank,
-                    final_score_units=final_units,
-                    components=components,
-                    evidence=evidence,
-                    explanation_summary=summary,
-                    explanation_reasons=reasons,
+                    base_score_units=final_units,
+                    content_score_units=content_units,
+                    platform_score_units=platform_units,
+                    popularity_score_units=popularity_units,
                 )
             )
+        candidates.sort(
+            key=lambda value: (
+                -value.base_score_units,
+                -value.content_score_units,
+                -value.popularity_score_units,
+                value.slug,
+            )
+        )
+        return tuple(candidates)
+
+    def materialize_candidate(
+        self,
+        candidate: BaseCandidateScore,
+        context: UserContext,
+        *,
+        rank: int,
+    ) -> RankedRecommendation:
+        row = self.artifact.slug_to_row[candidate.slug]
+        item = self.artifact.items[row]
+        platform_slugs = set(context.preferred_platforms)
+        platform_matches = tuple(value for value in item.platforms if value.slug in platform_slugs)
+        components = tuple(
+            ScoreComponent(
+                name=name,
+                raw_units=raw,
+                weight_units=weight,
+                contribution_units=contribution(raw, weight),
+            )
+            for name, raw, weight in (
+                ("content", candidate.content_score_units, self.config.content_weight_units),
+                ("platform", candidate.platform_score_units, self.config.platform_weight_units),
+                (
+                    "popularity",
+                    candidate.popularity_score_units,
+                    self.config.popularity_weight_units,
+                ),
+            )
+        )
+        matching_genres = tuple(
+            value for value in item.genres if value.slug in context.preferred_genres
+        )
+        matching_tags = tuple(value for value in item.tags if value.slug in context.preferred_tags)
+        similar_selected: list[SimilarSelectedGame] = []
+        for slug in context.selected_game_slugs:
+            selected_row = self.artifact.slug_to_row[slug]
+            similarity = float(
+                self.artifact.matrix[row].multiply(self.artifact.matrix[selected_row]).sum()
+            )
+            units = quantize(similarity)
+            if units:
+                similar_selected.append(
+                    SimilarSelectedGame(
+                        slug=slug,
+                        title=self.artifact.items[selected_row].title,
+                        similarity_units=units,
+                    )
+                )
+        similar_selected.sort(key=lambda value: (-value.similarity_units, value.slug))
+        evidence = RecommendationEvidence(
+            matching_genres=matching_genres,
+            matching_tags=matching_tags,
+            preferred_platforms=platform_matches,
+            similar_selected_games=tuple(similar_selected[:3]),
+            popularity_percentile_units=candidate.popularity_score_units,
+        )
+        summary, reasons = _explain(evidence)
+        return RankedRecommendation(
+            slug=item.slug,
+            rank=rank,
+            final_score_units=candidate.base_score_units,
+            components=components,
+            evidence=evidence,
+            explanation_summary=summary,
+            explanation_reasons=reasons,
+        )
+
+    def rank(self, context: UserContext) -> RankingResult:
+        candidates = self.score_candidates(context)
+        ranked = tuple(
+            self.materialize_candidate(candidate, context, rank=rank)
+            for rank, candidate in enumerate(candidates[: context.top_k], start=1)
+        )
         return RankingResult(
-            items=tuple(ranked),
+            items=ranked,
             reason="recommendations" if ranked else "no_content_support",
         )
 

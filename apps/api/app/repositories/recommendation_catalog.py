@@ -6,7 +6,7 @@ from gamelens_recommender import (
     TaxonomyValue,
     canonical_snapshot,
 )
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.models import Game, Genre, Platform, Tag
@@ -29,9 +29,6 @@ class RecommendationCatalogRepository:
         self.session = session
 
     def load(self) -> RecommendationCatalogSnapshot:
-        bind = self.session.get_bind()
-        if bind.dialect.name == "postgresql":
-            self.session.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY"))
         games = list(
             self.session.scalars(
                 select(Game)

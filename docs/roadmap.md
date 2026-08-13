@@ -139,7 +139,7 @@ and the unfixed Debian base-image advisories retained for Stage 7.
 
 ## Stage 4 — Feedback and persistence
 
-**Status:** Engineering plan ready; implementation has not started
+**Status:** Complete (verified 2026-08-13)
 
 Detailed execution plan:
 [`stage-4-feedback-persistence-plan.md`](stage-4-feedback-persistence-plan.md)
@@ -182,6 +182,42 @@ The 30-game synthetic catalog and local feedback prove lifecycle,
 reproducibility, integration, and explanation behavior only. Collaborative and
 hybrid ranking remain Stage 5 work, while comparative ranking evaluation and
 quality claims remain Stage 6 work.
+
+The implementation branch now contains the `0003`-`0005` migration sequence
+(expected head `0005_stage_4_event_contract`), explicit-consent anonymous
+sessions, protected preference and temporal-feedback APIs, personalized event
+logging, and feedback policy `gamelens-feedback-adjustment/1.0.0`. The web
+opt-in/rehydration/clear-data flow, dry-run-first retention and guarded
+revocation commands, and the exact-host E2E topology are also present.
+
+Stage 4 is complete. The verified worktree passes 184 API tests with
+89% diagnostic coverage, 52 ML tests with 83%, and 76 web tests with 67.15%
+statement/71.4% line coverage. All 49 disposable-PostgreSQL integration tests
+pass in 4.53 seconds, including populated legacy upgrade, Stage 4 constraints,
+concurrent feedback serialization, event/delete correlation, cascades, and
+retention; resources were torn down. Ruff passes across 112 Python files;
+strict TypeScript, ESLint, Prettier, production build, generated OpenAPI drift,
+production/full npm audits, and all three Compose definitions also pass. The
+exact-host Docker browser matrix passes 38/38 in 1.3 minutes without retry with
+two workers: 28 Chromium, 5 Firefox, and 5 WebKit. Real Origin/CSRF rejection,
+stateless and active accessibility, persistence, isolation, invalid-cookie
+recovery, and clear-data paths pass; actual expiry/re-consent mutation is
+verified by the API/PostgreSQL suites. E2E containers, network, and volume were
+removed, and the final Compose process list was empty. Section 23 of the
+detailed plan records the completed acceptance evidence.
+The API Dockerfile now removes unused Debian `perl-base` after all install
+steps, resolving the earlier two critical and two high Perl findings. The
+rebuilt no-cache `gamelens-ai-api:stage4-test` image with digest prefix
+`11b2f940731e` passes runtime imports and `pip check`, keeps all 49 PostgreSQL
+integration tests green, and its comprehensive Docker Scout scan reports 0
+critical, 0 high, 3 medium, 27 low, and 2 unspecified findings across 193
+packages. Its only-fixed scan reports no actionable fixed advisory; the
+remaining base-image findings stay documented. Bulk key retirement uses the
+immutable `--created-before` cohort: quiesce creation/re-consent, drain requests,
+capture the database-time cutover while switching issuance to the new secret,
+revoke until `remaining` is zero, then retire the old secret. Commit hash and
+draft-PR URL are publication outputs to be recorded after this verified
+documentation freeze rather than invented in advance.
 
 ## Stage 5 — Collaborative and hybrid ranking
 

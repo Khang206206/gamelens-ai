@@ -49,3 +49,41 @@ test("recommendation layout does not overflow representative viewports", async (
     await expectNoPageOverflow(page);
   }
 });
+
+test("saved personalization remains usable without overflow at representative viewports", async ({
+  page,
+}) => {
+  await page.goto("/recommendations");
+  const consentResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().endsWith("/api/v1/anonymous-sessions"),
+  );
+  await page.getByRole("button", { name: "Enable saved personalization" }).click();
+  expect((await consentResponse).status()).toBe(201);
+  await page.getByRole("textbox", { name: "Genre slugs" }).fill("strategy");
+  await page.getByRole("button", { name: "Save complete preference set" }).click();
+  await expect(page.getByText("Saved preferences were updated.")).toBeVisible();
+
+  const consoleErrors: string[] = [];
+  const pageErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.getByRole("button", { name: "Generate saved recommendations" }).click();
+  await expect(
+    page.getByRole("heading", { name: /personalized recommendations/ }),
+  ).toBeVisible();
+
+  for (const viewport of [
+    { width: 320, height: 720 },
+    { width: 768, height: 900 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expectNoPageOverflow(page);
+  }
+  expect(consoleErrors).toEqual([]);
+  expect(pageErrors).toEqual([]);
+});

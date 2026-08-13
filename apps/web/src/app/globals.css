@@ -1304,6 +1304,165 @@ select:disabled {
   padding-bottom: clamp(4rem, 8vw, 7rem);
 }
 
+.persistence-panel,
+.persistence-workspace,
+.stateless-recommendation-section {
+  margin-top: 1.5rem;
+  padding: clamp(1.2rem, 4vw, 2rem);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+
+.persistence-panel {
+  border-width: 2px;
+  box-shadow: var(--shadow-hard);
+}
+
+.persistence-panel__heading,
+.persistence-session-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.persistence-panel h2,
+.persistence-workspace h2,
+.stateless-recommendation-section h2 {
+  margin: 0.5rem 0 1rem;
+  font-family: var(--display);
+  font-size: clamp(1.8rem, 5vw, 3.4rem);
+  letter-spacing: -0.05em;
+  line-height: 1;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.persistence-panel > p,
+.persistence-workspace > p,
+.stateless-recommendation-section__heading > p:not(.eyebrow) {
+  max-width: 55rem;
+  color: var(--ink-soft);
+}
+
+.status-chip {
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--ink);
+  border-radius: 99rem;
+  background: var(--acid);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.persistence-actions,
+.persistence-session-summary,
+.persistence-status {
+  margin-top: 1rem;
+}
+
+.persistence-status {
+  min-height: 1.35rem;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+}
+
+.preference-editor,
+.feedback-controls__grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.preference-editor label,
+.feedback-controls__grid label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.preference-editor input,
+.feedback-controls select {
+  min-width: 0;
+  min-height: 2.8rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: white;
+}
+
+.feedback-controls {
+  min-width: 0;
+  margin: 1.25rem 0 0;
+  padding: 1rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.feedback-controls legend {
+  padding-right: 0.5rem;
+  font-weight: 850;
+}
+
+.feedback-controls__grid .feedback-controls__check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.feedback-controls__check input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.feedback-controls__actions {
+  margin-top: 1rem;
+}
+
+.saved-feedback {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.saved-feedback h3 {
+  margin: 0.4rem 0 0;
+  font-family: var(--display);
+  font-size: clamp(1.5rem, 4vw, 2.4rem);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.saved-feedback__list {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.saved-feedback__list > li {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: white;
+}
+
+.stateless-recommendation-section {
+  border-style: dashed;
+}
+
+.stateless-recommendation-section .recommendation-workspace,
+.stateless-recommendation-section .recommendation-results {
+  box-shadow: none;
+}
+
 .recommendation-workspace,
 .recommendation-results {
   margin-top: 1.5rem;
@@ -1334,7 +1493,7 @@ select:disabled {
 }
 
 .recommendation-progress strong {
-  color: var(--orange);
+  color: var(--danger);
   font-size: 1rem;
 }
 
@@ -1624,6 +1783,11 @@ select:disabled {
 }
 
 @media (min-width: 40rem) {
+  .preference-editor,
+  .feedback-controls__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .choice-grid--games,
   .selection-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));

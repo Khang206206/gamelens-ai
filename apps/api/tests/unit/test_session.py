@@ -4,12 +4,45 @@ import pytest
 from app.db.session import (
     EXPECTED_SCHEMA_REVISION,
     REQUIRED_SCHEMA_TABLES,
+    begin_read_committed,
+    begin_repeatable_read,
     database_is_ready,
     session_scope,
 )
 from sqlalchemy import Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
+
+
+@pytest.mark.parametrize(
+    ("begin", "expected_mode"),
+    [
+        (begin_read_committed, "READ COMMITTED, READ WRITE"),
+        (begin_repeatable_read, "REPEATABLE READ, READ ONLY"),
+    ],
+)
+def test_transaction_mode_is_set_before_the_first_postgresql_query(
+    begin,  # type: ignore[no-untyped-def]
+    expected_mode: str,
+) -> None:
+    session = MagicMock(spec=Session)
+    session.in_transaction.return_value = False
+    session.get_bind.return_value.dialect.name = "postgresql"
+
+    begin(session, read_only="READ ONLY" in expected_mode)
+
+    statement = session.execute.call_args.args[0]
+    assert str(statement) == f"SET TRANSACTION ISOLATION LEVEL {expected_mode}"
+
+
+def test_transaction_mode_rejects_a_session_that_already_queried() -> None:
+    session = MagicMock(spec=Session)
+    session.in_transaction.return_value = True
+
+    with pytest.raises(RuntimeError, match="before the first query"):
+        begin_read_committed(session)
+
+    session.execute.assert_not_called()
 
 
 def test_session_scope_never_auto_commits_and_always_closes() -> None:

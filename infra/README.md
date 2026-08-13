@@ -39,8 +39,8 @@ is disposable. The test service requires both an explicit pytest flag and a
 test-only database-reset opt-in. It never mounts or resets the development
 database volume.
 
-`infra/docker-compose.e2e.yml` is a second isolated Compose project for Stage 3
-browser acceptance. It creates a fresh `tmpfs` PostgreSQL database, runs
+`infra/docker-compose.e2e.yml` is a second isolated Compose project for browser
+acceptance. It creates a fresh `tmpfs` PostgreSQL database, runs
 Alembic and the deterministic seed through a one-shot setup service, then
 initializes a disposable named artifact volume. A root-only init container
 changes that new volume's owner and exits; the model builder itself runs as the
@@ -53,28 +53,63 @@ Chromium plus five smoke cases in each of Firefox and WebKit.
 
 The
 [Stage 4 feedback-and-persistence plan](../docs/stage-4-feedback-persistence-plan.md)
-will extend this disposable stack with real anonymous-cookie, exact-origin,
-CSRF, preference, feedback, event, and clear-data acceptance. The plan uses web
-and API aliases under one reserved test site so browser SameSite behavior is
-exercised rather than replaced by a fabricated auth header. This topology and
-its session secret/cookie settings are not implemented yet.
+extends this disposable stack with real anonymous-cookie, exact-origin, CSRF,
+preference, feedback, event, and clear-data acceptance. The browser uses the
+exact hostname `gamelens.test`: web origin `http://gamelens.test:3000` and API
+URL `http://gamelens.test:8000`. The web service shares the API network
+namespace so both ports resolve to the same endpoint. The API receives the
+exact web Origin, `stage-4-v1` consent version, a test-only session secret, and
+`ANONYMOUS_SESSION_COOKIE_SECURE=false`. This topology exercises a first-party
+cookie over credentialed cross-origin requests across ports rather than a
+fabricated auth header. The expanded Stage 4 Playwright matrix enumerates 38
+cases: 28 Chromium plus five critical Firefox and five critical WebKit paths.
+All 38 pass in 1.3 minutes without retry using two workers.
 
-Stage 4 also plans an explicit dry-run-first retention command. Retention will
-never run from Compose startup, migration, seed, model build, general tests, or
-ordinary teardown. Automated purge acceptance may target only the guarded
-disposable database; it may not mount or delete development data. Fixed session
-expiry makes owned state purge-eligible rather than pretending an unscheduled
-command deletes it at an exact instant. Permanent bulk session revocation will
-use a separately confirmed direct command with no general Make wrapper.
+Stage 4 implements explicit dry-run-first retention and revocation commands.
+`make retention-preview` runs `python -m app.commands.retention` without
+mutation. Purge execution requires explicit event and expired-user cutoffs plus
+the exact database-fingerprinted confirmation emitted by preview. Permanent
+bulk session revocation uses the separately confirmed direct command
+`python -m app.commands.anonymous_sessions`; it has no general Make execution
+wrapper and selects the immutable creation cohort with `--created-before`. Key
+retirement quiesces old-secret creation/re-consent, drains in-flight requests,
+captures the database-time cutover while switching issuance to the new secret,
+executes revocation until `remaining` is zero, and only then retires the old
+secret. Neither operation runs from Compose startup, migration, seed, model
+build, general tests, or ordinary teardown. Automated execution acceptance may
+target only the guarded disposable database. The passing integration suite
+verifies preview/purge counts, one-row batches, expiry/revoked cascades, cohort
+stability across re-consent, and catalog preservation. Fixed session expiry
+makes owned state purge-eligible rather than pretending an unscheduled command
+deletes it at an exact instant.
+
+The PostgreSQL integration Compose file now supplies the Stage 4 test-only
+session secret and runs the migration/persistence suites against its guarded
+`tmpfs` database. Readiness expects Alembic head
+`0005_stage_4_event_contract`. All three Compose definitions validate, and all 49
+PostgreSQL integration tests pass. They cover the populated legacy upgrade,
+partial indexes and constraints, concurrent feedback serialization,
+personalized HTTP event correlation, deletion cascades, and bounded retention.
+The companion fast gates pass 184 API, 52 ML, and 76 web tests. Ruff passes
+across 112 Python files; TypeScript, ESLint, Prettier, production build,
+generated OpenAPI drift, production/full npm audits, and all three Compose
+definitions are green. The exact-host browser gate is 38/38; teardown removes
+the E2E containers, network, and volume and leaves `compose ps` empty. Final
+release diff/privacy review is clean.
 
 The API image is a non-root Python 3.12 development image built from a
 transitive dependency lock. The `quality` Compose service bind-mounts the
-working tree for current-source test, lint, and format commands. Production
-container optimization and deployment guidance belong to Stage 7. Docker
-Scout currently reports two critical and two high unfixed Debian `perl`
-advisories inherited from the pinned development base. The local API remains
-non-root and loopback-only; Stage 7 must choose and rescan a production-minimal
-base rather than treating this development image as deployable.
+working tree for current-source test, lint, and format commands. The Dockerfile
+removes unused Debian `perl-base` only after all install steps. A rebuilt no-cache
+`gamelens-ai-api:stage4-test` build with digest prefix `11b2f940731e` passes
+runtime imports and `pip check` and retains all 49 PostgreSQL integration
+passes. Removing `perl-base` resolves the earlier two critical and two high
+findings. The comprehensive Docker Scout scan reports 0 critical, 0 high, 3
+medium, 27 low, and 2 unspecified findings across 193 packages; its only-fixed
+scan reports no actionable fixed advisory. Production container optimization
+and deployment guidance still belong to Stage 7; the local API remains non-root and
+loopback-only, and Stage 7 must choose and rescan a production-minimal base
+rather than treating this development image as deployable.
 Kubernetes, Kafka, and microservice infrastructure remain outside the current
 scope.
 

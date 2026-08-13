@@ -1,4 +1,4 @@
-# Fully resolved for the pinned Python 3.12 Linux container used by Stage 3.
+# Fully resolved for the pinned Python 3.12 Linux container used by Stage 4.
 # The source-local gamelens-recommender distribution is installed separately
 # from ../../ml and enforced by apps/api/pyproject.toml.
 # Regenerate and review this file whenever apps/api/pyproject.toml changes.

@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { PersistentRecommendationFlow } from "@/features/recommendations/persistent-recommendation-flow";
 import { RecommendationFlow } from "@/features/recommendations/recommendation-flow";
 
 export const metadata: Metadata = {
   title: "Game recommendations",
   description:
-    "Choose request-scoped game and taxonomy preferences to receive explained content recommendations.",
+    "Choose request-only recommendations or explicitly opt in to anonymous saved personalization and feedback.",
 };
 
 export default function RecommendationsPage() {
@@ -16,8 +17,8 @@ export default function RecommendationsPage() {
         <p className="eyebrow">Anonymous content model</p>
         <h1>Shape your next shortlist</h1>
         <p>
-          Pick games or themes you enjoy. Your choices are used for this request only and
-          are not saved to an account or treated as feedback.
+          Start with a request-only shortlist, or explicitly choose anonymous saved
+          personalization to rehydrate preferences and manage feedback on this browser.
         </p>
       </header>
       <noscript>
@@ -34,7 +35,9 @@ export default function RecommendationsPage() {
           </Link>
         </div>
       </noscript>
-      <RecommendationFlow />
+      <PersistentRecommendationFlow>
+        <RecommendationFlow />
+      </PersistentRecommendationFlow>
     </div>
   );
 }

@@ -6,6 +6,7 @@ from alembic import command
 from alembic.config import Config
 from app.core.config import Settings
 from app.db.base import Base
+from app.db.session import EXPECTED_SCHEMA_REVISION
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.orm import Session, sessionmaker
@@ -86,7 +87,7 @@ def migrated_database(
         command.upgrade(config, "head")
         command.check(config)
         current_revision = connection.scalar(text("SELECT version_num FROM alembic_version"))
-        if current_revision != "0002_stage_1_integrity_hardening":
+        if current_revision != EXPECTED_SCHEMA_REVISION:
             raise RuntimeError(f"Unexpected Alembic head revision: {current_revision!r}")
     yield
 
