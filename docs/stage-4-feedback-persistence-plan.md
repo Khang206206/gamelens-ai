@@ -2447,8 +2447,8 @@ invalid-cookie recovery, clear-data, real Origin/CSRF rejection, and
 stateless/active axe behavior. Its re-consent case is deliberately hybrid: an
 injected outdated `GET /me` drives the UI while the protected `POST` reaches a
 real current session. Actual expiry and re-consent mutation are proved by the
-API/PostgreSQL suites. Commit identity and draft-PR URL will be recorded by the
-publication step; this document does not invent them before commit creation.
+API/PostgreSQL suites. The implementation is published as commit `c96b6c2` in
+draft PR [#5](https://github.com/Khang206206/gamelens-ai/pull/5).
 
 ## 22. Stage 5 Handoff
 
@@ -2496,8 +2496,9 @@ quality claims remain Stage 6 work.
 ## 23. Verified Completion Record
 
 Stage 4 completed on 2026-08-13. Planning used `docs/stage-4-plan`; implementation
-used `feat/stage-4-feedback-persistence`. Commit identity and draft-PR URL are
-created by the publication step and therefore are not fabricated here.
+used `feat/stage-4-feedback-persistence`. The verified implementation commit is
+`c96b6c2`, published in draft PR
+[#5](https://github.com/Khang206206/gamelens-ai/pull/5).
 
 - Runtime/locks: Python 3.12.13, API 0.3.0, PostgreSQL 16.14, Node.js 24.18.0,
   npm 11.16.0, Next.js 16.2.12, React 19.2.8, TypeScript 5.9.3, Playwright

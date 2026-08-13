@@ -215,9 +215,9 @@ packages. Its only-fixed scan reports no actionable fixed advisory; the
 remaining base-image findings stay documented. Bulk key retirement uses the
 immutable `--created-before` cohort: quiesce creation/re-consent, drain requests,
 capture the database-time cutover while switching issuance to the new secret,
-revoke until `remaining` is zero, then retire the old secret. Commit hash and
-draft-PR URL are publication outputs to be recorded after this verified
-documentation freeze rather than invented in advance.
+revoke until `remaining` is zero, then retire the old secret. The implementation
+is published as commit `c96b6c2` in draft PR
+[#5](https://github.com/Khang206206/gamelens-ai/pull/5).
 
 ## Stage 5 — Collaborative and hybrid ranking
 
