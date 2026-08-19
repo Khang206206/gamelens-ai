@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request
 
 from app.api.dependencies import DatabaseSession
 from app.core.exceptions import DATABASE_ERROR_RESPONSES
+from app.db.session import begin_repeatable_read
 from app.repositories.recommendation_catalog import RecommendationCatalogRepository
 from app.schemas.model_status import ModelStatusResponse
 
@@ -19,6 +20,7 @@ def model_status(request: Request, session: DatabaseSession) -> ModelStatusRespo
     service = request.app.state.recommendation_service
     if not service.needs_catalog:
         return service.status()
+    begin_repeatable_read(session, read_only=True)
     catalog = RecommendationCatalogRepository(session).load()
     return service.status(
         catalog.model_snapshot,

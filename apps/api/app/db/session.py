@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 logger = logging.getLogger(__name__)
 
 DATABASE_CONNECT_TIMEOUT_SECONDS = 1
-EXPECTED_SCHEMA_REVISION = "0002_stage_1_integrity_hardening"
+EXPECTED_SCHEMA_REVISION = "0005_stage_4_event_contract"
 REQUIRED_SCHEMA_TABLES = (
     "games",
     "genres",
@@ -53,6 +53,35 @@ def create_session_factory(engine: Engine) -> sessionmaker[Session]:
         autoflush=False,
         expire_on_commit=False,
     )
+
+
+def begin_repeatable_read(session: Session, *, read_only: bool) -> None:
+    """Establish transaction mode before the owner's first application query."""
+
+    _begin_transaction(session, isolation_level="REPEATABLE READ", read_only=read_only)
+
+
+def begin_read_committed(session: Session, *, read_only: bool = False) -> None:
+    """Use lock-serialized READ COMMITTED semantics for ordinary profile mutations."""
+
+    _begin_transaction(session, isolation_level="READ COMMITTED", read_only=read_only)
+
+
+def _begin_transaction(
+    session: Session,
+    *,
+    isolation_level: str,
+    read_only: bool,
+) -> None:
+    """Establish a fixed transaction mode before the owner's first application query."""
+
+    if session.in_transaction():
+        raise RuntimeError("Transaction mode must be established before the first query")
+    if session.get_bind().dialect.name == "postgresql":
+        mode = "READ ONLY" if read_only else "READ WRITE"
+        session.execute(text(f"SET TRANSACTION ISOLATION LEVEL {isolation_level}, {mode}"))
+    else:
+        session.begin()
 
 
 def session_scope(factory: sessionmaker[Session]) -> Generator[Session]:

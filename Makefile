@@ -1,7 +1,7 @@
-.PHONY: help config build build-web up down logs api web migrate seed model-build model-validate test-ml test test-integration test-web test-web-e2e lint lint-web format format-web api-types
+.PHONY: help config build build-web up down logs api web migrate seed model-build model-validate retention-preview test-ml test test-integration test-web test-web-e2e lint lint-web format format-web api-types
 
 help:
-	@echo "GameLens AI Stage 3 commands"
+	@echo "GameLens AI Stage 4 commands"
 	@echo "  make config  Validate development and test Compose without printing secrets"
 	@echo "  make build   Build the API development image"
 	@echo "  make build-web  Build the web development image"
@@ -14,6 +14,7 @@ help:
 	@echo "  make seed    Load deterministic development catalog data"
 	@echo "  make model-build  Build the configured MODEL_ARTIFACT_PATH"
 	@echo "  make model-validate  Validate the configured artifact without mutation"
+	@echo "  make retention-preview  Preview retention eligibility without mutation"
 	@echo "  make test-ml  Run deterministic ML and artifact tests"
 	@echo "  make test    Run the fast unit and contract suite"
 	@echo "  make test-integration  Run tests against disposable PostgreSQL"
@@ -64,6 +65,9 @@ model-build:
 model-validate:
 	docker compose --profile model run --rm --no-deps model-builder python -m app.commands.recommendation_artifact validate
 
+retention-preview:
+	docker compose run --build --rm api python -m app.commands.retention
+
 test-ml:
 	docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests -q -p no:cacheprovider
 
@@ -74,11 +78,11 @@ test-integration:
 	@code=0; trap 'docker compose -f infra/docker-compose.test.yml down --remove-orphans' EXIT; docker compose -f infra/docker-compose.test.yml up -d test-db && docker compose -f infra/docker-compose.test.yml run --build --rm test-api || code=$$?; exit $$code
 
 test-web:
-	cd apps/web && NEXT_PUBLIC_API_URL=http://localhost:8000 npm run typecheck
+	cd apps/web && NEXT_PUBLIC_API_URL=http://localhost:8000 NEXT_PUBLIC_CONSENT_VERSION=stage-4-v1 npm run typecheck
 	cd apps/web && npm run lint
 	cd apps/web && npm run format:check
-	cd apps/web && NEXT_PUBLIC_API_URL=http://localhost:8000 npm run test
-	cd apps/web && NEXT_PUBLIC_API_URL=http://localhost:8000 npm run build
+	cd apps/web && NEXT_PUBLIC_API_URL=http://localhost:8000 NEXT_PUBLIC_CONSENT_VERSION=stage-4-v1 npm run test
+	cd apps/web && NEXT_PUBLIC_API_URL=http://localhost:8000 NEXT_PUBLIC_CONSENT_VERSION=stage-4-v1 npm run build
 	cd apps/web && npm run api:types:check
 
 test-web-e2e:

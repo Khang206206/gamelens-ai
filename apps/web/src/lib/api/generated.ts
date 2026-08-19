@@ -21,6 +21,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/anonymous-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create or explicitly renew a consented anonymous session */
+        post: operations["create_anonymous_session_api_v1_anonymous_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect the current anonymous session lifecycle */
+        get: operations["get_current_session_api_v1_me_get"];
+        put?: never;
+        post?: never;
+        /** Withdraw consent and delete all anonymous user data */
+        delete: operations["delete_current_session_api_v1_me_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Preferences */
+        get: operations["get_preferences_api_v1_me_preferences_get"];
+        /** Replace Preferences */
+        put: operations["replace_preferences_api_v1_me_preferences_put"];
+        post?: never;
+        /** Clear Preferences */
+        delete: operations["clear_preferences_api_v1_me_preferences_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Feedback */
+        get: operations["list_feedback_api_v1_me_feedback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/games/{game_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace Game Feedback */
+        put: operations["replace_game_feedback_api_v1_me_games__game_id__feedback_put"];
+        post?: never;
+        /** Clear Game Feedback */
+        delete: operations["clear_game_feedback_api_v1_me_games__game_id__feedback_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate and durably log a feedback-aware recommendation */
+        post: operations["create_personalized_recommendations_api_v1_me_recommendations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/games": {
         parameters: {
             query?: never;
@@ -155,6 +261,40 @@ export interface components {
             /** Data Fingerprint */
             data_fingerprint?: string | null;
         };
+        /** AnonymousSessionConsentRequest */
+        AnonymousSessionConsentRequest: {
+            /**
+             * Consent
+             * @constant
+             */
+            consent: true;
+            /** Consent Version */
+            consent_version: string;
+        };
+        /** AnonymousSessionResponse */
+        AnonymousSessionResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "consent_outdated";
+            /** Consent Version */
+            consent_version: string;
+            /** Current Consent Version */
+            current_consent_version: string;
+            /**
+             * Consented At
+             * Format: date-time
+             */
+            consented_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Csrf Token */
+            csrf_token: string;
+        };
         /**
          * CatalogSort
          * @enum {string}
@@ -179,6 +319,50 @@ export interface components {
             slug: string;
             /** Name */
             name: string;
+        };
+        /** FeedbackPage */
+        FeedbackPage: {
+            /** Items */
+            items: components["schemas"]["FeedbackResource"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** FeedbackReplaceRequest */
+        FeedbackReplaceRequest: {
+            /** Reaction */
+            reaction: ("liked" | "disliked") | null;
+            /** Played */
+            played: boolean;
+            /** Wishlisted */
+            wishlisted: boolean;
+            /** Rating */
+            rating: number | string | null;
+        };
+        /** FeedbackResource */
+        FeedbackResource: {
+            /** Game Id */
+            game_id: number;
+            /** Game Slug */
+            game_slug: string;
+            /** Game Title */
+            game_title: string;
+            /** Reaction */
+            reaction: ("liked" | "disliked") | null;
+            /** Played */
+            played: boolean;
+            /** Wishlisted */
+            wishlisted: boolean;
+            /** Rating */
+            rating: number | null;
+            /**
+             * Latest Occurred At
+             * Format: date-time
+             */
+            latest_occurred_at: string;
         };
         /** GameDetail */
         GameDetail: {
@@ -301,6 +485,110 @@ export interface components {
             /** Feature Families */
             feature_families?: string[] | null;
         };
+        /** PersonalizationPolicyIdentity */
+        PersonalizationPolicyIdentity: {
+            /** Name */
+            name: string;
+            /** Version */
+            version: string;
+        };
+        /** PersonalizedRecommendationItem */
+        PersonalizedRecommendationItem: {
+            /** Rank */
+            rank: number;
+            game: components["schemas"]["GameSummary"];
+            /** Base Ranking Score */
+            base_ranking_score: number;
+            /** Base Components */
+            base_components: components["schemas"]["ScoreComponentResponse"][];
+            /** Base Weight */
+            base_weight: number;
+            /** Base Contribution */
+            base_contribution: number;
+            /** Feedback Affinity Score */
+            feedback_affinity_score: number;
+            /** Feedback Affinity Weight */
+            feedback_affinity_weight: number;
+            /** Feedback Affinity Contribution */
+            feedback_affinity_contribution: number;
+            /** Pre Played Score */
+            pre_played_score: number;
+            /** Played Factor */
+            played_factor: number;
+            /** Played Delta */
+            played_delta: number;
+            /** Ranking Score */
+            ranking_score: number;
+            /** Adjustment Reasons */
+            adjustment_reasons: ("feedback_affinity" | "played_adjustment")[];
+            evidence: components["schemas"]["RecommendationEvidenceResponse"];
+            explanation: components["schemas"]["RecommendationExplanationResponse"];
+        };
+        /** PersonalizedRecommendationRequest */
+        PersonalizedRecommendationRequest: {
+            /**
+             * Top K
+             * @default 10
+             */
+            top_k?: number;
+        };
+        /** PersonalizedRecommendationResponse */
+        PersonalizedRecommendationResponse: {
+            /** Generation Id */
+            generation_id: string;
+            /** Model Name */
+            model_name: string;
+            /** Model Version */
+            model_version: string;
+            /** Data Fingerprint */
+            data_fingerprint: string;
+            policy: components["schemas"]["PersonalizationPolicyIdentity"];
+            /**
+             * Response Reason
+             * @enum {string}
+             */
+            response_reason: "recommendations" | "no_content_support" | "no_eligible_candidates";
+            /** Requested Top K */
+            requested_top_k: number;
+            /** Positive Feedback Sources */
+            positive_feedback_sources: components["schemas"]["PositiveFeedbackSourceResponse"][];
+            /** Items */
+            items: components["schemas"]["PersonalizedRecommendationItem"][];
+        };
+        /** PositiveFeedbackSourceResponse */
+        PositiveFeedbackSourceResponse: {
+            /** Game Slug */
+            game_slug: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "liked" | "rating";
+        };
+        /** PreferenceReplaceRequest */
+        PreferenceReplaceRequest: {
+            /** Selected Game Ids */
+            selected_game_ids?: number[];
+            /** Preferred Genres */
+            preferred_genres?: string[];
+            /** Preferred Tags */
+            preferred_tags?: string[];
+            /** Preferred Platforms */
+            preferred_platforms?: string[];
+        };
+        /** PreferenceResponse */
+        PreferenceResponse: {
+            /** Selected Games */
+            selected_games: components["schemas"]["SavedGamePreference"][];
+            /** Preferred Genres */
+            preferred_genres: string[];
+            /** Preferred Tags */
+            preferred_tags: string[];
+            /** Preferred Platforms */
+            preferred_platforms: string[];
+            /** Stale References */
+            stale_references: string[];
+        };
         /** RecommendationEvidenceResponse */
         RecommendationEvidenceResponse: {
             /** Matching Genres */
@@ -370,6 +658,15 @@ export interface components {
             requested_top_k: number;
             /** Items */
             items: components["schemas"]["RecommendationItemResponse"][];
+        };
+        /** SavedGamePreference */
+        SavedGamePreference: {
+            /** Id */
+            id: number;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
         };
         /** ScoreComponentResponse */
         ScoreComponentResponse: {
@@ -446,6 +743,971 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    create_anonymous_session_api_v1_anonymous_sessions_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Exact browser origin from the configured allowlist. */
+                Origin: string;
+                /** @description Domain-separated CSRF value returned by the session bootstrap. Optional only for first-time consent without a session cookie. */
+                "X-CSRF-Token"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnonymousSessionConsentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnonymousSessionResponse"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnonymousSessionResponse"];
+                };
+            };
+            /** @description An active anonymous session is required. */
+            401: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request Origin or CSRF token is invalid. */
+            403: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or saved personalization state requires attention. */
+            409: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected internal error occurred. */
+            500: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The database is temporarily unavailable. */
+            503: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_current_session_api_v1_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnonymousSessionResponse"];
+                };
+            };
+            /** @description An active anonymous session is required. */
+            401: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request Origin or CSRF token is invalid. */
+            403: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or saved personalization state requires attention. */
+            409: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected internal error occurred. */
+            500: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The database is temporarily unavailable. */
+            503: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_current_session_api_v1_me_delete: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Exact browser origin from the configured allowlist. */
+                Origin: string;
+                /** @description Domain-separated CSRF value returned by the session bootstrap. Optional only for first-time consent without a session cookie. */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An active anonymous session is required. */
+            401: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request Origin or CSRF token is invalid. */
+            403: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or saved personalization state requires attention. */
+            409: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected internal error occurred. */
+            500: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The database is temporarily unavailable. */
+            503: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_preferences_api_v1_me_preferences_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferenceResponse"];
+                };
+            };
+            /** @description An active anonymous session is required. */
+            401: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request Origin or CSRF token is invalid. */
+            403: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or saved personalization state requires attention. */
+            409: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected internal error occurred. */
+            500: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The database is temporarily unavailable. */
+            503: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    replace_preferences_api_v1_me_preferences_put: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Exact browser origin from the configured allowlist. */
+                Origin: string;
+                /** @description Domain-separated CSRF value returned by the session bootstrap. Optional only for first-time consent without a session cookie. */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferenceReplaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferenceResponse"];
+                };
+            };
+            /** @description An active anonymous session is required. */
+            401: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request Origin or CSRF token is invalid. */
+            403: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or saved personalization state requires attention. */
+            409: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected internal error occurred. */
+            500: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The database is temporarily unavailable. */
+            503: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    clear_preferences_api_v1_me_preferences_delete: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Exact browser origin from the configured allowlist. */
+                Origin: string;
+                /** @description Domain-separated CSRF value returned by the session bootstrap. Optional only for first-time consent without a session cookie. */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An active anonymous session is required. */
+            401: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request Origin or CSRF token is invalid. */
+            403: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or saved personalization state requires attention. */
+            409: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected internal error occurred. */
+            500: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The database is temporarily unavailable. */
+            503: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_feedback_api_v1_me_feedback_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackPage"];
+                };
+            };
+            /** @description An active anonymous session is required. */
+            401: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request Origin or CSRF token is invalid. */
+            403: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or saved personalization state requires attention. */
+            409: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected internal error occurred. */
+            500: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The database is temporarily unavailable. */
+            503: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    replace_game_feedback_api_v1_me_games__game_id__feedback_put: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Exact browser origin from the configured allowlist. */
+                Origin: string;
+                /** @description Domain-separated CSRF value returned by the session bootstrap. Optional only for first-time consent without a session cookie. */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                game_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackReplaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackResource"] | null;
+                };
+            };
+            /** @description An active anonymous session is required. */
+            401: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request Origin or CSRF token is invalid. */
+            403: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The referenced game does not exist. */
+            404: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or saved personalization state requires attention. */
+            409: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected internal error occurred. */
+            500: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The database is temporarily unavailable. */
+            503: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    clear_game_feedback_api_v1_me_games__game_id__feedback_delete: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Exact browser origin from the configured allowlist. */
+                Origin: string;
+                /** @description Domain-separated CSRF value returned by the session bootstrap. Optional only for first-time consent without a session cookie. */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                game_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An active anonymous session is required. */
+            401: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request Origin or CSRF token is invalid. */
+            403: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The referenced game does not exist. */
+            404: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or saved personalization state requires attention. */
+            409: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected internal error occurred. */
+            500: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The database is temporarily unavailable. */
+            503: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_personalized_recommendations_api_v1_me_recommendations_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Exact browser origin from the configured allowlist. */
+                Origin: string;
+                /** @description Domain-separated CSRF value returned by the session bootstrap. Optional only for first-time consent without a session cookie. */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonalizedRecommendationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalizedRecommendationResponse"];
+                };
+            };
+            /** @description An active anonymous session is required. */
+            401: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request Origin or CSRF token is invalid. */
+            403: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or saved personalization state requires attention. */
+            409: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Recommendation request validation failed. */
+            422: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected internal error occurred. */
+            500: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The recommendation model or database is temporarily unavailable. */
+            503: {
+                headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -575,6 +1837,8 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
@@ -584,6 +1848,8 @@ export interface operations {
             /** @description An unexpected internal error occurred. */
             500: {
                 headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
@@ -593,6 +1859,8 @@ export interface operations {
             /** @description The database is temporarily unavailable. */
             503: {
                 headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
@@ -613,6 +1881,8 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
@@ -622,6 +1892,8 @@ export interface operations {
             /** @description An unexpected internal error occurred. */
             500: {
                 headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
@@ -631,6 +1903,8 @@ export interface operations {
             /** @description The database is temporarily unavailable. */
             503: {
                 headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
@@ -651,6 +1925,8 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
@@ -660,6 +1936,8 @@ export interface operations {
             /** @description An unexpected internal error occurred. */
             500: {
                 headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
@@ -669,6 +1947,8 @@ export interface operations {
             /** @description The database is temporarily unavailable. */
             503: {
                 headers: {
+                    /** @description Protected responses are never stored by caches. */
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {

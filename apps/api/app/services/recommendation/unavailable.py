@@ -1,5 +1,5 @@
-from gamelens_recommender import CatalogSnapshot, UserContext
-from gamelens_recommender.schemas import RankingResult
+from gamelens_recommender import ActiveGameFeedback, CatalogSnapshot, UserContext
+from gamelens_recommender.schemas import PersonalizedRankingResult, RankingResult
 
 from app.core.exceptions import RecommendationUnavailableError
 from app.schemas.model_status import ModelCapabilities, ModelStatusResponse
@@ -37,5 +37,15 @@ class UnavailableRecommendationService:
         )
 
     def recommend(self, *, snapshot: CatalogSnapshot, context: UserContext) -> RankingResult:
+        self.ensure_intrinsic_ready()
+        raise AssertionError("unreachable")
+
+    def recommend_personalized(
+        self,
+        *,
+        snapshot: CatalogSnapshot,
+        context: UserContext,
+        feedback: tuple[ActiveGameFeedback, ...],
+    ) -> PersonalizedRankingResult:
         self.ensure_intrinsic_ready()
         raise AssertionError("unreachable")

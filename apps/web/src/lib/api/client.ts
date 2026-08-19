@@ -12,6 +12,18 @@ export type GameDetail = components["schemas"]["GameDetail"];
 export type TaxonomyItem = components["schemas"]["TaxonomyItem"];
 export type RecommendationRequest = components["schemas"]["RecommendationRequest"];
 export type RecommendationResponse = components["schemas"]["RecommendationResponse"];
+export type AnonymousSessionConsentRequest =
+  components["schemas"]["AnonymousSessionConsentRequest"];
+export type AnonymousSessionResponse = components["schemas"]["AnonymousSessionResponse"];
+export type PreferenceReplaceRequest = components["schemas"]["PreferenceReplaceRequest"];
+export type PreferenceResponse = components["schemas"]["PreferenceResponse"];
+export type FeedbackReplaceRequest = components["schemas"]["FeedbackReplaceRequest"];
+export type FeedbackResource = components["schemas"]["FeedbackResource"];
+export type FeedbackPage = components["schemas"]["FeedbackPage"];
+export type PersonalizedRecommendationRequest =
+  components["schemas"]["PersonalizedRecommendationRequest"];
+export type PersonalizedRecommendationResponse =
+  components["schemas"]["PersonalizedRecommendationResponse"];
 
 export type CatalogSort = "popularity" | "rating" | "release_date" | "title";
 
@@ -30,6 +42,17 @@ export type FetchTransport = typeof fetch;
 export interface ApiClientOptions {
   baseUrl?: string;
   fetch?: FetchTransport;
+}
+
+type ApiHttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+type ApiRequestAccess = "public" | "protected";
+
+interface ApiRequestOptions {
+  method?: ApiHttpMethod;
+  access?: ApiRequestAccess;
+  body?: unknown;
+  csrfToken?: string;
+  signal?: AbortSignal;
 }
 
 function buildQuery(values: Record<string, string | number | undefined>): string {
@@ -94,25 +117,145 @@ export class ApiClient {
     });
   }
 
-  private async request<T>(
-    path: string,
-    options: {
-      method?: "GET" | "POST";
-      body?: unknown;
-      signal?: AbortSignal;
-    } = {},
-  ): Promise<T> {
+  async createAnonymousSession(
+    body: AnonymousSessionConsentRequest,
+    csrfToken?: string,
+    signal?: AbortSignal,
+  ): Promise<AnonymousSessionResponse> {
+    return this.request<AnonymousSessionResponse>("/api/v1/anonymous-sessions", {
+      method: "POST",
+      access: "protected",
+      body,
+      csrfToken,
+      signal,
+    });
+  }
+
+  async getCurrentSession(signal?: AbortSignal): Promise<AnonymousSessionResponse> {
+    return this.request<AnonymousSessionResponse>("/api/v1/me", {
+      access: "protected",
+      signal,
+    });
+  }
+
+  async deleteCurrentSession(csrfToken: string, signal?: AbortSignal): Promise<void> {
+    return this.request<void>("/api/v1/me", {
+      method: "DELETE",
+      access: "protected",
+      csrfToken,
+      signal,
+    });
+  }
+
+  async getPreferences(signal?: AbortSignal): Promise<PreferenceResponse> {
+    return this.request<PreferenceResponse>("/api/v1/me/preferences", {
+      access: "protected",
+      signal,
+    });
+  }
+
+  async replacePreferences(
+    body: PreferenceReplaceRequest,
+    csrfToken: string,
+    signal?: AbortSignal,
+  ): Promise<PreferenceResponse> {
+    return this.request<PreferenceResponse>("/api/v1/me/preferences", {
+      method: "PUT",
+      access: "protected",
+      body,
+      csrfToken,
+      signal,
+    });
+  }
+
+  async clearPreferences(csrfToken: string, signal?: AbortSignal): Promise<void> {
+    return this.request<void>("/api/v1/me/preferences", {
+      method: "DELETE",
+      access: "protected",
+      csrfToken,
+      signal,
+    });
+  }
+
+  async listFeedback(
+    page = 1,
+    pageSize = 50,
+    signal?: AbortSignal,
+  ): Promise<FeedbackPage> {
+    const query = buildQuery({ page, page_size: pageSize });
+    return this.request<FeedbackPage>(`/api/v1/me/feedback${query}`, {
+      access: "protected",
+      signal,
+    });
+  }
+
+  async replaceGameFeedback(
+    gameId: number,
+    body: FeedbackReplaceRequest,
+    csrfToken: string,
+    signal?: AbortSignal,
+  ): Promise<FeedbackResource | null> {
+    return this.request<FeedbackResource | null>(`/api/v1/me/games/${gameId}/feedback`, {
+      method: "PUT",
+      access: "protected",
+      body,
+      csrfToken,
+      signal,
+    });
+  }
+
+  async clearGameFeedback(
+    gameId: number,
+    csrfToken: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    return this.request<void>(`/api/v1/me/games/${gameId}/feedback`, {
+      method: "DELETE",
+      access: "protected",
+      csrfToken,
+      signal,
+    });
+  }
+
+  async recommendPersonalized(
+    body: PersonalizedRecommendationRequest,
+    csrfToken: string,
+    signal?: AbortSignal,
+  ): Promise<PersonalizedRecommendationResponse> {
+    return this.request<PersonalizedRecommendationResponse>(
+      "/api/v1/me/recommendations",
+      {
+        method: "POST",
+        access: "protected",
+        body,
+        csrfToken,
+        signal,
+      },
+    );
+  }
+
+  protected async request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
     try {
       const transport = this.transport;
+      const protectedRequest = options.access === "protected";
       const response = await transport(`${this.baseUrl}${path}`, {
         method: options.method ?? "GET",
         headers: {
           accept: "application/json",
           ...(options.body === undefined ? {} : { "content-type": "application/json" }),
+          ...(protectedRequest && options.csrfToken !== undefined
+            ? { "X-CSRF-Token": options.csrfToken }
+            : {}),
         },
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        credentials: protectedRequest ? "include" : "omit",
+        ...(protectedRequest ? { cache: "no-store" } : {}),
         signal: options.signal,
       });
+
+      if (response.status === 204) {
+        return undefined as T;
+      }
 
       const contentType = response.headers.get("content-type") ?? "";
       if (!contentType.toLowerCase().includes("application/json")) {

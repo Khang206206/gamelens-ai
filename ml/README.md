@@ -1,6 +1,6 @@
 # Machine-learning workspace
 
-**Status:** Stage 3 content recommendation MVP complete and verified 2026-08-07.
+**Status:** Stage 4 feedback policy complete and verified 2026-08-13.
 
 This directory owns deterministic catalog normalization, the popularity
 baseline, TF-IDF feature construction, sparse artifact serialization, pure
@@ -11,8 +11,9 @@ The complete decision and verification record is in the
 
 The
 [Stage 4 feedback-and-persistence plan](../docs/stage-4-feedback-persistence-plan.md)
-is ready; its feedback policy is not implemented. The current package still
-ranks request-scoped context only and has no user identity or durable state.
+is complete and verified. The package now exposes a pure feedback-aware ranker in
+addition to the unchanged Stage 3 request-scoped ranker. It still receives no
+user identity or mutable database object and stores no durable state.
 
 ## Package and reproducibility
 
@@ -45,22 +46,30 @@ then stable slug. Selected games and candidates with zero content support are
 excluded. Returned prose is generated only from the same structured evidence
 that accompanies each score.
 
-## Planned Stage 4 feedback policy
+## Stage 4 feedback policy
 
-Stage 4 plans a separately identified pure policy over the immutable Stage 3
-artifact. Saved preferences will produce the base context; dislikes will be
-hard exclusions; bounded likes/high ratings will produce positive
-artifact-vector affinity; played state will apply an observable adjustment;
-wishlist will remain neutral in policy version 1. Filtering and adjustment will occur
-before top-K, use the existing fixed scale, and preserve exact Stage 3 score/
-order when no effective feedback exists.
+`FeedbackRanker` implements policy
+`gamelens-feedback-adjustment/1.0.0` over the immutable Stage 3 artifact. Saved
+preferences produce the base context; dislikes are hard exclusions; likes and
+ratings of at least 7 (when no reaction exists) produce a deduplicated,
+most-recent-five artifact-vector profile. Positive source games are excluded
+from their own results. When that profile exists, base and affinity scores
+blend at 90% and 10%; otherwise the exact base score/order is retained. Played
+candidates remain eligible with a 0.5 factor, while wishlist is neutral.
+Filtering and adjustment occur before top-K.
 
-The policy will receive only stable slugs and bounded feedback context. It will
-never receive an internal user ID, raw/digested credential, consent metadata,
-or mutable database object, and it will never write into an artifact. Exact
-weights, evidence, tie behavior, and whether artifact compatibility remains
-unchanged must pass the Stage 4 acceptance gate before this section becomes an
-implemented contract.
+The policy receives only stable slugs and immutable bounded feedback context.
+It never receives an internal user ID, raw/digested credential, consent
+metadata, or mutable database object, and it never writes into an artifact.
+Every intermediate uses the 1,000,000 fixed scale and round-half-up
+contributions. Ordering resolves by final score, pre-played score, base score,
+affinity, content, popularity, then stable slug. Returned evidence separately
+exposes base, affinity, and played contributions.
+
+`ContentRanker.score_candidates()` and `materialize_candidate()` expose the
+pre-top-K boundary needed by feedback ranking. The Stage 3 `rank()` wrapper,
+model `gamelens-content-tfidf/1.0.0`, artifact schema `1`, and compatibility
+`stage-3-v1` remain unchanged.
 
 ## Artifact contract
 
@@ -101,8 +110,19 @@ docker compose run --build --rm --no-deps quality `
     python -m pytest /workspace/ml/tests -q -p no:cacheprovider
 ```
 
-The Stage 3 gate passes 25 ML tests with 81% diagnostic branch-aware package
-coverage.
+The Stage 3 gate passed 25 ML tests with 81% diagnostic branch-aware package
+coverage. The current Stage 4 worktree passes 52 ML tests with 83% diagnostic
+coverage plus Ruff lint and format checks across 112 Python files. Cross-stack
+evidence also passes 184 fast API, 76 web, and 49 disposable-PostgreSQL tests.
+The 38-case exact-host Docker browser matrix passes in 1.3 minutes without
+retry. The rebuilt
+no-cache `gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e`
+removes unused Debian `perl-base` after all install steps,
+resolving its earlier two critical and two high findings. Runtime imports,
+`pip check`, and all 49 PostgreSQL tests remain green. Its comprehensive Docker
+Scout scan reports 0 critical, 0 high, 3 medium, 27 low, and 2 unspecified
+findings across 193 packages; its only-fixed scan reports no actionable fixed
+advisory. Final release diff/privacy review is clean.
 
 On the 30-game seed fixture, the verified bundle contains 1,037 vocabulary
 terms and 1,399 sparse nonzeros, occupies 69,743 bytes, and built from the
@@ -110,6 +130,7 @@ database in 0.43 seconds. Ten complete validation loads from the Docker Desktop
 bind mount had min/median/max latency of 89.64/95.54/274.79 ms. These are local
 diagnostics, not performance guarantees or recommendation-quality evidence.
 
-Persistent preferences and feedback are planned for Stage 4, collaborative
-filtering begins in Stage 5, and formal offline ranking evaluation remains
-Stage 6 work.
+Persistent preferences live in the API/database rather than this package.
+Collaborative filtering begins in Stage 5, and formal offline ranking
+evaluation remains Stage 6 work. The synthetic fixture validates deterministic
+policy behavior only, not recommendation quality.

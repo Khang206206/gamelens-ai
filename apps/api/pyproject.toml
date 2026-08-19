@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gamelens-api"
-version = "0.2.0"
-description = "GameLens AI catalog and content recommendation API"
+version = "0.3.0"
+description = "GameLens AI consented feedback and personalized recommendation API"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [

@@ -82,6 +82,7 @@ class UnhandledExceptionMiddleware:
 class DomainError(Exception):
     status_code = 400
     code = "domain_error"
+    clear_session_cookie = False
 
     def __init__(
         self,
@@ -112,6 +113,42 @@ class RecommendationUnavailableError(DomainError):
     code = "recommendation_unavailable"
 
 
+class AnonymousSessionRequiredError(DomainError):
+    status_code = 401
+    code = "anonymous_session_required"
+
+    def __init__(
+        self, message: str = "An active anonymous session is required", *, clear: bool = False
+    ):
+        super().__init__(message)
+        self.clear_session_cookie = clear
+
+
+class OriginNotAllowedError(DomainError):
+    status_code = 403
+    code = "origin_not_allowed"
+
+
+class CsrfValidationError(DomainError):
+    status_code = 403
+    code = "csrf_validation_failed"
+
+
+class ConsentVersionOutdatedError(DomainError):
+    status_code = 409
+    code = "consent_version_outdated"
+
+
+class SavedPreferencesStaleError(DomainError):
+    status_code = 409
+    code = "saved_preferences_stale"
+
+
+class RecommendationGenerationOutcomeUnknownError(DomainError):
+    status_code = 503
+    code = "generation_outcome_unknown"
+
+
 def error_payload(
     *,
     code: str,
@@ -124,17 +161,35 @@ def error_payload(
     return {"error": error}
 
 
-async def domain_error_handler(_request: Request, exc: DomainError) -> JSONResponse:
-    return JSONResponse(
+def _protected_response_headers(
+    request: Request,
+    headers: dict[str, str] | None = None,
+) -> dict[str, str]:
+    result = dict(headers or {})
+    if request.url.path == "/api/v1/anonymous-sessions" or request.url.path.startswith(
+        "/api/v1/me"
+    ):
+        result["Cache-Control"] = "no-store"
+    return result
+
+
+async def domain_error_handler(request: Request, exc: DomainError) -> JSONResponse:
+    response = JSONResponse(
         status_code=exc.status_code,
         content=jsonable_encoder(
             error_payload(code=exc.code, message=exc.message, details=exc.details)
         ),
     )
+    if exc.clear_session_cookie:
+        from app.core.security import clear_session_cookie
+
+        clear_session_cookie(response, request.app.state.settings)
+    response.headers.update(_protected_response_headers(request))
+    return response
 
 
 async def validation_error_handler(
-    _request: Request,
+    request: Request,
     exc: RequestValidationError,
 ) -> JSONResponse:
     return JSONResponse(
@@ -146,11 +201,12 @@ async def validation_error_handler(
                 details=exc.errors(),
             )
         ),
+        headers=_protected_response_headers(request),
     )
 
 
 async def http_error_handler(
-    _request: Request,
+    request: Request,
     exc: StarletteHTTPException,
 ) -> JSONResponse:
     code = "not_found" if exc.status_code == 404 else "http_error"
@@ -158,7 +214,7 @@ async def http_error_handler(
     return JSONResponse(
         status_code=exc.status_code,
         content=jsonable_encoder(error_payload(code=code, message=message)),
-        headers=exc.headers,
+        headers=_protected_response_headers(request, exc.headers),
     )
 
 
@@ -178,6 +234,7 @@ async def database_error_handler(request: Request, exc: DBAPIError) -> JSONRespo
             code="database_unavailable",
             message="The database is temporarily unavailable",
         ),
+        headers=_protected_response_headers(request),
     )
 
 
@@ -197,6 +254,7 @@ async def internal_error_handler(request: Request, exc: Exception) -> JSONRespon
             code="internal_error",
             message="An unexpected internal error occurred",
         ),
+        headers=_protected_response_headers(request),
     )
 
 

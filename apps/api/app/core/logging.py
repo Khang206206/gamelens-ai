@@ -7,7 +7,10 @@ from typing import Any
 DATABASE_CREDENTIAL_PATTERN = re.compile(
     r"(?i)\b(postgresql(?:\+[a-z0-9_-]+)?://[^:\s/@]+:)([^@\s/]+)(@)"
 )
-PASSWORD_ASSIGNMENT_PATTERN = re.compile(r"(?i)\b(password|passwd|pwd)(\s*=\s*)([^\s,;]+)")
+SENSITIVE_ASSIGNMENT_PATTERN = re.compile(
+    r"(?i)\b(password|passwd|pwd|secret|token|csrf)(\s*[=:]\s*)([^\s,;]+)"
+)
+RAW_SESSION_TOKEN_PATTERN = re.compile(r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])")
 STRUCTURED_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access")
 SAFE_EXTRA_FIELDS = (
     "request_id",
@@ -26,7 +29,8 @@ SAFE_EXTRA_FIELDS = (
 
 def redact_sensitive_text(value: str) -> str:
     value = DATABASE_CREDENTIAL_PATTERN.sub(r"\1***\3", value)
-    return PASSWORD_ASSIGNMENT_PATTERN.sub(r"\1\2***", value)
+    value = SENSITIVE_ASSIGNMENT_PATTERN.sub(r"\1\2***", value)
+    return RAW_SESSION_TOKEN_PATTERN.sub("***", value)
 
 
 class JsonFormatter(logging.Formatter):

@@ -15,7 +15,7 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,
-    trace: "retain-on-failure",
+    trace: "off",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },

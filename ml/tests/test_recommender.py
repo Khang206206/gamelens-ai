@@ -329,6 +329,79 @@ def test_ranking_is_deterministic_excludes_selected_and_reconstructs_score(
     )
 
 
+def test_pre_truncation_scoring_preserves_stage_3_golden_contract(snapshot, tmp_path) -> None:
+    artifact = load_artifact(build_artifact(snapshot, tmp_path / "model"))
+    ranker = ContentRanker(artifact)
+    context = UserContext(
+        selected_game_slugs=("alpha-tactics",),
+        preferred_genres=("strategy",),
+        preferred_platforms=("linux",),
+        top_k=3,
+    )
+
+    candidates = ranker.score_candidates(context)
+    result = ranker.rank(context)
+
+    assert [
+        (
+            value.slug,
+            value.base_score_units,
+            value.content_score_units,
+            value.platform_score_units,
+            value.popularity_score_units,
+        )
+        for value in candidates
+    ] == [
+        ("delta-command", 489_035, 420_044, 1_000_000, 530_000),
+        ("beta-kingdom", 467_586, 378_233, 1_000_000, 650_000),
+        ("gamma-drift", 59_534, 30_668, 0, 350_000),
+    ]
+    assert [
+        (
+            value.slug,
+            value.final_score_units,
+            tuple(
+                (
+                    component.name,
+                    component.raw_units,
+                    component.weight_units,
+                    component.contribution_units,
+                )
+                for component in value.components
+            ),
+        )
+        for value in result.items
+    ] == [
+        (
+            "delta-command",
+            489_035,
+            (
+                ("content", 420_044, 800_000, 336_035),
+                ("platform", 1_000_000, 100_000, 100_000),
+                ("popularity", 530_000, 100_000, 53_000),
+            ),
+        ),
+        (
+            "beta-kingdom",
+            467_586,
+            (
+                ("content", 378_233, 800_000, 302_586),
+                ("platform", 1_000_000, 100_000, 100_000),
+                ("popularity", 650_000, 100_000, 65_000),
+            ),
+        ),
+        (
+            "gamma-drift",
+            59_534,
+            (
+                ("content", 30_668, 800_000, 24_534),
+                ("platform", 0, 100_000, 0),
+                ("popularity", 350_000, 100_000, 35_000),
+            ),
+        ),
+    ]
+
+
 def test_taxonomy_preference_order_does_not_change_ranking(snapshot, tmp_path) -> None:
     ranker = ContentRanker(load_artifact(build_artifact(snapshot, tmp_path / "model")))
     first = ranker.rank(

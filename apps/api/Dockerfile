@@ -37,6 +37,16 @@ COPY --chown=gamelens:gamelens data/seed /workspace/data/seed
 
 RUN python -m pip install --no-deps --no-build-isolation .
 
+# The application and its Python runtime do not use Perl. Remove the base-image
+# package only after every install/user-management step, then fail the build if
+# the package remains, dpkg reports damage, Python requirements break, or the
+# application runtime can no longer import.
+RUN dpkg --purge --force-remove-essential perl-base \
+    && ! dpkg-query --show perl-base \
+    && test -z "$(dpkg --audit)" \
+    && python -m pip check \
+    && python -c "import app, gamelens_recommender"
+
 USER gamelens
 
 EXPOSE 8000

@@ -1,5 +1,12 @@
-from gamelens_recommender import CatalogSnapshot, ContentRanker, LoadedArtifact, UserContext
-from gamelens_recommender.schemas import RankingResult
+from gamelens_recommender import (
+    ActiveGameFeedback,
+    CatalogSnapshot,
+    ContentRanker,
+    FeedbackRanker,
+    LoadedArtifact,
+    UserContext,
+)
+from gamelens_recommender.schemas import PersonalizedRankingResult, RankingResult
 
 from app.core.exceptions import RecommendationUnavailableError
 from app.schemas.model_status import ActiveModel, ModelCapabilities, ModelStatusResponse
@@ -9,6 +16,10 @@ class ContentRecommendationService:
     def __init__(self, artifact: LoadedArtifact) -> None:
         self.artifact = artifact
         self.ranker = ContentRanker(artifact)
+        self.feedback_ranker = FeedbackRanker(
+            artifact,
+            content_ranker=self.ranker,
+        )
 
     @property
     def ready(self) -> bool:
@@ -50,6 +61,20 @@ class ContentRecommendationService:
                 code="catalog_stale",
             )
         return self.ranker.rank(context)
+
+    def recommend_personalized(
+        self,
+        *,
+        snapshot: CatalogSnapshot,
+        context: UserContext,
+        feedback: tuple[ActiveGameFeedback, ...],
+    ) -> PersonalizedRankingResult:
+        if snapshot.fingerprint != self.artifact.data_fingerprint:
+            raise RecommendationUnavailableError(
+                "The recommendation artifact no longer matches the catalog",
+                code="catalog_stale",
+            )
+        return self.feedback_ranker.rank(context, feedback)
 
     def _identity(self) -> ActiveModel:
         return ActiveModel(

@@ -25,6 +25,7 @@ def make_guarded_settings(
         api_port=8000,
         database_url=database_url,
         cors_origins=["http://testserver"],
+        anonymous_session_cookie_secure=environment != "test",
         log_level="WARNING",
     )
 

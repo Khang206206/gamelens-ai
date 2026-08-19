@@ -94,10 +94,11 @@ Candidate filtering occurs before ranking:
   popularity alone.
 - Apply deterministic score and stable-slug tie-breaking.
 
-Feedback-derived disliked-game exclusion and played-game adjustment begin in
-Stage 4 after persistence and write contracts exist. The current data model has
-no general game-availability field, so Stage 3 does not imply an unavailable
-state that the catalog cannot represent.
+The Stage 4 personalized path now applies feedback-derived disliked-game
+exclusion and played-game adjustment after resolving durable state. The Stage
+3 endpoint remains unchanged and applies neither. The current data model has no
+general game-availability field, so neither stage implies an unavailable state
+that the catalog cannot represent.
 
 Model version `1.0.0` combines content at 80%, preferred-platform overlap at
 10%, and popularity at 10%. Genre/tag preferences contribute to the content
@@ -109,16 +110,26 @@ serialized weighted contributions sum exactly to the serialized final score,
 and ties resolve by final score, content score, popularity score, then stable
 slug.
 
-## Planned feedback and persistence layer
+## Stage 4 feedback and persistence layer
 
 The detailed
 [Stage 4 engineering plan](stage-4-feedback-persistence-plan.md) defines a
-separate explicit-consent personalized path. Planning does not activate it:
-the current `POST /api/v1/recommendations` remains request-scoped, ignores any
-future identity cookie, and performs no write.
+separate explicit-consent personalized path. Current evidence passes 184 fast
+API, 52 ML, 76 web, and 49 disposable-PostgreSQL tests. The 38-case exact-host
+Docker browser matrix passes in 1.3 minutes without retry: 28 Chromium, 5
+Firefox, and 5 WebKit. The rebuilt no-cache
+`gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e` removes
+unused Debian `perl-base` after all install steps, resolving its earlier two
+critical and two high findings. Runtime imports, `pip check`, and all 49
+PostgreSQL tests remain green; the comprehensive scan reports 0 critical, 0
+high, 3 medium, 27 low, and 2 unspecified findings across 193 packages. Its
+only-fixed scan reports no actionable fixed advisory. Final release diff and
+privacy review are clean. The existing
+`POST /api/v1/recommendations` remains request-scoped, ignores an attached
+identity cookie, and performs no write.
 
-The planned personalized endpoint will use canonical saved preferences as its
-base context and apply a separately versioned feedback policy before top-K
+`POST /api/v1/me/recommendations` uses canonical saved preferences as its base
+context and applies a separately versioned feedback policy before top-K
 truncation:
 
 - Explicit dislikes are hard exclusions.
@@ -133,17 +144,25 @@ truncation:
 - Every intermediate and final value uses the existing fixed scale and
   round-half-up policy with a complete stable tie-break.
 
-The intended feedback policy identity is distinct from content model
-`gamelens-content-tfidf` version `1.0.0`. Base content, platform, and popularity
-components remain visible; personalized responses add affinity and played
-adjustment details that reconstruct the final score. If implementation changes
-artifact-owned feature or base-ranking semantics, it must instead bump the
-model/code compatibility, rotate the artifact path, rebuild, and record that
-decision. It may not silently redefine the existing artifact.
+The feedback policy is `gamelens-feedback-adjustment/1.0.0`, distinct from
+content model `gamelens-content-tfidf/1.0.0`. It selects at most the five most
+recent positive sources, uses a 90% base/10% affinity blend, and multiplies
+played candidates by 0.5. Base content, platform, and popularity components
+remain visible; personalized responses add base contribution, affinity,
+pre-played score, played delta, final score, policy identity, and structured
+evidence sufficient to reconstruct the ranking. All operations retain the
+1,000,000 fixed scale and round-half-up contribution rule. The complete
+tie-break is final score, pre-played score, base score, affinity, content,
+popularity, then stable slug.
+
+The Stage 3 artifact schema, model identity, and compatibility remain
+unchanged. `ContentRanker.score_candidates()` exposes pre-top-K candidates for
+the feedback layer while `ContentRanker.rank()` preserves the Stage 3 response
+and ordering contract.
 
 User IDs, token digests, consent, preferences, interactions, and events never
-enter the immutable artifact. A successful personalized generation will commit
-one bounded event carrying exact model, data-fingerprint, policy, bounded
+enter the immutable artifact. A successful personalized generation commits one
+bounded `stage-4-v1` event carrying exact model, data fingerprint, policy, bounded
 context metadata, a fingerprint of the complete effective state, and compact
 result identity. The event is audit/correlation data for server generation,
 not a standalone replay snapshot, impression, click, conversion, or positive
@@ -198,7 +217,7 @@ adopting stricter loader rules rotate `MODEL_ARTIFACT_PATH`, rebuild and
 validate the bundle, and restart the API instead of changing an artifact in
 place.
 
-Stage 4 feedback computation will consume the loaded artifact read-only. User
+Stage 4 feedback computation consumes the loaded artifact read-only. User
 state remains bounded per-request input and is never serialized back into the
 bundle or retained on the application-lifecycle ranker.
 
@@ -222,8 +241,11 @@ as machine-readable data and a Markdown report; no result is invented.
 ## Deferred work
 
 Persistent preferences, feedback adjustment, disliked-game filtering, and
-recommendation-event logging are specified by the Stage 4 engineering plan but
-are not implemented yet. Collaborative filtering and content/collaborative
-hybrid ranking are Stage 5 work. Formal ranking evaluation is Stage 6 work.
-Semantic embeddings, exploration, LLM explanations, and diversity reranking
-remain outside the first MVP model.
+recommendation-event logging are implemented on the Stage 4 branch. The
+PostgreSQL, fast, static/build, OpenAPI, dependency-audit, Compose, and image
+gates and the 38/38 exact-host Docker browser matrix pass; Stage 4 is verified
+complete.
+Collaborative filtering and content/collaborative hybrid ranking are Stage 5
+work. Formal ranking
+evaluation is Stage 6 work. Semantic embeddings, exploration, LLM
+explanations, and diversity reranking remain outside the first MVP model.

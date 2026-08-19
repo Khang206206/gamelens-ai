@@ -1,8 +1,10 @@
 # GameLens AI API
 
-The GameLens AI API is a Python 3.12 FastAPI application backed by PostgreSQL 16. It exposes the deterministic catalog and Stage 3 artifact-backed content
-recommendations. It never trains during startup or a request and never
-fabricates recommendations when the configured model is unavailable.
+The GameLens AI API is a Python 3.12 FastAPI application backed by PostgreSQL
+16. It exposes the deterministic catalog, Stage 3 artifact-backed content
+recommendations, and the in-progress Stage 4 consented persistence slice. It
+never trains during startup or a request and never fabricates recommendations
+when the configured model is unavailable.
 
 The web application in `apps/web` consumes this API through generated
 OpenAPI types and a project-owned browser client. Use the repository
@@ -10,14 +12,21 @@ OpenAPI types and a project-owned browser client. Use the repository
 
 The completed
 [Stage 3 plan](../../docs/stage-3-content-recommendation-mvp-plan.md) records the
-artifact, scoring, contract, and verification decisions. Anonymous selections
-are request-scoped; persistence and feedback are Stage 4 work.
+artifact, scoring, contract, and verification decisions. Its anonymous
+selection endpoint remains request-scoped and read-only.
 
 The detailed
 [Stage 4 feedback-and-persistence plan](../../docs/stage-4-feedback-persistence-plan.md)
-is ready; none of its identity, preference, feedback, personalized-event, or
-retention runtime contracts is implemented yet. The endpoint and command
-tables below remain the current source of truth.
+is complete and verified. Anonymous identity, preference, temporal feedback,
+personalized-event, retention, and revocation contracts are present on the
+implementation branch. Current evidence is 184 fast API tests with 89%
+diagnostic coverage, 52 ML tests with 83%, 76 web tests with 67.15% statement/
+71.4% line coverage, and 49 disposable-PostgreSQL integration tests in 4.53
+seconds. Ruff passes across 112 Python files; generated OpenAPI drift, the web
+static/build gates, npm audits, and all three Compose definitions pass. The
+exact-host Docker browser matrix passes 38/38 in 1.3 minutes without retry: 28
+Chromium, 5 Firefox, and 5 WebKit.
+The endpoint and command tables below describe the current worktree.
 
 ## Responsibilities
 
@@ -31,13 +40,12 @@ Routes parse HTTP input, services own use cases, repositories own queries,
 Pydantic schemas define external contracts, and SQLAlchemy models remain
 internal.
 
-The Stage 4 plan will add a distinct protected `/api/v1/me` boundary after
-explicit consent. It keeps `POST /api/v1/recommendations` cookie-agnostic and
-read-only, while planned session, preference, feedback, and personalized
-recommendation services own their user-scoped validation, locking,
-transactions, persistence, and bounded event writes. Raw anonymous credentials
-will remain in a host-only HttpOnly cookie and never enter response models,
-logs, PostgreSQL, or model artifacts.
+Stage 4 adds a distinct protected `/api/v1/me` boundary after explicit consent.
+It keeps `POST /api/v1/recommendations` cookie-agnostic and read-only, while
+session, preference, feedback, and personalized-recommendation services own
+their user-scoped validation, locking, transactions, persistence, and bounded
+event writes. Raw anonymous credentials remain in a host-only HttpOnly cookie
+and never enter response models, logs, PostgreSQL, or model artifacts.
 
 ## Docker-first setup
 
@@ -124,18 +132,28 @@ overwriting the active bundle.
 
 ## Endpoints
 
-| Method | Path                         | Purpose                                                        |
-| ------ | ---------------------------- | -------------------------------------------------------------- |
-| GET    | `/health`                    | Application and PostgreSQL readiness                           |
-| GET    | `/api/v1/games`              | Paginated catalog with search, filters, and sorting            |
-| GET    | `/api/v1/games/{game_id}`    | Full game details and taxonomy                                 |
-| GET    | `/api/v1/metadata/genres`    | Sorted genres                                                  |
-| GET    | `/api/v1/metadata/tags`      | Sorted tags                                                    |
-| GET    | `/api/v1/metadata/platforms` | Sorted platforms                                               |
-| GET    | `/api/v1/models/status`      | Honest `ready`, `not_configured`, or `unavailable` model state |
-| POST   | `/api/v1/recommendations`    | Bounded request-scoped recommendations and evidence            |
-| GET    | `/docs`                      | Interactive OpenAPI documentation                              |
-| GET    | `/openapi.json`              | Machine-readable OpenAPI contract                              |
+| Method | Path                                      | Purpose                                                        |
+| ------ | ----------------------------------------- | -------------------------------------------------------------- |
+| GET    | `/health`                                 | Application and PostgreSQL readiness                           |
+| GET    | `/api/v1/games`                           | Paginated catalog with search, filters, and sorting            |
+| GET    | `/api/v1/games/{game_id}`                 | Full game details and taxonomy                                 |
+| GET    | `/api/v1/metadata/genres`                 | Sorted genres                                                  |
+| GET    | `/api/v1/metadata/tags`                   | Sorted tags                                                    |
+| GET    | `/api/v1/metadata/platforms`              | Sorted platforms                                               |
+| GET    | `/api/v1/models/status`                   | Honest `ready`, `not_configured`, or `unavailable` model state |
+| POST   | `/api/v1/recommendations`                 | Bounded request-scoped recommendations and evidence            |
+| POST   | `/api/v1/anonymous-sessions`              | Create or explicitly renew a consented anonymous session       |
+| GET    | `/api/v1/me`                              | Read session lifecycle metadata and CSRF token                 |
+| DELETE | `/api/v1/me`                              | Withdraw consent and delete all user-owned state               |
+| GET    | `/api/v1/me/preferences`                  | Rehydrate canonical saved preferences                         |
+| PUT    | `/api/v1/me/preferences`                  | Atomically replace saved preferences                           |
+| DELETE | `/api/v1/me/preferences`                  | Clear saved preferences                                        |
+| GET    | `/api/v1/me/feedback`                     | Paginate current feedback state                                |
+| PUT    | `/api/v1/me/games/{game_id}/feedback`    | Replace one game's current feedback state                      |
+| DELETE | `/api/v1/me/games/{game_id}/feedback`    | Clear one game's current feedback state                        |
+| POST   | `/api/v1/me/recommendations`              | Rank saved context and commit one bounded event                |
+| GET    | `/docs`                                   | Interactive OpenAPI documentation                              |
+| GET    | `/openapi.json`                           | Machine-readable OpenAPI contract                              |
 
 Catalog pagination is one-based; `page` is capped at 1,000,000. The default
 page size is 20 and the maximum is 100. Supported sort values are
@@ -157,6 +175,34 @@ cannot be canonicalized returns the same typed 503 envelope with
 score components, structured evidence, and explanations grounded in that
 evidence. Ranking scores are not probabilities or percentages.
 
+`POST /api/v1/anonymous-sessions` requires the exact configured Origin,
+`application/json`, and current consent version `stage-4-v1`. A new session
+returns HTTP 201 and sets the 32-byte URL-safe credential only in the host-only
+`gamelens_session` cookie. The default cookie path is `/api/v1`, with
+`HttpOnly`, `SameSite=Lax`, a fixed 180-day lifetime, and environment-aware
+`Secure`; production rejects the development secret, insecure cookies, and
+HTTP credentialed origins. PostgreSQL stores only a domain-separated
+HMAC-SHA-256 digest. `GET /api/v1/me` returns lifecycle metadata and a derived
+CSRF token with `Cache-Control: no-store`, never an internal user ID or raw
+credential.
+
+Every protected unsafe request requires the credential cookie, an exact
+allowed Origin, and the CSRF value in `X-CSRF-Token`. Credentialed CORS uses an
+explicit origin allowlist and the `GET`, `POST`, `PUT`, and `DELETE` methods.
+Preference replacement uses the Stage 3 selection bounds and validates all
+references before mutation. Feedback exposes canonical current reaction,
+played, wishlist, and half-step rating state while retaining superseded rows as
+history. `DELETE /api/v1/me` cascades all user-owned preferences,
+interactions, and recommendation events and clears the cookie.
+
+`POST /api/v1/me/recommendations` accepts only `top_k` from 1 through 20. It
+uses feedback policy `gamelens-feedback-adjustment/1.0.0`, preserves the Stage
+3 model/artifact identity, and commits one `stage-4-v1` bounded event before a
+successful response. The response correlates through a unique generation ID
+and exposes base, affinity, played, policy, model, and data-fingerprint
+evidence. The PostgreSQL transaction/event-correlation gate and the 38/38
+Docker browser gate pass.
+
 `MODEL_ARTIFACT_PATH` is optional at the settings boundary. Compose passes the
 same configured path to the offline builder and API, and mounts `ml/artifacts`
 read-only in the API. Without configuration, status is `not_configured`; with a failed load it is
@@ -175,11 +221,20 @@ validate the artifact rather than modify it in place.
 The implemented migration chain is:
 
 ```text
-0001_initial_schema -> 0002_stage_1_integrity_hardening
+0001_initial_schema
+  -> 0002_stage_1_integrity_hardening
+  -> 0003_stage_4_anonymous_identity
+  -> 0004_stage_4_interaction_state
+  -> 0005_stage_4_event_contract
 ```
 
-The second revision hardens constraints and indexes without resetting an
-existing Stage 1 database.
+Readiness expects head `0005_stage_4_event_contract`. The Stage 4 revisions
+preserve legacy rows, revoke inaccessible plaintext-key identities without
+fabricating consent, add temporal current-state indexes, and version
+recommendation events. The legacy replacement is exactly
+`md5('legacy-revoked-v1:' || anonymous_key) || lpad(to_hex(id), 32, '0')`,
+whose ID suffix guarantees uniqueness. Populated `0002` upgrade and populated
+downgrade/re-upgrade pass in PostgreSQL.
 
 Errors use one envelope:
 
@@ -191,6 +246,50 @@ Errors use one envelope:
   }
 }
 ```
+
+## Retention and revocation commands
+
+Retention is explicit and preview-only by default. The configured default
+event window is 90 days and the default batch size is 500:
+
+```powershell
+make retention-preview
+docker compose run --build --rm api python -m app.commands.retention
+```
+
+Execution requires explicit timezone-aware event and expired-user cutoffs plus
+the exact database-fingerprinted confirmation emitted by preview:
+
+```powershell
+python -m app.commands.retention `
+    --events-before 2026-01-01T00:00:00Z `
+    --expired-before 2026-01-01T00:00:00Z `
+    --execute --confirm "<exact preview value>"
+```
+
+Bulk session revocation is a separate direct command and also previews unless
+`--execute` receives its exact confirmation:
+
+```powershell
+python -m app.commands.anonymous_sessions `
+    --created-before 2026-01-01T00:00:00Z
+```
+
+The cutoff selects the identity-creation cohort, not the most recent consent
+timestamp. Re-consent deliberately keeps the original credential digest and
+may update `consented_at`, so using creation time ensures an old-secret identity
+cannot escape a key-retirement cohort by re-consenting.
+
+Key retirement is a coordinated, sequential operation: quiesce anonymous
+session creation and re-consent on the old secret, drain in-flight requests,
+record the database-time cutoff, switch issuance to the new secret, then preview
+and execute `--created-before` until `remaining` is zero before retiring the old
+secret. Stage 4 does not implement online dual-key rotation; allowing old- and
+new-secret issuers to overlap invalidates this cutoff procedure.
+
+Neither command runs during startup, migration, seed, model build, ordinary
+tests, or teardown. Execute only against a deliberately selected database. The
+PostgreSQL suite verifies bounded retention and revocation behavior.
 
 ## Quality commands
 
@@ -219,6 +318,13 @@ The test service explicitly selects the `integration` marker, requires the
 `GAMELENS_ALLOW_TEST_DATABASE_RESET=true`. The test guard rejects non-test
 database identities before Alembic can reset a schema.
 
+The Stage 4 unit suites pass 184 tests with 89% diagnostic coverage in the
+implementation worktree. All 49 disposable PostgreSQL integration tests also
+pass in 4.53 seconds, covering
+the populated legacy upgrade, partial indexes and constraints, concurrent
+feedback serialization, HTTP event correlation, deletion cascades, retention,
+and revocation. The consolidated regression and release review pass.
+
 Lint, format, and coverage:
 
 ```powershell
@@ -240,10 +346,17 @@ PostgreSQL integration tests; diagnostic API coverage was 92%. The integration
 suite proves a successful recommendation leaves users, preferences,
 interactions, recommendation events, games, and taxonomy unchanged. Ruff,
 artifact validation, `catalog_stale`/`catalog_invalid` agreement, CORS
-allow/reject cases, OpenAPI generation, Docker E2E, and `pip check` passed.
-Docker Scout separately reported two critical and two high unfixed Debian
-`perl` advisories inherited from the pinned development base image; this known
-base-image finding is retained for Stage 7 hardening.
+allow/reject cases, OpenAPI generation, Docker E2E, and `pip check` passed. The
+Dockerfile now removes the unused Debian `perl-base` package after all install
+steps and fails the build if `dpkg --audit`, `pip check`, or application imports
+fail. Rebuilt `gamelens-ai-api:stage4-test` image digest prefix `11b2f940731e`
+retains all 49 PostgreSQL integration passes. Docker Scout reports 0 critical,
+0 high, 3 medium, 27 low, and 2 unspecified findings across 193 packages; its
+only-fixed scan reports no actionable fixed advisory. The earlier `perl-base`
+critical/high blocker is resolved, while the remaining base-image findings stay
+documented. The development image remains
+non-production-oriented, and Stage 7 must choose and rescan a
+production-minimal base.
 
 ## Seed data
 
@@ -255,12 +368,13 @@ It emits structured inserted, updated, and unchanged counters.
 
 ## Current limitations
 
-- No authentication or authorization.
-- No preference, interaction, or feedback write endpoints; persistence begins
-  in the
-  [Stage 4 engineering plan](../../docs/stage-4-feedback-persistence-plan.md).
-- No explicit-consent anonymous session, personalized `/me` recommendation,
-  recommendation-event write, or retention command is implemented yet.
+- No account authentication, roles, cross-device identity recovery, or
+  authorization beyond possession of the anonymous session credential.
+- Stage 4 identity, preference, feedback, personalized-event, retention, and
+  revocation code is complete and verified; the PostgreSQL and 38/38 exact-host
+  browser gates are green.
+- Retention and revocation are operator-invoked commands; there is no scheduler
+  or startup side effect.
 - No online fit, background rebuild, hot reload, or automatic artifact
   promotion. Operators build explicitly and restart the API to activate.
 - No formal recommendation-quality evaluation on the synthetic seed; that is

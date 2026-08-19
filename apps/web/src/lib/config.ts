@@ -2,6 +2,7 @@ const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 
 export interface PublicConfig {
   apiBaseUrl: string;
+  consentVersion: string;
 }
 
 export function validateApiBaseUrl(value: string | undefined): string {
@@ -35,8 +36,33 @@ export function validateApiBaseUrl(value: string | undefined): string {
   return `${url.origin}${normalizedPath}`;
 }
 
+export function validateConsentVersion(value: string | undefined): string {
+  if (!value?.trim()) {
+    throw new Error("NEXT_PUBLIC_CONSENT_VERSION is required and must not be blank.");
+  }
+  const normalized = value.trim();
+  if (normalized.length > 100) {
+    throw new Error("NEXT_PUBLIC_CONSENT_VERSION must be at most 100 characters.");
+  }
+  return normalized;
+}
+
+export function resolveConsentVersion(
+  value: string | undefined,
+  environment: string | undefined,
+): string {
+  if (value === undefined && environment !== "production") {
+    return "stage-4-v1";
+  }
+  return validateConsentVersion(value);
+}
+
 export function getPublicConfig(): PublicConfig {
   return {
     apiBaseUrl: validateApiBaseUrl(process.env.NEXT_PUBLIC_API_URL),
+    consentVersion: resolveConsentVersion(
+      process.env.NEXT_PUBLIC_CONSENT_VERSION,
+      process.env.NODE_ENV,
+    ),
   };
 }

@@ -34,6 +34,25 @@ test("key routes have no serious automated accessibility violations", async ({
   ).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
 
+  await page.goto("/recommendations");
+  await expect(
+    page.getByRole("button", { name: "Enable saved personalization" }),
+  ).toBeVisible();
+  await expectNoSeriousAccessibilityViolations(page);
+
+  const consentResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().endsWith("/api/v1/anonymous-sessions"),
+  );
+  await page.getByRole("button", { name: "Enable saved personalization" }).click();
+  const consent = await consentResponse;
+  expect(consent.status()).toBe(201);
+  await expect(
+    page.getByRole("heading", { name: "Review and save your durable choices" }),
+  ).toBeVisible();
+  await expectNoSeriousAccessibilityViolations(page);
+
   await page.goto("/route-that-does-not-exist");
   await expect(
     page.getByRole("heading", {
