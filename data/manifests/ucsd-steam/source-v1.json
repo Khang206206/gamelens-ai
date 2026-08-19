@@ -1,0 +1,38 @@
+{
+  "manifest_schema_version": 1,
+  "dataset": "ucsd-steam",
+  "owner": "UCSD McAuley Lab",
+  "retrieved_on": "2026-08-19",
+  "status": "local-raw-sources-verified-not-integrated",
+  "dataset_page": "https://cseweb.ucsd.edu/~jmcauley/datasets.html",
+  "redistribution_status": "not-assessed-do-not-redistribute",
+  "citation_required": true,
+  "files": [
+    {
+      "role": "v1-user-items",
+      "relative_path": "data/raw/ucsd-steam/v1-user-items/australian_users_items.json.gz",
+      "source_url": "https://mcauleylab.ucsd.edu/public_datasets/data/steam/australian_users_items.json.gz",
+      "compressed_size_bytes": 74035391,
+      "sha256": "0b329f79ddf450aba0aad923c8cb6d1affac0c98efaf70242d22fd10987a8d99"
+    },
+    {
+      "role": "v1-reviews",
+      "relative_path": "data/raw/ucsd-steam/v1-reviews/australian_user_reviews.json.gz",
+      "source_url": "https://mcauleylab.ucsd.edu/public_datasets/data/steam/australian_user_reviews.json.gz",
+      "compressed_size_bytes": 6935922,
+      "sha256": "a934bf74d8579bb25bc7bf24e652a87e2ccc91064e429a4cb4af5809178687a8"
+    },
+    {
+      "role": "v2-item-metadata",
+      "relative_path": "data/raw/ucsd-steam/v2-item-metadata/steam_games.json.gz",
+      "source_url": "https://cseweb.ucsd.edu/~wckang/steam_games.json.gz",
+      "compressed_size_bytes": 2740516,
+      "sha256": "717f4653a26585fec8f463f59311a654127c2ed66b07b9f78b4c0ce64961c740"
+    }
+  ],
+  "notes": [
+    "Keep the raw gzip files compressed and immutable.",
+    "This manifest records local source identity only and does not assert dataset integration or model readiness.",
+    "Verify redistribution terms before sharing any raw source file."
+  ]
+}
