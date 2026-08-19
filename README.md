@@ -12,6 +12,11 @@ game metadata, but they will not replace the recommendation engine.
 
 **Stage 4 complete and verified 2026-08-13**
 
+The detailed
+[Stage 5 collaborative-and-hybrid engineering plan](docs/stage-5-collaborative-hybrid-ranking-plan.md)
+is ready as of 2026-08-19. Stage 5 implementation has not started, so the
+capabilities listed below remain the verified Stage 4 system.
+
 The repository now provides:
 
 - A Python 3.12 FastAPI catalog API and PostgreSQL 16 persistence.
@@ -58,9 +63,8 @@ or claims of real-world recommendation quality.
 
 The detailed
 [Stage 4 feedback-and-persistence engineering plan](docs/stage-4-feedback-persistence-plan.md)
-now tracks the implementation on `feat/stage-4-feedback-persistence`. The
-source, migrations, generated contract, and local fast-test surfaces are in
-place. Final evidence passes 184 fast API tests with 89%
+records the completed implementation on `feat/stage-4-feedback-persistence`.
+Final evidence passes 184 fast API tests with 89%
 diagnostic coverage, 52 ML tests with 83%, 76 web tests with 67.15% statement/
 71.4% line coverage, and 49 disposable-PostgreSQL integration tests in 4.53
 seconds. Ruff checks 112 Python files; strict TypeScript, ESLint, Prettier,
@@ -118,6 +122,10 @@ flowchart LR
 The web application, backend, persistent data, and offline ML workflow
 remain separate. Training never runs inside an API request. See
 [Architecture](docs/architecture.md) for detailed boundaries.
+
+Stage 5 plans a separate consent-aware interaction snapshot, collaborative
+artifact, and optional hybrid layer. Those nodes are not active in this
+diagram or the current runtime.
 
 ## Technology
 
@@ -395,6 +403,7 @@ service-level claims.
 - [Stage 2 engineering plan and completion record](docs/stage-2-frontend-foundation-plan.md)
 - [Stage 3 plan and completion record](docs/stage-3-content-recommendation-mvp-plan.md)
 - [Stage 4 feedback-and-persistence engineering plan](docs/stage-4-feedback-persistence-plan.md)
+- [Stage 5 collaborative-and-hybrid engineering plan](docs/stage-5-collaborative-hybrid-ranking-plan.md)
 - [Web application commands and contracts](apps/web/README.md)
 - [API setup and contracts](apps/api/README.md)
 - [Infrastructure workflows](infra/README.md)
@@ -413,8 +422,9 @@ service-level claims.
   confirmed cleanup run.
 - The 30-game synthetic seed supports functional and reproducibility checks,
   including feedback lifecycle behavior, not recommendation-quality
-  evaluation; collaborative/hybrid work remains Stage 5 and formal evaluation
-  remains Stage 6.
+  evaluation. A detailed Stage 5 plan now exists, but no collaborative
+  trainer, artifact, hybrid serving path, or real interaction dataset is
+  implemented; formal comparative evaluation remains Stage 6.
 - No external metadata service or approved remote cover-image source.
 - Seed ratings and popularity values are synthetic development signals.
 - Social metadata currently uses a localhost development base. A validated

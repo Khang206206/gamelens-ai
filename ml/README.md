@@ -15,6 +15,35 @@ is complete and verified. The package now exposes a pure feedback-aware ranker i
 addition to the unchanged Stage 3 request-scoped ranker. It still receives no
 user identity or mutable database object and stores no durable state.
 
+The detailed
+[Stage 5 collaborative-and-hybrid plan](../docs/stage-5-collaborative-hybrid-ranking-plan.md)
+is ready, but Stage 5 implementation has not started. No collaborative
+trainer, artifact, loader, scorer, hybrid policy, interaction snapshot, or
+Stage 5 command exists in this package today.
+
+## Planned Stage 5 scope
+
+The proposed baseline is binary sparse item-item cosine over a consent- and
+retention-qualified snapshot supplied by the API extractor. It will keep raw
+cosine, minimum user/item/pair support, deterministic top-neighbor pruning,
+the existing fixed scale, and stable-slug ties. Matrix factorization, neural
+models, online fitting, shrinkage tuning, and formal quality evaluation remain
+outside this stage.
+
+Stage 5 plans a separate transparent collaborative bundle containing only
+item neighborhoods, item/pair support, configuration, catalog and interaction
+fingerprints, aggregate diagnostics, lifecycle identity, and checksums. It
+will not contain the user matrix, internal IDs, stable pseudonyms, credentials,
+raw interactions, or recommendation events. The different artifact is needed
+because consent, deletion, freshness, invalidation, and rebuild differ from
+the catalog-content lifecycle.
+
+A pure collaborative scorer will expose supported neighbor evidence, and a
+versioned hybrid policy will combine base, feedback-affinity, collaborative,
+and played components once. Unsupported or invalid collaborative state must
+return exact Stage 4 ranking through an explicit fallback. These are planned
+contracts, not current package behavior or recommendation-quality claims.
+
 ## Package and reproducibility
 
 `gamelens-recommender` targets Python 3.12 and exactly pins NumPy 2.5.1, SciPy
@@ -131,6 +160,7 @@ bind mount had min/median/max latency of 89.64/95.54/274.79 ms. These are local
 diagnostics, not performance guarantees or recommendation-quality evidence.
 
 Persistent preferences live in the API/database rather than this package.
-Collaborative filtering begins in Stage 5, and formal offline ranking
-evaluation remains Stage 6 work. The synthetic fixture validates deterministic
-policy behavior only, not recommendation quality.
+Collaborative filtering and hybrid ranking have a detailed Stage 5 plan but
+are not implemented. Formal offline ranking evaluation remains Stage 6 work.
+The synthetic catalog and any future authored interaction fixture validate
+deterministic behavior only, not recommendation quality.

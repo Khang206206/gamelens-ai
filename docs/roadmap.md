@@ -221,10 +221,53 @@ is published as commit `c96b6c2` in draft PR
 
 ## Stage 5 — Collaborative and hybrid ranking
 
-**Status:** Planned
+**Status:** Engineering plan ready 2026-08-19; implementation has not started
 
-Introduce an interaction dataset and collaborative baseline, compare it with
-existing baselines, and combine independently observable component scores.
+Detailed execution plan:
+[`stage-5-collaborative-hybrid-ranking-plan.md`](stage-5-collaborative-hybrid-ranking-plan.md)
+
+Build one reviewable slice at a time:
+
+1. Re-run the Stage 1–4 gates and freeze contribution-consent, label,
+   provenance, cutoff, lifecycle, artifact, hybrid, API, and fallback
+   contracts.
+2. Add a read-only aggregate suitability audit plus a deterministic
+   project-authored multi-user fixture; do not present either as quality
+   evidence.
+3. Extract one consent- and retention-aware as-of interaction snapshot in a
+   database-time repeatable-read transaction, with canonical fingerprinting
+   and no serialized identity.
+4. Build and validate a separate sparse item-item cosine artifact with support
+   thresholds, deterministic pruning, complete checksums, resource caps, and
+   protected lifecycle lineage.
+5. Add a pure collaborative scorer and a versioned hybrid policy whose base,
+   feedback-affinity, collaborative, popularity, platform, and played
+   components remain independently reconstructible.
+6. Compare baseline candidates and component units on deterministic
+   hand-calculated fixtures without reporting recommendation quality.
+7. Preserve exact Stage 4 behavior for missing, insufficient, unsupported,
+   invalid, stale, expired, retired, or privacy-invalid collaborative state.
+8. Extend the saved personalized response, component status,
+   recommendation-generation event, OpenAPI types, and conditional browser
+   evidence while leaving the stateless endpoint unchanged.
+9. Add explicit build/validate/invalidate/retire commands and disposable
+   PostgreSQL/Docker lifecycle fixtures; no startup or request may train.
+10. Pass ML, API, migration, PostgreSQL, web, browser, accessibility, privacy,
+   Docker, dependency, OpenAPI, and complete Stage 1–4 regression gates.
+11. Synchronize verified documentation and leave evaluation-ready artifact,
+    component, cold-start, and limitation contracts for Stage 6.
+
+Stage 5 is complete only when the data source and permission are explicit;
+recommendation events are provably excluded as labels; deleted, withdrawn,
+revoked, expired, or changed contributions cannot survive through a serveable
+artifact; the sparse baseline and every hybrid contribution are deterministic
+and reconstructible; every cold-start/failure path falls back exactly to Stage
+4; and all earlier-stage gates pass.
+
+The current 30-game seed and developer-generated sessions are functional
+fixtures. They do not establish representative interaction data or model
+quality. Precision/Recall/NDCG, coverage, novelty, diversity, tuning, and any
+claim that one ranker is better remain Stage 6 work.
 
 ## Stage 6 — Evaluation and reporting
 

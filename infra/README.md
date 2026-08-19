@@ -122,3 +122,31 @@ The repository-root `.dockerignore` excludes local environment files, VCS
 metadata, caches, test output, and untracked data from generic root-context
 builds. The API Dockerfile has a stricter Dockerfile-specific deny-all
 allowlist; the web images use `apps/web/.dockerignore` at their context root.
+
+## Planned Stage 5 artifact topology
+
+The
+[Stage 5 collaborative-and-hybrid plan](../docs/stage-5-collaborative-hybrid-ranking-plan.md)
+is ready, but none of the topology in this section is implemented. Existing
+Compose profiles, settings, targets, mounts, migrations, and test counts remain
+the verified Stage 4 system above.
+
+Stage 5 plans a second one-shot offline workflow for interaction audit,
+collaborative build, and validation. The builder would read an eligible
+database-time snapshot and write a separate immutable artifact path; the API
+would mount the validated result read-only alongside the existing content
+artifact. A collaborative bundle would never be trained or mutated by API/web
+startup, a request, migration, seed, broad test, or ordinary teardown.
+
+The disposable PostgreSQL and E2E projects would receive an isolated
+project-authored multi-user fixture, build both artifacts, exercise hybrid and
+exact Stage 4 fallback paths, invalidate collaborative serving through consent
+or deletion lifecycle changes, and remove only their tmpfs database and
+disposable volumes. Development data and content artifacts would remain
+untouched. Fixture artifacts must require both the test environment and an
+explicit test-only flag; ordinary development and production must reject them.
+
+Audit, build, validate, promotion, rollback, invalidation, and retirement must
+have documented direct commands. Cleanup remains preview-first with exact
+confirmation and cannot target an active artifact or a broad directory. A
+production scheduler, registry service, or hot reload remains Stage 7 work.

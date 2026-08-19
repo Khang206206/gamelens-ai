@@ -149,6 +149,54 @@ replay snapshot or proof of browser receipt, view, click, conversion, or
 positive feedback. Pre-Stage-4 events are marked `legacy-v1` and retain
 nullable data/policy identity.
 
+## Planned Stage 5 Derived-Data Boundary
+
+The
+[Stage 5 engineering plan](stage-5-collaborative-hybrid-ranking-plan.md) is
+ready, but no Stage 5 table, migration, interaction snapshot, or collaborative
+artifact exists yet. PostgreSQL interactions and saved preferences remain the
+source state; generated model input and artifacts are derived data with their
+own provenance and lifecycle.
+
+The proposed snapshot captures one PostgreSQL-generated cutoff in a
+repeatable-read, read-only transaction. Contributor eligibility requires an
+approved, current aggregate-training purpose plus unrevoked and unexpired
+state. A temporal interaction is active at the cutoff only when its occurrence
+is not later than the cutoff and its supersession is null or later than the
+cutoff. Canonical stable game slugs align the snapshot with the exact catalog
+fingerprint.
+
+The proposed positive edge is binary and collapses a saved positive `game`
+preference, an active like, or an active rating of at least 7 when no dislike
+overrides it. Views, played-only, wishlist-only, unknown state, low ratings,
+dislikes, and recommendation events do not become positive matrix entries.
+Superseded occurrences reconstruct as-of state; they are not repeated votes.
+Recommendation events remain generation audit records, never interaction
+labels.
+
+The guarded extractor may use an internal user ID transiently to group rows,
+but it serializes no user ID, token digest, stable pseudonym, credential, or
+per-user mapping. A canonical fingerprint and aggregate counts describe the
+input. The planned collaborative artifact stores only item-level neighbors,
+similarity/support arrays, configuration, catalog and interaction identity,
+checksums, cutoff, revision, and validity metadata.
+
+Phase 0 proposes a separate contribution-consent boundary, a monotonic source
+revision for snapshot/promotion consistency, and protected build/contributor
+lineage in PostgreSQL. Those schema details must be fixed in an Alembic
+revision before implementation. Their purpose is to make a cleared or changed
+included label, withdrawal, revocation, expiry, or user deletion invalidate
+the affected artifact immediately. A new positive after the artifact cutoff
+may wait for the next build without changing the immutable snapshot.
+Identity-bearing lineage must stay in PostgreSQL with user cascades; it must
+not appear in the artifact, API, event JSON, logs, audit reports, or browser.
+
+Generated snapshots and bundles remain ignored. Obsolete bundles are not
+serveable and require an explicit preview/confirmation retirement workflow.
+If consent and derived-data invalidation cannot be proven end to end, live-data
+collaborative activation stays disabled and only the project-authored fixture
+may exercise the functional pipeline.
+
 ## Index and constraint plan
 
 - Unique indexes on game, genre, tag, and platform slugs.
@@ -177,6 +225,6 @@ legacy starting points. The disposable PostgreSQL suite passes 49 tests,
 including populated `0002` upgrade, constraints, event/delete cascade,
 concurrent feedback writes, and bounded retention. The migrations revoke
 inaccessible placeholder credentials but do not fabricate consent or assume
-user tables are empty. Complete downgrade evidence is still required by the
-final gate. Retention and user deletion remain explicit application operations
-rather than migration or seed side effects.
+user tables are empty. Populated downgrade/re-upgrade evidence passes in the
+verified Stage 4 gate. Retention and user deletion remain explicit application
+operations rather than migration or seed side effects.

@@ -1,9 +1,9 @@
 # GameLens AI web application
 
 The web application is a Next.js 16.2 App Router project using React 19.2, strict
-TypeScript 5.9, and Tailwind CSS 4. It presents the catalog and Stage 3 request-scoped
-recommendations plus the in-progress Stage 4 explicit-consent saved-personalization flow.
-It does not imply account authentication or cross-device identity.
+TypeScript 5.9, and Tailwind CSS 4. It presents the catalog, Stage 3 request-scoped
+recommendations, and verified Stage 4 explicit-consent saved-personalization flow. It
+does not imply account authentication or cross-device identity.
 
 The detailed
 [Stage 4 feedback-and-persistence plan](../../docs/stage-4-feedback-persistence-plan.md)
@@ -11,6 +11,11 @@ is complete and verified. Consent, credentialed transport, rehydration, saved pr
 feedback controls, personalized results, expiry recovery, and clear-data components are
 present and fast-tested. The exact-host real-browser persistence, accessibility, and
 responsive run plus release review pass.
+
+The detailed
+[Stage 5 collaborative-and-hybrid plan](../../docs/stage-5-collaborative-hybrid-ranking-plan.md)
+is ready, but no hybrid response field, consent copy, evidence component, or fallback UI
+from that plan exists yet. The current browser renders Stage 4 server order and evidence.
 
 ## Responsibilities
 
@@ -206,6 +211,8 @@ diff/privacy review is clean.
   cross-device recovery, or background retention guarantees.
 - The synthetic 30-game fixture verifies functionality and reproducibility, not
   recommendation quality; formal evaluation remains Stage 6.
+- Collaborative/hybrid ranking and its conditional evidence have a detailed Stage 5
+  plan but are not implemented; the browser currently exposes only Stage 3/4 fields.
 - The deterministic catalog has no cover binaries or approved remote image source, so
   every game uses a project-owned generated placeholder.
 - Ratings and popularity are synthetic development signals, not market data or

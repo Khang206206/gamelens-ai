@@ -125,6 +125,51 @@ the application boundaries, and 49 disposable-PostgreSQL integration tests
 verify the Stage 4 schema, populated legacy upgrade, transaction/concurrency,
 event/delete correlation, cascades, and retention behavior.
 
+### Planned Stage 5 activation (not implemented)
+
+The
+[Stage 5 collaborative-and-hybrid plan](stage-5-collaborative-hybrid-ranking-plan.md)
+proposes a second offline-to-online path. Every node below with a dashed border
+is future behavior; the current runtime still ends at the verified Stage 4
+feedback policy.
+
+```mermaid
+flowchart LR
+    State[("Consented preferences and interactions")]:::future
+    Audit["Aggregate suitability audit"]:::future
+    Snapshot["Cutoff-bound eligible snapshot"]:::future
+    Builder["Sparse item-item cosine builder"]:::future
+    CF["Identity-free collaborative artifact"]:::future
+    Lineage[("Build and contributor lineage")]:::future
+    Content["Existing content artifact"]
+    Feedback["Existing feedback components"]
+    Hybrid["Versioned hybrid policy"]:::future
+    API["Saved recommendation use case"]
+    Event[("Versioned generation event")]
+
+    State --> Audit
+    Audit --> Snapshot
+    Snapshot --> Builder
+    Builder --> CF
+    Builder --> Lineage
+    Content --> Hybrid
+    Feedback --> Hybrid
+    CF --> Hybrid
+    Lineage --> Hybrid
+    Hybrid --> API
+    API --> Event
+
+    classDef future stroke-dasharray: 6 4
+```
+
+The proposed builder reads eligible state in one database-time,
+repeatable-read transaction, writes a separate immutable artifact, and keeps
+user identity out of that artifact. PostgreSQL lineage and a dataset revision
+would invalidate collaborative serving after relevant consent, feedback,
+expiry, revocation, or deletion changes. The API would then continue through
+the exact Stage 4 fallback until an explicit rebuild. No request, startup, or
+ordinary migration trains a model.
+
 ## Repository boundaries
 
 ### Web
@@ -197,8 +242,8 @@ extend recommendation events with data and personalization-policy identity.
 The expected Alembic head is `0005_stage_4_event_contract`. Legacy placeholder
 rows are deterministically converted to unique revoked, inaccessible
 identities and are not treated as consented sessions. The populated `0002` to
-head PostgreSQL upgrade passes; complete downgrade evidence remains a final
-documentation gate.
+head upgrade and the documented populated downgrade/re-upgrade gate pass in
+the verified Stage 4 suite.
 
 ### Machine learning
 
@@ -219,6 +264,15 @@ saved/interaction context as immutable per-request input, uses existing
 artifact vectors, and exposes its own identity and contribution. User identity
 and mutable state never enter an artifact or the application-lifecycle ranker
 singleton. The Stage 3 model and artifact identity remain unchanged.
+
+Stage 5 plans a separate sparse item-item artifact and pure collaborative
+scorer because interaction data has different consent, deletion, freshness,
+and rebuild semantics from catalog content. The ML package would receive only
+canonical ephemeral cohort rows during build and stable-slug query context at
+serving. The resulting bundle would contain aggregate item neighborhoods,
+support, fingerprints, configuration, and checksums—not user rows, IDs, token
+digests, or recommendation events. Component readiness and hybrid math would
+remain independently testable; formal ranking evaluation stays in Stage 6.
 
 ### External data
 
@@ -269,20 +323,24 @@ add and validate the public site origin before deployment.
 
 ## Current state
 
-Stages 1 through 3 implement the API, database, web, and ML boundaries. Catalog routes
-depend on services, repositories, and injected SQLAlchemy sessions; PostgreSQL
-is the runtime source of truth. Readiness requires connectivity and the
-expected Alembic schema head. The responsive web application supports catalog
-search, filters, sorting, pagination, and game details with explicit loading,
-empty, unavailable, not-found, and nullable-field states.
+Stages 1 through 4 implement the API, database, web, ML, consent, and saved
+personalization boundaries. Catalog routes depend on services, repositories,
+and injected SQLAlchemy sessions; PostgreSQL is the runtime source of truth.
+Readiness requires connectivity and the expected Alembic schema head. The
+responsive web application supports catalog search, filters, sorting,
+pagination, game details, request-only recommendations, and opt-in saved
+personalization with explicit loading, empty, unavailable, not-found, consent,
+expiry, and deletion states.
 
 The recommendation boundary now exposes honest `ready`, `not_configured`, and
 `unavailable` states plus the bounded `POST /api/v1/recommendations` vertical
 slice. The offline builder, checksum-validated artifact, immutable ranker,
 generated browser contract, and anonymous explained-result experience are
-active. Authentication, persisted preferences, feedback,
-recommendation-event logging, formal evaluation, and production deployment
-remain later components.
+active. Account authentication, collaborative/hybrid ranking, formal
+evaluation, and production deployment remain later components. The Stage 5
+engineering plan is ready, but its interaction snapshot, collaborative
+artifact, hybrid policy, lifecycle lineage, API fields, and UI evidence are not
+implemented.
 
 Stage 4 is complete and verified. Its consented identity, durable
 preferences, temporal feedback writes, deterministic feedback adjustment,

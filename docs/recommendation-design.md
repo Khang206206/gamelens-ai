@@ -168,6 +168,42 @@ result identity. The event is audit/correlation data for server generation,
 not a standalone replay snapshot, impression, click, conversion, or positive
 label.
 
+## Planned Stage 5 collaborative and hybrid layer
+
+The detailed
+[Stage 5 engineering plan](stage-5-collaborative-hybrid-ranking-plan.md) is
+ready, but none of the behavior in this section is implemented yet. Current
+runtime ranking remains the Stage 3 content model plus the Stage 4 feedback
+policy described above.
+
+Stage 5 first audits whether an interaction source is authorized, sufficiently
+supported, catalog-aligned, and retention-aware. Existing Stage 4 storage
+consent is not silently reused for aggregate offline training. The proposed
+snapshot uses one PostgreSQL-generated cutoff and a repeatable-read, read-only
+transaction. Explicit saved positive game preferences, likes, and ratings of
+at least 7 when no dislike overrides them collapse to one binary user-game
+edge. Views, played-only, wishlist-only, unknown state, low ratings, dislikes,
+and recommendation events do not become positive matrix entries.
+
+The baseline is deterministic sparse item-item cosine with minimum user, item,
+and pair support, zero diagonal, bounded top-neighbor pruning, fixed-point
+similarity, and stable-slug ties. It is deliberately not matrix factorization,
+deep learning, or an online learner. A separate checksum-covered artifact
+stores item-level neighbors and aggregate support, never the user matrix,
+internal IDs, credentials, or raw interactions.
+
+The planned saved-personalization path unions content-supported candidates
+with supported collaborative neighbors before exclusions and top-K. A
+versioned hybrid policy then applies separately observable base,
+feedback-affinity, collaborative, and played contributions. When the
+collaborative component is absent, insufficient, unsupported, corrupt, stale,
+expired, retired, or privacy-invalid, output must match Stage 4 exactly and
+report the reason. The stateless Stage 3 endpoint remains unchanged.
+
+The collaborative score is an aggregate ranking signal, not a probability or
+proof that “users like you” prefer an item. Initial thresholds and weights are
+engineering defaults only; Stage 6 must evaluate them before any quality claim.
+
 ## Response evidence
 
 Each Stage 3 recommendation returns:
@@ -221,10 +257,18 @@ Stage 4 feedback computation consumes the loaded artifact read-only. User
 state remains bounded per-request input and is never serialized back into the
 bundle or retained on the application-lifecycle ranker.
 
+Stage 5 plans a second immutable artifact because interaction data has a
+different consent, freshness, invalidation, and rebuild lifecycle from catalog
+content. Its explicit audit/build/validate/promote/retire flow must verify
+catalog and interaction fingerprints, cutoff, policy, support, checksums,
+lineage, consent, revision, and validity horizon. A collaborative failure must
+disable only that optional component and preserve the content/feedback path.
+No Stage 5 artifact or command exists yet.
+
 ## Evaluation
 
-After an interaction pipeline exists, offline evaluation will compare models
-with the popularity baseline using applicable metrics:
+Stage 6 will use the implemented interaction and component contracts to
+compare models with the popularity baseline using applicable metrics:
 
 - Precision@K
 - Recall@K
@@ -245,7 +289,7 @@ recommendation-event logging are implemented on the Stage 4 branch. The
 PostgreSQL, fast, static/build, OpenAPI, dependency-audit, Compose, and image
 gates and the 38/38 exact-host Docker browser matrix pass; Stage 4 is verified
 complete.
-Collaborative filtering and content/collaborative hybrid ranking are Stage 5
-work. Formal ranking
-evaluation is Stage 6 work. Semantic embeddings, exploration, LLM
+Collaborative filtering and content/collaborative hybrid ranking now have a
+detailed Stage 5 plan but remain unimplemented. Formal ranking evaluation is
+Stage 6 work. Semantic embeddings, exploration, LLM
 explanations, and diversity reranking remain outside the first MVP model.

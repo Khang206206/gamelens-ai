@@ -2,7 +2,7 @@
 
 The GameLens AI API is a Python 3.12 FastAPI application backed by PostgreSQL
 16. It exposes the deterministic catalog, Stage 3 artifact-backed content
-recommendations, and the in-progress Stage 4 consented persistence slice. It
+recommendations, and the verified Stage 4 consented persistence slice. It
 never trains during startup or a request and never fabricates recommendations
 when the configured model is unavailable.
 
@@ -27,6 +27,14 @@ static/build gates, npm audits, and all three Compose definitions pass. The
 exact-host Docker browser matrix passes 38/38 in 1.3 minutes without retry: 28
 Chromium, 5 Firefox, and 5 WebKit.
 The endpoint and command tables below describe the current worktree.
+
+The detailed
+[Stage 5 collaborative-and-hybrid plan](../../docs/stage-5-collaborative-hybrid-ranking-plan.md)
+is ready, but its API integration is not implemented. The plan adds an offline
+consent-aware interaction audit, a separate optional collaborative artifact,
+component readiness, and hybrid orchestration only to the saved personalized
+path. Current endpoints, schemas, settings, migrations, events, and commands
+remain Stage 3/4 behavior as documented below.
 
 ## Responsibilities
 
@@ -377,6 +385,9 @@ It emits structured inserted, updated, and unchanged counters.
   or startup side effect.
 - No online fit, background rebuild, hot reload, or automatic artifact
   promotion. Operators build explicitly and restart the API to activate.
+- No collaborative snapshot/trainer/artifact, hybrid serving policy, Stage 5
+  event schema, or real interaction dataset is implemented. The detailed plan
+  requires exact Stage 4 fallback when the optional component is unavailable.
 - No formal recommendation-quality evaluation on the synthetic seed; that is
   Stage 6 work.
 - No external metadata source.
