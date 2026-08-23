@@ -1,38 +1,61 @@
 {
   "manifest_schema_version": 1,
   "dataset": "ucsd-steam",
-  "owner": "UCSD McAuley Lab",
+  "source_attribution": "UCSD McAuley Lab",
   "retrieved_on": "2026-08-19",
   "status": "local-raw-sources-verified-not-integrated",
+  "source_format": "gzip-python-literal-lines",
   "dataset_page": "https://cseweb.ucsd.edu/~jmcauley/datasets.html",
+  "raw_transformations": [],
   "redistribution_status": "not-assessed-do-not-redistribute",
-  "citation_required": true,
+  "citation_requested": true,
+  "integration_gates": {
+    "source_provenance": "recorded-not-approved-for-ingestion",
+    "license_and_redistribution": "blocked-no-recorded-license",
+    "label_authority": "blocked-preparation-signal-not-approved-label",
+    "target_catalog_mapping": "blocked-no-mapping-artifact",
+    "fixture_activation": "blocked-no-activation-fixture-evidence",
+    "live_data_activation": "blocked-no-consent-lifecycle-evidence"
+  },
   "files": [
     {
       "role": "v1-user-items",
       "relative_path": "data/raw/ucsd-steam/v1-user-items/australian_users_items.json.gz",
       "source_url": "https://mcauleylab.ucsd.edu/public_datasets/data/steam/australian_users_items.json.gz",
       "compressed_size_bytes": 74035391,
-      "sha256": "0b329f79ddf450aba0aad923c8cb6d1affac0c98efaf70242d22fd10987a8d99"
+      "sha256": "0b329f79ddf450aba0aad923c8cb6d1affac0c98efaf70242d22fd10987a8d99",
+      "uncompressed_size_bytes": 553094816,
+      "line_count": 88310,
+      "max_line_bytes": 813000
     },
     {
       "role": "v1-reviews",
       "relative_path": "data/raw/ucsd-steam/v1-reviews/australian_user_reviews.json.gz",
       "source_url": "https://mcauleylab.ucsd.edu/public_datasets/data/steam/australian_user_reviews.json.gz",
       "compressed_size_bytes": 6935922,
-      "sha256": "a934bf74d8579bb25bc7bf24e652a87e2ccc91064e429a4cb4af5809178687a8"
+      "sha256": "a934bf74d8579bb25bc7bf24e652a87e2ccc91064e429a4cb4af5809178687a8",
+      "uncompressed_size_bytes": 26318774,
+      "line_count": 25799,
+      "max_line_bytes": 30736
     },
     {
       "role": "v2-item-metadata",
       "relative_path": "data/raw/ucsd-steam/v2-item-metadata/steam_games.json.gz",
       "source_url": "https://cseweb.ucsd.edu/~wckang/steam_games.json.gz",
       "compressed_size_bytes": 2740516,
-      "sha256": "717f4653a26585fec8f463f59311a654127c2ed66b07b9f78b4c0ce64961c740"
+      "sha256": "717f4653a26585fec8f463f59311a654127c2ed66b07b9f78b4c0ce64961c740",
+      "uncompressed_size_bytes": 21244748,
+      "line_count": 32135,
+      "max_line_bytes": 1494
     }
   ],
   "notes": [
     "Keep the raw gzip files compressed and immutable.",
-    "This manifest records local source identity only and does not assert dataset integration or model readiness.",
-    "Verify redistribution terms before sharing any raw source file."
+    "The upstream dataset page describes loose JSON that can be treated as Python dictionaries; this project parses it only with bounded ast.literal_eval after byte verification.",
+    "This manifest records local source identity only and does not assert dataset integration, label authority, catalog coverage, or model readiness.",
+    "The source attribution identifies the dataset page and research group; it does not assert ownership or rights-holder status.",
+    "No raw transformation is recorded; verification and parsing operate on the pinned local gzip bytes.",
+    "No dataset license or redistribution grant is recorded in this repository; do not redistribute, and do not ingest while any applicable integration gate remains blocked.",
+    "The source page requests citation. Citation is not a license grant."
   ]
 }

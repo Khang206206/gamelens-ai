@@ -1,0 +1,265 @@
+{
+  "command": "audit",
+  "dataset": "ucsd-steam",
+  "integration": {
+    "blocking_reasons": [
+      "external_source_not_integrated",
+      "fixture_activation_gate_not_evidenced",
+      "license_and_redistribution_not_approved",
+      "live_data_consent_and_lifecycle_not_evidenced",
+      "source_provenance_not_approved_for_ingestion",
+      "stage_5_label_authority_not_approved",
+      "target_catalog_mapping_not_evidenced"
+    ],
+    "fixture_activation": "blocked-no-activation-fixture-evidence",
+    "integration_ready": false,
+    "label_authority": "blocked-preparation-signal-not-approved-label",
+    "license_and_redistribution": "blocked-no-recorded-license",
+    "live_data_activation": "blocked-no-consent-lifecycle-evidence",
+    "source_identity": "passed-local-size-sha256-gzip-shape-with-post-scan-identity-check",
+    "source_provenance": "recorded-not-approved-for-ingestion",
+    "target_catalog_mapping": "blocked-no-mapping-artifact"
+  },
+  "manifest": {
+    "dataset_page": "https://cseweb.ucsd.edu/~jmcauley/datasets.html",
+    "raw_transformations": [],
+    "relative_path": "data/manifests/ucsd-steam/source-v1.json",
+    "retrieved_on": "2026-08-19",
+    "sha256": "4c83b8433a2c048511c7aa38073c4a152686cc70678bdd0990a56d42e9d3b357",
+    "source_attribution": "UCSD McAuley Lab"
+  },
+  "preparation": {
+    "policy": {
+      "candidate_signal": "v1 review recommend is exactly true",
+      "duplicate_conflict": "exclude-user-item-pair",
+      "duplicate_same_flag": "collapse-user-item-pair",
+      "id": "ucsd-steam-review-recommend-preparation-v1",
+      "not_an_approved_stage_5_label": true,
+      "ownership_and_playtime": "profile-only-never-a-candidate-positive",
+      "target_identity": "source Steam item ID only; no GameLens mapping"
+    },
+    "privacy": {
+      "output_is_aggregate_only": true,
+      "row_level_snapshot_written": false,
+      "transient_profiles_exposed": false,
+      "user_identifiers_emitted": false
+    },
+    "source_metadata_alignment": {
+      "candidate_positive_distinct_ids": {
+        "matched": 2869,
+        "rate": 0.871506682868,
+        "total": 3292
+      },
+      "candidate_positive_pairs": {
+        "matched": 47492,
+        "rate": 0.918749516366,
+        "total": 51692
+      },
+      "not_a_gamelens_catalog_mapping": true,
+      "review_distinct_ids": {
+        "matched": 3195,
+        "rate": 0.86773492667,
+        "total": 3682
+      },
+      "user_item_distinct_ids": {
+        "matched": 9192,
+        "rate": 0.837310985608,
+        "total": 10978
+      }
+    },
+    "source_profiles": {
+      "v1_reviews": {
+        "candidate_recommend_true_pairs": 51692,
+        "conflicting_recommend_pairs_excluded": 0,
+        "distinct_item_ids": 3682,
+        "distinct_users": 25485,
+        "duplicate_pair_rows": 874,
+        "duplicate_user_records": 314,
+        "false_only_pairs_excluded_from_candidates": 6739,
+        "invalid_recommend_rows": 0,
+        "invalid_review_rows": 0,
+        "recommend_false_rows_excluded_from_candidates": 6832,
+        "recommend_true_rows": 52473,
+        "records": 25799,
+        "records_without_review_list": 0,
+        "records_without_user_id": 0,
+        "review_rows": 59305,
+        "unique_user_item_pairs": 58431
+      },
+      "v1_user_items": {
+        "declared_item_count_mismatches": 0,
+        "distinct_item_ids": 10978,
+        "distinct_users": 87626,
+        "duplicate_items_within_record": 0,
+        "duplicate_user_records": 684,
+        "invalid_item_rows": 0,
+        "invalid_playtime_rows": 0,
+        "item_rows": 5153209,
+        "positive_playtime_rows_excluded_from_candidates": 3285246,
+        "records": 88310,
+        "records_without_item_list": 0,
+        "records_without_user_id": 0,
+        "zero_playtime_rows_excluded_from_candidates": 1867963
+      },
+      "v2_item_metadata": {
+        "ambiguous_item_ids_excluded_from_alignment": 1,
+        "distinct_item_ids": 32132,
+        "duplicate_item_id_records": 1,
+        "missing_or_invalid_item_ids": 2,
+        "records": 32135,
+        "records_without_title_or_app_name": 2,
+        "unambiguous_item_ids": 32131
+      }
+    },
+    "target_catalog_join": {
+      "mapped_candidate_items": 0,
+      "mapped_candidate_pairs": 0,
+      "status": "not_attempted-no-mapping-artifact"
+    }
+  },
+  "report_schema_version": 1,
+  "source_kind": "external_snapshot",
+  "source_status": "local-raw-sources-verified-not-integrated",
+  "status": "source_support_measured_integration_blocked",
+  "suitability": {
+    "approved_training_eligibility": false,
+    "assessment_scope": "source-level structural support after v2 metadata alignment",
+    "candidate_profile_fingerprint": "eafce3dcdd6cde57ec5eacf1746b83f0a3e269c0fc9069b2da2bf5d78ecd9f66",
+    "candidate_profiles": {
+      "candidate_positive_edges": 47492,
+      "distinct_candidate_items": 2869,
+      "profile_size_distribution": {
+        "0": 0,
+        "1": 13104,
+        "10+": 37,
+        "2": 4229,
+        "3-4": 3580,
+        "5-9": 2177
+      },
+      "users_with_candidate_positive": 23127
+    },
+    "filter_order": [
+      "deduplicate recommend=true by source user/item and exclude conflicts",
+      "align to one unambiguous v2 metadata item",
+      "retain profiles with at least two distinct items",
+      "iterate support>=2 items and length>=2 profiles to a deterministic fixed point",
+      "measure item pairs with support from at least two retained profiles"
+    ],
+    "interpretation": "Passing source-level support is only evidence that the preparation policy can form a non-degenerate sparse cohort. It is not license approval, GameLens catalog coverage, integration approval, or recommendation-quality evidence.",
+    "limits": {
+      "maximum_distinct_pairs": 1000000,
+      "maximum_item_id_characters": 32,
+      "maximum_line_bytes": 2097152,
+      "maximum_nested_records": 20000000,
+      "maximum_pair_contributions": 10000000,
+      "maximum_review_pairs": 2000000,
+      "maximum_top_level_records": 5000000,
+      "maximum_uncompressed_file_bytes": 2000000000,
+      "maximum_unique_items": 100000,
+      "maximum_unique_users": 500000,
+      "maximum_user_id_characters": 256
+    },
+    "pair_support": {
+      "distinct_pairs": 29596,
+      "pair_contributions": 53445,
+      "pair_support_distribution": {
+        "0": 0,
+        "1": 23115,
+        "10+": 491,
+        "2": 3313,
+        "3-4": 1760,
+        "5-9": 917
+      },
+      "supported_pairs": 6481
+    },
+    "ready_for_functional_build": false,
+    "source_level_reasons": [],
+    "source_level_support_passes": true,
+    "support_filter": {
+      "algorithm": "deterministic-queue-bipartite-two-core-v1",
+      "distinct_items_before_item_support": 2642,
+      "fixed_point_passes": 3,
+      "item_support_distribution_after_filter": {
+        "0": 0,
+        "1": 0,
+        "10+": 476,
+        "2": 390,
+        "3-4": 337,
+        "5-9": 313
+      },
+      "item_support_distribution_before_filter": {
+        "0": 0,
+        "1": 1112,
+        "10+": 478,
+        "2": 393,
+        "3-4": 342,
+        "5-9": 317
+      },
+      "matrix_density": {
+        "denominator": 14844672,
+        "numerator": 33049,
+        "rate": 0.002226320662
+      },
+      "multi_positive_users_before_item_support": 10023,
+      "positive_edges_before_item_support": 34388,
+      "retained_items": 1516,
+      "retained_positive_edges": 33049,
+      "retained_users": 9792
+    },
+    "thresholds": {
+      "activation_minimum_edges": 20,
+      "activation_minimum_items": 5,
+      "activation_minimum_users": 10,
+      "minimum_item_support": 2,
+      "minimum_pair_support": 2,
+      "minimum_profile_items": 2
+    }
+  },
+  "verification": {
+    "files": [
+      {
+        "compressed_size_bytes": 74035391,
+        "gzip": {
+          "blank_line_count": 0,
+          "line_count": 88310,
+          "max_line_bytes": 813000,
+          "status": "passed",
+          "uncompressed_size_bytes": 553094816
+        },
+        "relative_path": "data/raw/ucsd-steam/v1-user-items/australian_users_items.json.gz",
+        "role": "v1-user-items",
+        "sha256": "0b329f79ddf450aba0aad923c8cb6d1affac0c98efaf70242d22fd10987a8d99",
+        "source_url": "https://mcauleylab.ucsd.edu/public_datasets/data/steam/australian_users_items.json.gz"
+      },
+      {
+        "compressed_size_bytes": 6935922,
+        "gzip": {
+          "blank_line_count": 0,
+          "line_count": 25799,
+          "max_line_bytes": 30736,
+          "status": "passed",
+          "uncompressed_size_bytes": 26318774
+        },
+        "relative_path": "data/raw/ucsd-steam/v1-reviews/australian_user_reviews.json.gz",
+        "role": "v1-reviews",
+        "sha256": "a934bf74d8579bb25bc7bf24e652a87e2ccc91064e429a4cb4af5809178687a8",
+        "source_url": "https://mcauleylab.ucsd.edu/public_datasets/data/steam/australian_user_reviews.json.gz"
+      },
+      {
+        "compressed_size_bytes": 2740516,
+        "gzip": {
+          "blank_line_count": 0,
+          "line_count": 32135,
+          "max_line_bytes": 1494,
+          "status": "passed",
+          "uncompressed_size_bytes": 21244748
+        },
+        "relative_path": "data/raw/ucsd-steam/v2-item-metadata/steam_games.json.gz",
+        "role": "v2-item-metadata",
+        "sha256": "717f4653a26585fec8f463f59311a654127c2ed66b07b9f78b4c0ce64961c740",
+        "source_url": "https://cseweb.ucsd.edu/~wckang/steam_games.json.gz"
+      }
+    ],
+    "status": "passed"
+  }
+}

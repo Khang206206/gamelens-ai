@@ -2,8 +2,9 @@
 
 ## Stage 5 Engineering Plan: Collaborative and Hybrid Ranking
 
-- **Document status:** Engineering plan ready on 2026-08-19;
-  implementation has not started.
+- **Document status:** Engineering plan ready on 2026-08-19; Phase 0–1
+  external-source preflight slice verified on 2026-08-23; collaborative
+  runtime implementation has not started.
 - **Stage 4 prerequisite:** Complete and verified on 2026-08-13.
 - **Planning and target implementation branch:**
   `feat/stage-5-collaborative-and-hybrid-ranking`
@@ -12,10 +13,11 @@
   content, feedback, collaborative, platform, and popularity signals remain
   independently observable.
 
-Sections 1–20 are the proposed forward-looking engineering plan. Section 21
-must record decisions only after implementation evidence resolves them.
-Section 22 is a provisional Stage 6 handoff, and Section 23 remains pending
-until every acceptance gate passes. Plan readiness does not make any Stage 5
+Sections 1–20 remain the forward-looking engineering plan except where the
+Phase 0–1 external-source preflight slice is explicitly marked verified.
+Section 21 records only measured implementation decisions. Section 22 is a
+provisional Stage 6 handoff, and Section 23 remains pending until every
+acceptance gate passes. The preflight does not make a Stage 5 collaborative
 runtime capability available.
 
 ## 1. Context
@@ -302,21 +304,36 @@ defaults.
 
 ### 5.2 Interaction-Data Suitability and Provenance Gate
 
-The audit runs before build and emits JSON plus a human-readable summary. It
-records source kind, source identifier, catalog fingerprint, database time,
-cutoff, consent policy, data revision, eligible/excluded user counts,
-eligible/excluded label counts by reason, distinct items, matrix density,
-support distributions, and proposed thresholds.
+The implemented external-source preflight runs before any build and emits
+machine-readable JSON or a human-readable summary. It records source kind,
+manifest fingerprint, exact file identity and gzip shape, aggregate schema
+quality, source-metadata alignment, candidate-profile fingerprint, matrix
+density, support distributions, thresholds, limits, and typed gate states.
+It has no database time, cutoff, consent policy, or data revision because it
+does not query live GameLens data.
+
+A future consent-qualified live audit must additionally record catalog
+fingerprint, PostgreSQL time and cutoff, consent policy, data revision, and
+eligible/excluded contributor and label counts by reason. It remains subject
+to the transaction, lifecycle, and identity-minimization contracts below.
 
 `ready_for_functional_build` means only that the pipeline has sufficient
-support to construct a baseline. It does not mean the data is representative
-or that recommendations are good. Live-data activation additionally requires
-approved consent and derived-data lifecycle gates. Project-authored fixture
-activation is reported separately.
+approved support to construct a baseline. It does not mean the data is
+representative or that recommendations are good. The UCSD report instead
+exposes `source_level_support_passes`; its `ready_for_functional_build` and
+`approved_training_eligibility` fields remain false. Live-data activation
+requires approved consent and derived-data lifecycle gates. Project-authored
+fixture activation is reported separately.
 
-No public dataset is selected by this plan. Adding one requires documented
-source URL, owner, license, retrieval date, checksum, transformations, catalog
-mapping, and redistribution policy in a reviewed change.
+UCSD Steam Versions 1 and 2 are selected only for local read-only source
+preflight. They are not selected or approved for ingestion, training,
+artifact construction, or serving. The manifest records exact source URLs,
+attribution to the UCSD McAuley Lab, retrieval date, checksums, and source
+shape; it does not assert ownership or rights-holder status. The source page
+requests citation, but citation is not a license grant and this repository
+records no dataset license or redistribution grant. License/redistribution,
+ingestion provenance, Stage 5 label authority, GameLens catalog mapping,
+fixture activation, and live-data consent/lifecycle gates remain blocked.
 
 ### 5.3 Canonical Interaction Snapshot and Cutoff
 
@@ -787,6 +804,54 @@ produce an honest suitability result.
 - Live-data build remains gated unless authority, revision, and lifecycle are
   all valid.
 
+### Verified Phase 0–1 External-Source Slice (2026-08-23)
+
+The following bounded slice is implemented and verified:
+
+- `gamelens_recommender.ucsd_steam` provides read-only `verify`, `prepare`,
+  and `audit` commands plus JSON and summary output. Expected blocked
+  integration is a successful command state; malformed, missing, mismatched,
+  unsafe, or over-limit input exits with a typed error.
+- The implementation uses only the Python 3.12 standard library. It verifies
+  all three compressed members before parsing, rejects symlinks/path escape,
+  bounds each exact compressed read, caps a line at 2 MiB and each expanded
+  member at 2 GB, uses bounded `ast.literal_eval` rather than `eval`, and
+  rechecks all compressed identities after scanning or parsing.
+- Manifest schema 1 freezes exact compressed/expanded sizes, SHA-256 values,
+  line counts, maximum line sizes, fail-closed gate states, and source status
+  `local-raw-sources-verified-not-integrated`. Its canonical SHA-256 is
+  `4c83b8433a2c048511c7aa38073c4a152686cc70678bdd0990a56d42e9d3b357`.
+- Preparation policy `ucsd-steam-review-recommend-preparation-v1` treats only
+  source-native `recommend=true` as a candidate, collapses duplicate
+  user/item pairs, excludes conflicts, ownership, playtime, and false reviews,
+  and performs only unambiguous v1-to-v2 source metadata alignment. This is
+  not an approved Stage 5 label or a GameLens catalog mapping.
+- The canonical candidate fingerprint hashes the sorted multiset of sorted
+  source-item profiles without serializing a source user key. The verified
+  fingerprint is
+  `eafce3dcdd6cde57ec5eacf1746b83f0a3e269c0fc9069b2da2bf5d78ecd9f66`.
+- The verified audit contains 59,305 review rows, 58,431 deduplicated
+  user/item pairs, 51,692 unambiguous true candidate pairs, and 47,492 pairs
+  aligned to one unambiguous v2 metadata ID. Three deterministic queue-based
+  bipartite fixed-point passes leave 9,792 profiles, 33,049 edges, 1,516
+  items, and 6,481 item pairs with support of at least two. These are
+  structural diagnostics only.
+- The aggregate report emits no source user identifier or row-level snapshot,
+  writes no processed data, and fits no model. Thirty-five focused UCSD cases
+  and all 87 ML tests pass. Focused coverage includes exact verification,
+  fail-before-parse and post-parse checks, bounded reads, safe literal and gzip
+  errors, aggregate-only output, duplicate/conflict policy, canonical
+  fingerprints, fixed-point pruning, ambiguous metadata, insufficiency
+  reasons, fail-closed gates, and strict CLI/report semantics.
+- A fresh full-source `audit --check-report` run matches the committed JSON by
+  canonical JSON type and value.
+
+This slice does not satisfy the complete Phase 0 or Phase 1 exit criteria.
+Contribution consent, derived-data invalidation/deletion, the live
+repeatable-read extractor, catalog mapping, the project-authored fixture,
+revision/lineage migrations, and all collaborative runtime work remain
+unimplemented and blocking.
+
 ## 9. Implementation Phase 2: Collaborative Artifact and Offline Builder
 
 ### Objective
@@ -1254,12 +1319,17 @@ limitations, and leave a precise Stage 6 input contract.
 
 ## 18. Command Interface Target
 
-Exact module and Make names are frozen in Phase 0. The table documents the
-intended separation; it does not claim that the Stage 5 commands exist today.
+The external-source preflight names are now frozen as implemented. Remaining
+collaborative command names document intended separation and are still
+forward-looking.
 
 | Capability | Optional Make wrapper | Required direct equivalent |
 | --- | --- | --- |
-| Audit eligible interaction data | `make collaborative-audit` | `python -m app.commands.collaborative_artifact audit` |
+| Verify local UCSD source identity | `make ucsd-steam-verify` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam verify --root /workspace --format json` |
+| Profile UCSD ingestion preparation | `make ucsd-steam-prepare` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam prepare --root /workspace --format json` |
+| Audit UCSD source-level support | `make ucsd-steam-audit` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --format json` |
+| Check committed UCSD aggregate report | `make ucsd-steam-audit-check` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/audits/ucsd-steam/source-v1-suitability.json --format summary` |
+| Audit eligible live interaction data (planned) | `make collaborative-audit` | `python -m app.commands.collaborative_artifact audit` |
 | Build a new collaborative bundle | `make collaborative-build` | `python -m app.commands.collaborative_artifact build` |
 | Validate configured bundle | `make collaborative-validate` | `python -m app.commands.collaborative_artifact validate` |
 | Inspect bundle metadata | none required | `python -m app.commands.collaborative_artifact inspect` |
@@ -1481,10 +1551,62 @@ infrastructure docs explicit until Section 23 is populated from passing gates.
 
 ## 21. Implementation-Time Decisions
 
-No implementation-time decisions are recorded yet because Stage 5
-implementation has not started.
+Only the Phase 0–1 external-source preflight decisions are implemented. They
+do not silently resolve the separate live-data, fixture, model, artifact, API,
+or product decisions.
 
-The implementation must resolve and record:
+### As-Built External-Source Decisions
+
+1. Source kind is `external_snapshot`; report schema is 1; manifest schema is
+   1; the source remains `local-raw-sources-verified-not-integrated`.
+2. `verify`, `prepare`, and `audit` are read-only standard-library commands.
+   JSON is the machine format and `--format summary` is the human format.
+   Expected blocked integration exits zero; source/manifest safety errors exit
+   two. No audit module command downloads source data, writes, fits, promotes,
+   or mutates PostgreSQL. A requested container image build may obtain image
+   dependencies.
+3. All manifest members must pass exact path, HTTPS host, compressed size,
+   bounded SHA-256, gzip CRC/shape, expanded size, line-count, maximum-line,
+   and no-blank-line checks. Every compressed identity is verified before any
+   source literal is parsed and rechecked after scanning or parsing.
+4. Parser caps are 2 MiB per line, 2 GB expanded per member, 5,000,000
+   top-level records, 20,000,000 nested rows, 500,000 transient users,
+   100,000 transient items, 2,000,000 review pairs, 10,000,000 pair
+   contributions, and 1,000,000 distinct item pairs. Source user IDs are capped
+   at 256 characters and item IDs at 32. The parser is `ast.literal_eval`;
+   executable and structurally invalid literals fail with typed errors.
+5. Preparation policy `ucsd-steam-review-recommend-preparation-v1` uses
+   source-native `recommend=true` only, collapses same-flag user/item
+   duplicates, excludes conflicts, and never promotes ownership, playtime, or
+   false reviews. The policy is explicitly not an approved Stage 5 label.
+6. Source-level thresholds are two items per profile, two profiles per item,
+   and two profiles per pair; diagnostic activation minima are 10 profiles,
+   20 edges, and 5 items. A deterministic queue-based bipartite two-core reaches
+   the same user/item fixed point without repeated full rescans. The JSON report
+   records the algorithm and pass count; this does not freeze the future
+   model-builder pruning policy.
+7. Candidate profiles are sorted item tuples; the multiset retains duplicate
+   profiles and is sorted before canonical JSON/SHA-256 hashing. Source user
+   keys are used only for transient grouping and are never emitted.
+8. The exact verified file/profile/support counts, manifest fingerprint,
+   candidate fingerprint, distributions, limits, and privacy flags are in
+   [`data/audits/ucsd-steam/source-v1-suitability.json`](../data/audits/ucsd-steam/source-v1-suitability.json).
+   Source-level structural support passes, but approved training eligibility
+   and functional-build readiness remain false.
+9. Source identity is verified. Source provenance is recorded but not
+   ingestion-approved. License/redistribution, GameLens catalog mapping,
+   Stage 5 label authority, fixture activation, and live consent/lifecycle
+   gates remain blocked. The catalog schema has nullable `external_id`; all 30
+   seed payloads omit it and use the null default, and no reviewed Steam mapping
+   artifact exists. No title matching is attempted.
+10. No dependency changed. The dedicated `ucsd-source-audit` service mounts
+    `data/` and `ml/` read-only, uses a read-only root filesystem, and disables
+    runtime networking. The general `quality` service receives only the seed,
+    manifest, and committed audit paths, not ignored raw sources. Thirty-five
+    focused UCSD cases and all 87 ML tests pass; the committed-report check also
+    passes against the full local source.
+
+The remaining implementation must resolve and record:
 
 1. Exact contribution-consent resource, version, copy, re-consent, withdrawal,
    and whether saved personalization remains separately available.
@@ -1551,7 +1673,9 @@ to verified facts only.
 
 ## 23. Verified Completion Record
 
-Pending implementation.
+Pending complete Stage 5 implementation. The verified Phase 0–1
+external-source slice is recorded in Section 21 and the committed aggregate
+audit; it is not a Stage 5 completion claim.
 
 When every Section 19 gate passes, this section must record the implementation
 commit/PR, runtime and lock versions, migration head, consent/lifecycle

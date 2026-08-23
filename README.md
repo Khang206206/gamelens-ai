@@ -10,12 +10,16 @@ game metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 4 complete and verified 2026-08-13**
+**Stage 4 complete and verified 2026-08-13; Stage 5 external-source preflight
+slice verified 2026-08-23**
 
 The detailed
 [Stage 5 collaborative-and-hybrid engineering plan](docs/stage-5-collaborative-hybrid-ranking-plan.md)
-is ready as of 2026-08-19. Stage 5 implementation has not started, so the
-capabilities listed below remain the verified Stage 4 system.
+is ready as of 2026-08-19. A read-only UCSD Steam source verifier,
+ingestion-preparation profiler, and aggregate source-level suitability audit
+now implement the external-source part of Phases 0–1. The source remains
+explicitly not integrated; no collaborative trainer, artifact, consent-aware
+live extractor, hybrid scorer, or serving path exists.
 
 The repository now provides:
 
@@ -32,6 +36,9 @@ The repository now provides:
 - A deterministic popularity baseline and sparse TF-IDF content recommender
   built from an explicit, fingerprinted PostgreSQL snapshot.
 - A checksum-validated, non-executable JSON/NPY artifact loaded once by the API.
+- A bounded, read-only UCSD Steam source preflight that verifies exact local
+  archives, profiles only aggregate source facts, and leaves license,
+  provenance approval, GameLens catalog mapping, and activation gates closed.
 - A bounded, typed `POST /api/v1/recommendations` contract with observable
   content, platform, and popularity components plus structured evidence.
 - Accessible anonymous onboarding and explained results at `/recommendations`;
@@ -151,6 +158,8 @@ from `apps/api/requirements.lock`.
 |   |-- api/                 # FastAPI app, Alembic, tests, development image
 |   `-- web/                 # Next.js app, generated contracts, tests, images
 |-- data/
+|   |-- audits/              # Committed aggregate source-audit reports
+|   |-- manifests/           # Pinned external-source identity and closed gates
 |   `-- seed/games.json      # 30-game deterministic synthetic catalog
 |-- docs/                    # Architecture, data, plans, roadmap, handoffs
 |-- infra/
@@ -159,7 +168,7 @@ from `apps/api/requirements.lock`.
 |-- ml/                      # Offline recommender package, tests, and ignored artifacts
 |-- scripts/                 # Reserved cross-project scripts
 |-- .env.example
-|-- docker-compose.yml       # PostgreSQL, API, web, model builder, and quality services
+|-- docker-compose.yml       # App, model, quality, and isolated source-audit services
 |-- Makefile                 # Optional command shortcuts
 `-- README.md
 ```
@@ -262,6 +271,8 @@ development and contract checks use the same API base URL.
 | `make migrate` / `make seed`          | Upgrade schema or idempotently load the catalog                   |
 | `make model-build` / `model-validate` | Build or validate the configured recommendation artifact          |
 | `make retention-preview`              | Preview eligible event/session retention rows without mutation    |
+| `make ucsd-steam-verify` / `ucsd-steam-prepare` | Verify pinned source bytes or emit preparation aggregates |
+| `make ucsd-steam-audit` / `ucsd-steam-audit-check` | Audit source support or compare it with the committed report |
 | `make test-ml`                        | Run deterministic ML, artifact, and ranking tests                 |
 | `make test` / `make test-integration` | Run fast API or disposable-PostgreSQL tests                       |
 | `make test-web`                       | Run web type, lint, format, test, build, and contract-drift gates |
@@ -271,7 +282,8 @@ development and contract checks use the same API base URL.
 | `make api-types`                      | Refresh web types from the running API OpenAPI document           |
 
 Every optional Make target has a direct equivalent in the
-[API README](apps/api/README.md) or [web README](apps/web/README.md).
+[API README](apps/api/README.md), [ML README](ml/README.md), or
+[web README](apps/web/README.md).
 
 ## Environment variables
 
@@ -422,9 +434,12 @@ service-level claims.
   confirmed cleanup run.
 - The 30-game synthetic seed supports functional and reproducibility checks,
   including feedback lifecycle behavior, not recommendation-quality
-  evaluation. A detailed Stage 5 plan now exists, but no collaborative
-  trainer, artifact, hybrid serving path, or real interaction dataset is
-  implemented; formal comparative evaluation remains Stage 6.
+  evaluation. The UCSD Steam source-preflight commands and aggregate audit do
+  not integrate that external source or authorize its use. No collaborative
+  trainer, artifact, consent-aware live extractor, project-authored
+  activatable Stage 5 interaction fixture, guarded fixture E2E evidence,
+  hybrid serving path, or approved interaction dataset is implemented; formal
+  comparative evaluation remains Stage 6.
 - No external metadata service or approved remote cover-image source.
 - Seed ratings and popularity values are synthetic development signals.
 - Social metadata currently uses a localhost development base. A validated

@@ -133,10 +133,15 @@ proposes a second offline-to-online path. Every node below with a dashed border
 is future behavior; the current runtime still ends at the verified Stage 4
 feedback policy.
 
+
+The implemented read-only UCSD Steam preflight is a separate offline source
+identity, preparation, and aggregate-support check. It is not connected to the
+future consent-qualified live-data activation path below.
+
 ```mermaid
 flowchart LR
     State[("Consented preferences and interactions")]:::future
-    Audit["Aggregate suitability audit"]:::future
+    Audit["Consent-qualified live-data suitability audit"]:::future
     Snapshot["Cutoff-bound eligible snapshot"]:::future
     Builder["Sparse item-item cosine builder"]:::future
     CF["Identity-free collaborative artifact"]:::future

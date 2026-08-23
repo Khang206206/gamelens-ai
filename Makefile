@@ -1,7 +1,7 @@
-.PHONY: help config build build-web up down logs api web migrate seed model-build model-validate retention-preview test-ml test test-integration test-web test-web-e2e lint lint-web format format-web api-types
+.PHONY: help config build build-web up down logs api web migrate seed model-build model-validate retention-preview ucsd-steam-verify ucsd-steam-prepare ucsd-steam-audit ucsd-steam-audit-check test-ml test test-integration test-web test-web-e2e lint lint-web format format-web api-types
 
 help:
-	@echo "GameLens AI Stage 4 commands"
+	@echo "GameLens AI commands"
 	@echo "  make config  Validate development and test Compose without printing secrets"
 	@echo "  make build   Build the API development image"
 	@echo "  make build-web  Build the web development image"
@@ -15,6 +15,10 @@ help:
 	@echo "  make model-build  Build the configured MODEL_ARTIFACT_PATH"
 	@echo "  make model-validate  Validate the configured artifact without mutation"
 	@echo "  make retention-preview  Preview retention eligibility without mutation"
+	@echo "  make ucsd-steam-verify  Verify local UCSD Steam bytes and gzip shape read-only"
+	@echo "  make ucsd-steam-prepare  Profile source schemas and alignment read-only"
+	@echo "  make ucsd-steam-audit  Run the aggregate source-level suitability audit"
+	@echo "  make ucsd-steam-audit-check  Compare the fresh source aggregate audit to the committed report"
 	@echo "  make test-ml  Run deterministic ML and artifact tests"
 	@echo "  make test    Run the fast unit and contract suite"
 	@echo "  make test-integration  Run tests against disposable PostgreSQL"
@@ -27,7 +31,7 @@ help:
 	@echo "  make api-types  Refresh web contracts from the running API"
 
 config:
-	docker compose --profile quality config --quiet
+	docker compose --profile quality --profile source-audit config --quiet
 	docker compose -f infra/docker-compose.test.yml config --quiet
 	docker compose -f infra/docker-compose.e2e.yml config --quiet
 
@@ -67,6 +71,18 @@ model-validate:
 
 retention-preview:
 	docker compose run --build --rm api python -m app.commands.retention
+
+ucsd-steam-verify:
+	docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam verify --root /workspace --format summary
+
+ucsd-steam-prepare:
+	docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam prepare --root /workspace --format summary
+
+ucsd-steam-audit:
+	docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --format summary
+
+ucsd-steam-audit-check:
+	docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/audits/ucsd-steam/source-v1-suitability.json --format summary
 
 test-ml:
 	docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests -q -p no:cacheprovider

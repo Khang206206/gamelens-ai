@@ -221,40 +221,50 @@ is published as commit `c96b6c2` in draft PR
 
 ## Stage 5 — Collaborative and hybrid ranking
 
-**Status:** Engineering plan ready 2026-08-19; implementation has not started
+**Status:** Engineering plan ready 2026-08-19; external-source preflight slice
+verified 2026-08-23; collaborative runtime not started
 
 Detailed execution plan:
 [`stage-5-collaborative-hybrid-ranking-plan.md`](stage-5-collaborative-hybrid-ranking-plan.md)
+
+The implemented Phase 0–1 slice verifies and profiles the ignored local UCSD
+Steam snapshot read-only and records an aggregate source-level suitability
+audit. It does not integrate the source. Stage 5 label authority,
+license/redistribution, ingestion provenance approval, GameLens catalog
+mapping, activatable project-authored fixture evidence, and live-data
+consent/lifecycle gates remain closed.
 
 Build one reviewable slice at a time:
 
 1. Re-run the Stage 1–4 gates and freeze contribution-consent, label,
    provenance, cutoff, lifecycle, artifact, hybrid, API, and fallback
    contracts.
-2. Add a read-only aggregate suitability audit plus a deterministic
-   project-authored multi-user fixture; do not present either as quality
+2. Keep the implemented read-only external-source suitability audit exact and
+   reproducible; its structural diagnostics are not quality or integration
    evidence.
-3. Extract one consent- and retention-aware as-of interaction snapshot in a
+3. Add the still-pending deterministic project-authored multi-user fixture;
+   do not present fixture results as quality evidence.
+4. Extract one consent- and retention-aware as-of interaction snapshot in a
    database-time repeatable-read transaction, with canonical fingerprinting
    and no serialized identity.
-4. Build and validate a separate sparse item-item cosine artifact with support
+5. Build and validate a separate sparse item-item cosine artifact with support
    thresholds, deterministic pruning, complete checksums, resource caps, and
    protected lifecycle lineage.
-5. Add a pure collaborative scorer and a versioned hybrid policy whose base,
+6. Add a pure collaborative scorer and a versioned hybrid policy whose base,
    feedback-affinity, collaborative, popularity, platform, and played
    components remain independently reconstructible.
-6. Compare baseline candidates and component units on deterministic
+7. Compare baseline candidates and component units on deterministic
    hand-calculated fixtures without reporting recommendation quality.
-7. Preserve exact Stage 4 behavior for missing, insufficient, unsupported,
+8. Preserve exact Stage 4 behavior for missing, insufficient, unsupported,
    invalid, stale, expired, retired, or privacy-invalid collaborative state.
-8. Extend the saved personalized response, component status,
+9. Extend the saved personalized response, component status,
    recommendation-generation event, OpenAPI types, and conditional browser
    evidence while leaving the stateless endpoint unchanged.
-9. Add explicit build/validate/invalidate/retire commands and disposable
+10. Add explicit build/validate/invalidate/retire commands and disposable
    PostgreSQL/Docker lifecycle fixtures; no startup or request may train.
-10. Pass ML, API, migration, PostgreSQL, web, browser, accessibility, privacy,
+11. Pass ML, API, migration, PostgreSQL, web, browser, accessibility, privacy,
    Docker, dependency, OpenAPI, and complete Stage 1–4 regression gates.
-11. Synchronize verified documentation and leave evaluation-ready artifact,
+12. Synchronize verified documentation and leave evaluation-ready artifact,
     component, cold-start, and limitation contracts for Stage 6.
 
 Stage 5 is complete only when the data source and permission are explicit;

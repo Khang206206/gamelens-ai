@@ -1,6 +1,7 @@
 # Machine-learning workspace
 
-**Status:** Stage 4 feedback policy complete and verified 2026-08-13.
+**Status:** Stage 4 feedback policy complete and verified 2026-08-13; Stage 5
+external-source preflight slice verified 2026-08-23.
 
 This directory owns deterministic catalog normalization, the popularity
 baseline, TF-IDF feature construction, sparse artifact serialization, pure
@@ -17,9 +18,12 @@ user identity or mutable database object and stores no durable state.
 
 The detailed
 [Stage 5 collaborative-and-hybrid plan](../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-is ready, but Stage 5 implementation has not started. No collaborative
-trainer, artifact, loader, scorer, hybrid policy, interaction snapshot, or
-Stage 5 command exists in this package today.
+is ready. The package now contains only the read-only UCSD Steam
+source-verification, preparation, and aggregate-audit slice of Phases 0–1. No
+collaborative trainer, artifact, loader, scorer, hybrid policy, consent-aware
+live extractor, versioned activatable Stage 5 interaction fixture, guarded
+fixture E2E evidence, or serveable Stage 5 snapshot exists. The focused unit
+tests use a separate in-process synthetic source fixture.
 
 ## Planned Stage 5 scope
 
@@ -43,6 +47,62 @@ versioned hybrid policy will combine base, feedback-affinity, collaborative,
 and played components once. Unsupported or invalid collaborative state must
 return exact Stage 4 ranking through an explicit fallback. These are planned
 contracts, not current package behavior or recommendation-quality claims.
+
+## UCSD Steam source preflight
+
+`gamelens_recommender.ucsd_steam` uses only the Python 3.12 standard library.
+The audit runtime never downloads source data, rewrites or extracts the pinned
+archives, fits or promotes a model, or deletes data. It first verifies the
+manifest and every compressed size and SHA-256, streams each gzip member
+through manifest-specific shape bounds capped at 2 MiB per line and 2 GB per
+member, then rechecks compressed identity after scanning. Loose Python-literal
+records are parsed with `ast.literal_eval`, never `eval`.
+
+The dedicated `ucsd-source-audit` service mounts `data/` and `ml/`
+read-only, has a read-only root filesystem, and disables runtime networking.
+`docker compose ... --build` may still obtain image dependencies; the audit
+module itself has no source-download path.
+
+`prepare` emits source-schema and v1-to-v2 alignment aggregates only.
+`audit` additionally collapses duplicate source user/item reviews, treats
+`recommend=true` as a preparation-only candidate signal, and measures sparse
+support after deterministic user/item fixed-point pruning. Ownership, playtime,
+and `recommend=false` never become candidates.
+Source user keys exist only in bounded process memory and neither the command
+nor its report writes a row-level snapshot or emits an identifier.
+
+Run the pinned-container human summaries from the repository root:
+
+```powershell
+make ucsd-steam-verify
+make ucsd-steam-prepare
+make ucsd-steam-audit
+make ucsd-steam-audit-check
+```
+
+The full container command that emits deterministic machine-readable JSON is:
+
+```powershell
+docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --format json
+```
+
+The exact no-write comparison with the committed aggregate report is:
+
+```powershell
+docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/audits/ucsd-steam/source-v1-suitability.json --format summary
+```
+
+Replace `audit` with `verify` or `prepare` for the other reports.
+`make ucsd-steam-audit-check` reruns the audit and compares its JSON
+by canonical JSON type and value with the committed report; a mismatch is the typed
+`report_mismatch` error. The local ignored archives must already exist at the
+manifest paths. The aggregate
+[source-v1 report](../data/audits/ucsd-steam/source-v1-suitability.json)
+records the verified 2026-08-23 run. Passing its source-only support thresholds
+does not approve a label or integration: no Stage 5 label authority, dataset
+license/redistribution grant, ingestion-approved provenance, GameLens Steam-ID
+mapping, activatable Stage 5 fixture evidence, or live consent/lifecycle proof
+is recorded.
 
 ## Package and reproducibility
 

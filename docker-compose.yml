@@ -138,7 +138,27 @@ services:
     volumes:
       - ./apps/api:/workspace/apps/api
       - ./data/seed:/workspace/data/seed:ro
+      - ./data/manifests:/workspace/data/manifests:ro
+      - ./data/audits:/workspace/data/audits:ro
       - ./ml:/workspace/ml
+
+  ucsd-source-audit:
+    profiles:
+      - source-audit
+    image: gamelens-ai-api:stage4
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    network_mode: none
+    read_only: true
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONPATH: /workspace/ml/src
+    volumes:
+      - ./data:/workspace/data:ro
+      - ./ml:/workspace/ml:ro
+    tmpfs:
+      - /tmp
 
 volumes:
   postgres_data:
