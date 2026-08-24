@@ -1603,10 +1603,11 @@ or product decisions.
    artifact exists. No title matching is attempted.
 10. No dependency changed. The dedicated `ucsd-source-audit` service mounts
     `data/` and `ml/` read-only, uses a read-only root filesystem, and disables
-    runtime networking. The general `quality` service receives only the seed,
-    manifest, and committed audit paths, not ignored raw sources. Thirty-five
-    focused UCSD cases and all 87 ML tests pass; the committed-report check also
-    passes against the full local source.
+    runtime networking. The general `quality` service mounts only
+    `data/catalog/` and the committed UCSD manifest and aggregate-audit files;
+    it never mounts ignored `data/external/ucsd-steam/payload/` bytes.
+    Thirty-five focused UCSD cases and all 87 ML tests pass; the
+    committed-report check also passes against the full local source.
 
 The remaining implementation must resolve and record:
 

@@ -13,6 +13,10 @@ the execution sequence remains reviewable. The implemented decisions are
 recorded in Section 21, the completed frontend handoff in Section 22, and the
 final acceptance evidence in Section 23.
 
+> **Current repository note (2026-08-24):** The Stage 5 data-governance
+> reorganization moved the live catalog from `data/seed/games.json` to
+> `data/catalog/games.json` in commit `de4588a`. The forward-looking references
+> below retain the Stage 1 path.
 
 ## 1. Context
 
@@ -237,7 +241,7 @@ apps/api/
 |-- pyproject.toml
 `-- README.md
 
-data/catalog/
+data/seed/
 `-- games.json
 
 infra/
@@ -451,7 +455,7 @@ work without requiring network access or third-party licensing.
 
 ### Work
 
-1. Create `data/catalog/games.json` with at least 25 varied games.
+1. Create `data/seed/games.json` with at least 25 varied games.
 2. Include enough genre, tag, platform, release-date, rating, and popularity
    variation to exercise filtering and pagination.
 3. Use minimal metadata and original short descriptions.
