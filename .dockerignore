@@ -47,6 +47,9 @@
 **/Thumbs.db
 
 # Untracked data and model outputs
+data/external/*/payload
+data/private
+data/generated
 data/raw
 data/processed
 ml/artifacts

@@ -158,9 +158,9 @@ from `apps/api/requirements.lock`.
 |   |-- api/                 # FastAPI app, Alembic, tests, development image
 |   `-- web/                 # Next.js app, generated contracts, tests, images
 |-- data/
-|   |-- audits/              # Committed aggregate source-audit reports
-|   |-- manifests/           # Pinned external-source identity and closed gates
-|   `-- seed/games.json      # 30-game deterministic synthetic catalog
+|   |-- catalog/             # Project-authored development catalog
+|   |-- external/            # Source metadata/audits; payloads stay ignored
+|   `-- fixtures/            # Reviewed project-authored test inputs
 |-- docs/                    # Architecture, data, plans, roadmap, handoffs
 |-- infra/
 |   |-- docker-compose.test.yml

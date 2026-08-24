@@ -368,7 +368,7 @@ production-minimal base.
 
 ## Seed data
 
-`data/seed/games.json` contains 30 fictional games and 36 taxonomy records.
+`data/catalog/games.json` contains 30 fictional games and 36 taxonomy records.
 Descriptions and synthetic rating signals are project-authored. There are no
 cover binaries, external API identifiers, or recommendation-quality claims.
 The seed command validates all references and upserts by stable slug.

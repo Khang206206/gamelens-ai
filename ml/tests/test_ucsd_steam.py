@@ -25,17 +25,17 @@ from gamelens_recommender.ucsd_steam import (
 SOURCE_DEFINITIONS = (
     (
         "v1-user-items",
-        "data/raw/ucsd-steam/v1-user-items/australian_users_items.json.gz",
+        "data/external/ucsd-steam/payload/v1-user-items/australian_users_items.json.gz",
         "https://mcauleylab.ucsd.edu/public_datasets/data/steam/australian_users_items.json.gz",
     ),
     (
         "v1-reviews",
-        "data/raw/ucsd-steam/v1-reviews/australian_user_reviews.json.gz",
+        "data/external/ucsd-steam/payload/v1-reviews/australian_user_reviews.json.gz",
         "https://mcauleylab.ucsd.edu/public_datasets/data/steam/australian_user_reviews.json.gz",
     ),
     (
         "v2-item-metadata",
-        "data/raw/ucsd-steam/v2-item-metadata/steam_games.json.gz",
+        "data/external/ucsd-steam/payload/v2-item-metadata/steam_games.json.gz",
         "https://cseweb.ucsd.edu/~wckang/steam_games.json.gz",
     ),
 )
@@ -146,14 +146,14 @@ def _write_source_tree(
         "integration_gates": EXPECTED_GATE_STATES,
         "files": files,
     }
-    manifest_path = root / "data/manifests/ucsd-steam/source-v1.json"
+    manifest_path = root / "data/external/ucsd-steam/manifest.json"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     return manifest_path
 
 
 def _rewrite_manifest_entry(root: Path, role: str, lines: list[bytes]) -> None:
-    manifest_path = root / "data/manifests/ucsd-steam/source-v1.json"
+    manifest_path = root / "data/external/ucsd-steam/manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     entry = next(item for item in manifest["files"] if item["role"] == role)
     payload = _gzip_bytes(lines)
@@ -544,7 +544,7 @@ def test_post_parse_checksum_detects_same_size_replacement(
 
 def test_bounded_hash_rejects_bytes_appended_after_the_size_check(tmp_path: Path) -> None:
     _write_source_tree(tmp_path)
-    manifest = ucsd_steam.load_manifest(tmp_path, "data/manifests/ucsd-steam/source-v1.json")
+    manifest = ucsd_steam.load_manifest(tmp_path, "data/external/ucsd-steam/manifest.json")
     source = manifest.files[0]
     source_path = tmp_path / Path(*source.relative_path.split("/"))
     source_path.write_bytes(source_path.read_bytes() + b"unexpected")
@@ -668,7 +668,7 @@ def test_cli_can_check_a_committed_report_without_writing(
 ) -> None:
     _write_source_tree(tmp_path)
     expected = audit_source(tmp_path)
-    relative_report = "data/audits/ucsd-steam/expected.json"
+    relative_report = "data/external/ucsd-steam/expected.json"
     report_path = tmp_path / Path(*relative_report.split("/"))
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(expected), encoding="utf-8")
@@ -709,13 +709,19 @@ def test_cli_can_check_a_committed_report_without_writing(
 def test_committed_report_matches_manifest_and_aggregate_contract() -> None:
     project_root = Path(__file__).resolve().parents[2]
     manifest = json.loads(
-        (project_root / "data/manifests/ucsd-steam/source-v1.json").read_text(encoding="utf-8")
+        (project_root / "data/external/ucsd-steam/manifest.json").read_text(encoding="utf-8")
     )
     report = json.loads(
-        (project_root / "data/audits/ucsd-steam/source-v1-suitability.json").read_text(
+        (project_root / "data/external/ucsd-steam/suitability-audit.json").read_text(
             encoding="utf-8"
         )
     )
+
+    assert report["manifest"]["relative_path"] == "data/external/ucsd-steam/manifest.json"
+    manifest_paths = {source["relative_path"] for source in manifest["files"]}
+    assert manifest_paths == {path for _, path, _ in SOURCE_DEFINITIONS}
+    verification_paths = {source["relative_path"] for source in report["verification"]["files"]}
+    assert verification_paths == manifest_paths
 
     assert (
         report["manifest"]["sha256"] == hashlib.sha256(canonical_json_bytes(manifest)).hexdigest()

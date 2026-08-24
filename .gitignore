@@ -30,8 +30,13 @@ blob-report/
 *.tsbuildinfo
 
 # Machine-learning outputs and local datasets
-data/raw/*
-data/processed/*
+# External payloads are local verification inputs only. Keep source metadata,
+# aggregate audits, and project-authored fixtures reviewable in Git.
+data/external/*/payload/
+data/private/
+data/generated/
+data/raw/
+data/processed/
 ml/artifacts/*
 !ml/artifacts/.gitkeep
 ml/reports/generated/*

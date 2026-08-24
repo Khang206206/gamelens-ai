@@ -82,7 +82,7 @@ ucsd-steam-audit:
 	docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --format summary
 
 ucsd-steam-audit-check:
-	docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/audits/ucsd-steam/source-v1-suitability.json --format summary
+	docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/external/ucsd-steam/suitability-audit.json --format summary
 
 test-ml:
 	docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests -q -p no:cacheprovider

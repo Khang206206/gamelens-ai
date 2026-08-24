@@ -13,8 +13,8 @@
 !apps/api/tests
 !apps/api/tests/**
 !data
-!data/seed
-!data/seed/**
+!data/catalog
+!data/catalog/**
 !ml
 !ml/pyproject.toml
 !ml/README.md

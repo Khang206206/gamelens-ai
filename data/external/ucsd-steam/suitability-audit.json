@@ -23,9 +23,9 @@
   "manifest": {
     "dataset_page": "https://cseweb.ucsd.edu/~jmcauley/datasets.html",
     "raw_transformations": [],
-    "relative_path": "data/manifests/ucsd-steam/source-v1.json",
+    "relative_path": "data/external/ucsd-steam/manifest.json",
     "retrieved_on": "2026-08-19",
-    "sha256": "4c83b8433a2c048511c7aa38073c4a152686cc70678bdd0990a56d42e9d3b357",
+    "sha256": "a55b2b2cc5b96a04bb58f29e789cc80467997128da6f73e806a56000585095ca",
     "source_attribution": "UCSD McAuley Lab"
   },
   "preparation": {
@@ -226,7 +226,7 @@
           "status": "passed",
           "uncompressed_size_bytes": 553094816
         },
-        "relative_path": "data/raw/ucsd-steam/v1-user-items/australian_users_items.json.gz",
+        "relative_path": "data/external/ucsd-steam/payload/v1-user-items/australian_users_items.json.gz",
         "role": "v1-user-items",
         "sha256": "0b329f79ddf450aba0aad923c8cb6d1affac0c98efaf70242d22fd10987a8d99",
         "source_url": "https://mcauleylab.ucsd.edu/public_datasets/data/steam/australian_users_items.json.gz"
@@ -240,7 +240,7 @@
           "status": "passed",
           "uncompressed_size_bytes": 26318774
         },
-        "relative_path": "data/raw/ucsd-steam/v1-reviews/australian_user_reviews.json.gz",
+        "relative_path": "data/external/ucsd-steam/payload/v1-reviews/australian_user_reviews.json.gz",
         "role": "v1-reviews",
         "sha256": "a934bf74d8579bb25bc7bf24e652a87e2ccc91064e429a4cb4af5809178687a8",
         "source_url": "https://mcauleylab.ucsd.edu/public_datasets/data/steam/australian_user_reviews.json.gz"
@@ -254,7 +254,7 @@
           "status": "passed",
           "uncompressed_size_bytes": 21244748
         },
-        "relative_path": "data/raw/ucsd-steam/v2-item-metadata/steam_games.json.gz",
+        "relative_path": "data/external/ucsd-steam/payload/v2-item-metadata/steam_games.json.gz",
         "role": "v2-item-metadata",
         "sha256": "717f4653a26585fec8f463f59311a654127c2ed66b07b9f78b4c0ce64961c740",
         "source_url": "https://cseweb.ucsd.edu/~wckang/steam_games.json.gz"

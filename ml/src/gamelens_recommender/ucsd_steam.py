@@ -32,9 +32,11 @@ EXPECTED_ROLES = (
     "v2-item-metadata",
 )
 EXPECTED_PATHS = {
-    "v1-user-items": ("data/raw/ucsd-steam/v1-user-items/australian_users_items.json.gz"),
-    "v1-reviews": ("data/raw/ucsd-steam/v1-reviews/australian_user_reviews.json.gz"),
-    "v2-item-metadata": "data/raw/ucsd-steam/v2-item-metadata/steam_games.json.gz",
+    "v1-user-items": (
+        "data/external/ucsd-steam/payload/v1-user-items/australian_users_items.json.gz"
+    ),
+    "v1-reviews": ("data/external/ucsd-steam/payload/v1-reviews/australian_user_reviews.json.gz"),
+    "v2-item-metadata": ("data/external/ucsd-steam/payload/v2-item-metadata/steam_games.json.gz"),
 }
 EXPECTED_DATASET_PAGE = "https://cseweb.ucsd.edu/~jmcauley/datasets.html"
 EXPECTED_SOURCE_ATTRIBUTION = "UCSD McAuley Lab"
@@ -590,7 +592,7 @@ def _report_base(manifest: SourceManifest, *, command: str) -> dict[str, object]
 
 def verify_source(
     root: str | Path,
-    manifest_path: str | Path = "data/manifests/ucsd-steam/source-v1.json",
+    manifest_path: str | Path = "data/external/ucsd-steam/manifest.json",
 ) -> dict[str, object]:
     project_root = Path(root).resolve()
     manifest = load_manifest(project_root, manifest_path)
@@ -964,7 +966,7 @@ def _parse_all_sources(
 
 def _prepare_source_with_profiles(
     root: str | Path,
-    manifest_path: str | Path = "data/manifests/ucsd-steam/source-v1.json",
+    manifest_path: str | Path = "data/external/ucsd-steam/manifest.json",
 ) -> tuple[dict[str, object], tuple[tuple[str, ...], ...]]:
     project_root = Path(root).resolve()
     manifest = load_manifest(project_root, manifest_path)
@@ -976,7 +978,7 @@ def _prepare_source_with_profiles(
 
 def prepare_source(
     root: str | Path,
-    manifest_path: str | Path = "data/manifests/ucsd-steam/source-v1.json",
+    manifest_path: str | Path = "data/external/ucsd-steam/manifest.json",
 ) -> dict[str, object]:
     report, _ = _prepare_source_with_profiles(root, manifest_path)
     return report
@@ -1172,7 +1174,7 @@ def _source_suitability(profiles: Sequence[tuple[str, ...]]) -> dict[str, object
 
 def audit_source(
     root: str | Path,
-    manifest_path: str | Path = "data/manifests/ucsd-steam/source-v1.json",
+    manifest_path: str | Path = "data/external/ucsd-steam/manifest.json",
 ) -> dict[str, object]:
     report, candidate_profiles = _prepare_source_with_profiles(root, manifest_path)
     report["command"] = "audit"
@@ -1279,7 +1281,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--root", default=".", help="Repository root (read-only)")
     parser.add_argument(
         "--manifest",
-        default="data/manifests/ucsd-steam/source-v1.json",
+        default="data/external/ucsd-steam/manifest.json",
         help="Manifest path under the repository root",
     )
     parser.add_argument(

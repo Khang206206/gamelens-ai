@@ -36,7 +36,7 @@ services:
         condition: service_healthy
     volumes:
       - ../apps/api:/workspace/apps/api
-      - ../data/seed:/workspace/data/seed:ro
+      - ../data/catalog:/workspace/data/catalog:ro
     command:
       - python
       - -m

@@ -137,9 +137,9 @@ services:
       PYTHONPATH: /workspace/ml/src
     volumes:
       - ./apps/api:/workspace/apps/api
-      - ./data/seed:/workspace/data/seed:ro
-      - ./data/manifests:/workspace/data/manifests:ro
-      - ./data/audits:/workspace/data/audits:ro
+      - ./data/catalog:/workspace/data/catalog:ro
+      - ./data/external/ucsd-steam/manifest.json:/workspace/data/external/ucsd-steam/manifest.json:ro
+      - ./data/external/ucsd-steam/suitability-audit.json:/workspace/data/external/ucsd-steam/suitability-audit.json:ro
       - ./ml:/workspace/ml
 
   ucsd-source-audit:

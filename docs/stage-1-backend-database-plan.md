@@ -237,7 +237,7 @@ apps/api/
 |-- pyproject.toml
 `-- README.md
 
-data/seed/
+data/catalog/
 `-- games.json
 
 infra/
@@ -451,7 +451,7 @@ work without requiring network access or third-party licensing.
 
 ### Work
 
-1. Create `data/seed/games.json` with at least 25 varied games.
+1. Create `data/catalog/games.json` with at least 25 varied games.
 2. Include enough genre, tag, platform, release-date, rating, and popularity
    variation to exercise filtering and pagination.
 3. Use minimal metadata and original short descriptions.

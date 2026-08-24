@@ -89,7 +89,7 @@ docker compose --profile source-audit run --build --rm --no-deps ucsd-source-aud
 The exact no-write comparison with the committed aggregate report is:
 
 ```powershell
-docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/audits/ucsd-steam/source-v1-suitability.json --format summary
+docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/external/ucsd-steam/suitability-audit.json --format summary
 ```
 
 Replace `audit` with `verify` or `prepare` for the other reports.
@@ -97,7 +97,7 @@ Replace `audit` with `verify` or `prepare` for the other reports.
 by canonical JSON type and value with the committed report; a mismatch is the typed
 `report_mismatch` error. The local ignored archives must already exist at the
 manifest paths. The aggregate
-[source-v1 report](../data/audits/ucsd-steam/source-v1-suitability.json)
+[source-v1 report](../data/external/ucsd-steam/suitability-audit.json)
 records the verified 2026-08-23 run. Passing its source-only support thresholds
 does not approve a label or integration: no Stage 5 label authority, dataset
 license/redistribution grant, ingestion-approved provenance, GameLens Steam-ID

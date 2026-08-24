@@ -686,9 +686,11 @@ new files; generated snapshots and artifacts remain ignored.
 |       |-- src/features/recommendations/               (* changed)
 |       `-- e2e/                                        (* changed)
 |-- data/
-|   |-- seed/
-|   |   `-- collaborative-interactions.json             (+ test fixture)
-|   `-- processed/                                      (ignored generated)
+|   |-- catalog/games.json                              (existing)
+|   |-- external/ucsd-steam/                            (metadata/audit only)
+|   |-- fixtures/interactions/
+|   |   `-- collaborative-interactions.json             (+ planned test fixture)
+|   `-- generated/                                      (ignored generated)
 |-- docs/
 |   `-- stage-5-collaborative-hybrid-ranking-plan.md
 |-- infra/
@@ -1328,7 +1330,7 @@ forward-looking.
 | Verify local UCSD source identity | `make ucsd-steam-verify` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam verify --root /workspace --format json` |
 | Profile UCSD ingestion preparation | `make ucsd-steam-prepare` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam prepare --root /workspace --format json` |
 | Audit UCSD source-level support | `make ucsd-steam-audit` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --format json` |
-| Check committed UCSD aggregate report | `make ucsd-steam-audit-check` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/audits/ucsd-steam/source-v1-suitability.json --format summary` |
+| Check committed UCSD aggregate report | `make ucsd-steam-audit-check` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/external/ucsd-steam/suitability-audit.json --format summary` |
 | Audit eligible live interaction data (planned) | `make collaborative-audit` | `python -m app.commands.collaborative_artifact audit` |
 | Build a new collaborative bundle | `make collaborative-build` | `python -m app.commands.collaborative_artifact build` |
 | Validate configured bundle | `make collaborative-validate` | `python -m app.commands.collaborative_artifact validate` |
@@ -1590,7 +1592,7 @@ or product decisions.
    keys are used only for transient grouping and are never emitted.
 8. The exact verified file/profile/support counts, manifest fingerprint,
    candidate fingerprint, distributions, limits, and privacy flags are in
-   [`data/audits/ucsd-steam/source-v1-suitability.json`](../data/audits/ucsd-steam/source-v1-suitability.json).
+   [`data/external/ucsd-steam/suitability-audit.json`](../data/external/ucsd-steam/suitability-audit.json).
    Source-level structural support passes, but approved training eligibility
    and functional-build readiness remain false.
 9. Source identity is verified. Source provenance is recorded but not

@@ -34,6 +34,10 @@ def load_raw_seed() -> dict[str, object]:
     return json.loads(DEFAULT_SEED_PATH.read_text(encoding="utf-8"))
 
 
+def test_default_seed_path_uses_project_catalog_boundary() -> None:
+    assert DEFAULT_SEED_PATH.parts[-3:] == ("data", "catalog", "games.json")
+
+
 def test_destructive_database_guard_accepts_only_explicit_test_target() -> None:
     validate_test_database_reset(
         make_guarded_settings(),
