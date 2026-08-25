@@ -2,9 +2,10 @@
 
 ## Stage 5 Engineering Plan: Collaborative and Hybrid Ranking
 
-- **Document status:** Engineering plan ready on 2026-08-19; Phase 0–1
-  external-source preflight slice verified on 2026-08-23; collaborative
-  runtime implementation has not started.
+- **Document status:** Engineering plan ready on 2026-08-19; external-source
+  preflight verified on 2026-08-23; Phase 0–1 first-party audit foundation
+  verified on 2026-08-24; Phase 2 offline collaborative artifact foundation
+  verified on 2026-08-25. Scoring and runtime activation have not started.
 - **Stage 4 prerequisite:** Complete and verified on 2026-08-13.
 - **Planning and target implementation branch:**
   `feat/stage-5-collaborative-and-hybrid-ranking`
@@ -14,11 +15,11 @@
   independently observable.
 
 Sections 1–20 remain the forward-looking engineering plan except where the
-Phase 0–1 external-source preflight slice is explicitly marked verified.
-Section 21 records only measured implementation decisions. Section 22 is a
-provisional Stage 6 handoff, and Section 23 remains pending until every
-acceptance gate passes. The preflight does not make a Stage 5 collaborative
-runtime capability available.
+Phase 0–2 slices are explicitly marked verified. Section 21 records only
+measured implementation decisions. Section 22 is a provisional Stage 6
+handoff, and Section 23 remains pending until every acceptance gate passes.
+The offline artifact foundation does not make a Stage 5 collaborative runtime
+capability available.
 
 ## 1. Context
 
@@ -338,9 +339,11 @@ fixture activation, and live-data consent/lifecycle gates remain blocked.
 ### 5.3 Canonical Interaction Snapshot and Cutoff
 
 The live extractor uses one PostgreSQL `REPEATABLE READ, READ ONLY`
-transaction. It captures `transaction_timestamp()` once and uses that database
-time as the inclusive cutoff. Rows are interpreted as active at the cutoff
-when:
+transaction. Immediately after setting its mode, one initialization query
+calls `pg_current_snapshot()` to pin MVCC visibility and captures
+`clock_timestamp()` once as the inclusive cutoff. The helper completes both
+operations before returning to extraction, closing the transaction-start/
+first-snapshot race. Rows are interpreted as active at the cutoff when:
 
 ```text
 occurred_at <= cutoff
@@ -663,21 +666,23 @@ interaction signal.
 
 ## 6. Target Repository Structure
 
-Names are illustrative and must be finalized in Phase 0. `(+ planned)` marks
-new files; generated snapshots and artifacts remain ignored.
+Phase 0–2 names marked `(+ implemented)` are as built. Later-phase illustrative
+entries remain `(+ planned)`; generated snapshots and artifacts remain ignored.
 
 ```text
 .
 |-- apps/
 |   |-- api/
 |   |   |-- alembic/versions/
-|   |   |   `-- 0006_stage_5_collaborative_contract.py  (+ planned)
+|   |   |   `-- 0006_stage_5_collaborative_contract.py  (+ implemented)
 |   |   |-- app/
 |   |   |   |-- commands/
-|   |   |   |   `-- collaborative_artifact.py          (+ planned)
+|   |   |   |   |-- collaborative_snapshot.py          (+ implemented)
+|   |   |   |   `-- collaborative_artifact.py          (+ implemented)
 |   |   |   |-- repositories/
-|   |   |   |   `-- collaborative_snapshot.py          (+ planned)
+|   |   |   |   `-- collaborative_snapshot.py          (+ implemented)
 |   |   |   |-- services/
+|   |   |   |   |-- collaborative_snapshot.py          (+ implemented)
 |   |   |   |   `-- hybrid_recommendation.py            (+ planned)
 |   |   |   `-- schemas/
 |   |   |       `-- collaborative.py                    (+ planned)
@@ -689,7 +694,7 @@ new files; generated snapshots and artifacts remain ignored.
 |   |-- catalog/games.json                              (existing)
 |   |-- external/ucsd-steam/                            (metadata/audit only)
 |   |-- fixtures/interactions/
-|   |   `-- collaborative-interactions.json             (+ planned test fixture)
+|   |   `-- collaborative-interactions.json             (+ implemented test fixture)
 |   `-- generated/                                      (ignored generated)
 |-- docs/
 |   `-- stage-5-collaborative-hybrid-ranking-plan.md
@@ -700,8 +705,9 @@ new files; generated snapshots and artifacts remain ignored.
 |   |-- artifacts/
 |   |   `-- collaborative/                              (ignored generated)
 |   |-- src/gamelens_recommender/
-|   |   |-- collaborative_artifacts.py                  (+ planned)
-|   |   |-- collaborative_training.py                   (+ planned)
+|   |   |-- interaction_snapshot.py                     (+ implemented)
+|   |   |-- collaborative_artifacts.py                  (+ implemented)
+|   |   |-- collaborative_training.py                   (+ implemented)
 |   |   |-- collaborative.py                            (+ planned)
 |   |   `-- hybrid.py                                   (+ planned)
 |   `-- tests/                                          (* changed)
@@ -822,7 +828,7 @@ The following bounded slice is implemented and verified:
 - Manifest schema 1 freezes exact compressed/expanded sizes, SHA-256 values,
   line counts, maximum line sizes, fail-closed gate states, and source status
   `local-raw-sources-verified-not-integrated`. Its canonical SHA-256 is
-  `4c83b8433a2c048511c7aa38073c4a152686cc70678bdd0990a56d42e9d3b357`.
+  `a55b2b2cc5b96a04bb58f29e789cc80467997128da6f73e806a56000585095ca`.
 - Preparation policy `ucsd-steam-review-recommend-preparation-v1` treats only
   source-native `recommend=true` as a candidate, collapses duplicate
   user/item pairs, excludes conflicts, ownership, playtime, and false reviews,
@@ -840,7 +846,7 @@ The following bounded slice is implemented and verified:
   structural diagnostics only.
 - The aggregate report emits no source user identifier or row-level snapshot,
   writes no processed data, and fits no model. Thirty-five focused UCSD cases
-  and all 87 ML tests pass. Focused coverage includes exact verification,
+  and all 105 ML tests pass. Focused coverage includes exact verification,
   fail-before-parse and post-parse checks, bounded reads, safe literal and gzip
   errors, aggregate-only output, duplicate/conflict policy, canonical
   fingerprints, fixed-point pruning, ambiguous metadata, insufficiency
@@ -848,13 +854,69 @@ The following bounded slice is implemented and verified:
 - A fresh full-source `audit --check-report` run matches the committed JSON by
   canonical JSON type and value.
 
-This slice does not satisfy the complete Phase 0 or Phase 1 exit criteria.
-Contribution consent, derived-data invalidation/deletion, the live
-repeatable-read extractor, catalog mapping, the project-authored fixture,
-revision/lineage migrations, and all collaborative runtime work remain
-unimplemented and blocking.
+The external-source slice alone does not authorize ingestion and remains
+independent from the first-party interaction path below.
+
+### Verified Phase 0–1 First-Party Interaction Foundation (2026-08-24)
+
+- Migration file `0006_stage_5_collaborative_contract.py` advances the schema
+  head to `0006_stage_5_collab_contract`. It adds one optional, versioned
+  contribution-consent row per user and one monotonic singleton data revision.
+  The populated upgrade grants no consent to existing users.
+- Statement triggers advance the revision after mutations to users,
+  contribution consent, preferences, interactions, catalog rows, taxonomies,
+  and catalog associations. Recommendation events are deliberately not a
+  revision source and are never queried as labels.
+- User deletion cascades the contribution-consent row and existing user-owned
+  source state; the source mutation advances the revision. Phase 0–1 writes no
+  live row snapshot or artifact, so there is no derived file to delete.
+  Any Phase 2 promotion must compare the captured revision and add protected
+  build/contributor lineage before a bundle can become serveable.
+- The live extractor requires PostgreSQL, establishes one `REPEATABLE READ,
+  READ ONLY` transaction, pins `pg_current_snapshot()`, and captures one
+  `clock_timestamp()` cutoff before returning to extraction. It applies
+  consent/expiry/revocation/withdrawal and as-of temporal filters, uses the
+  exact current content-catalog fingerprint, groups only transient internal
+  IDs, and returns sorted stable-slug profiles with aggregate exclusions.
+  Preference/interaction queries join one reusable eligible-user subquery and
+  stream 1,000 rows per batch without per-user bind expansion.
+- Label policy `gamelens-collaborative-labels/1.0.0` freezes dislike dominance,
+  active likes, ratings of at least 7, and saved positive game preferences.
+  Low ratings, viewed/played/wishlist-only state, superseded and post-cutoff
+  rows, non-game preferences, ineligible contributors, and recommendation
+  events are absent from positives.
+- Canonical profile serialization retains the sorted profile multiset and
+  hashes it with the label-policy identity. The bounded audit emits only
+  aggregates, typed insufficiency/refusal errors, the exact catalog and
+  interaction fingerprints, cutoff, and revision; no ID or cohort mapping is
+  written.
+- The strict project-authored fixture contains 12 synthetic profiles,
+  36 expected positives, 6 supported items, explicit exclusions, and cold-start
+  cases. It is accepted only with `ENVIRONMENT=test` plus
+  `COLLABORATIVE_ALLOW_TEST_FIXTURE=true`. Its read is capped at 1,000,000 bytes,
+  and duplicate/unrecognized keys, non-finite constants, and JSON type aliases
+  fail closed. It passes functional thresholds but
+  explicitly remains non-representative and non-quality evidence.
+- `COLLABORATIVE_LIVE_DATA_ENABLED=false` and an unset contribution-consent
+  version are the defaults. `make collaborative-audit` returns
+  `integration_blocked` without creating a database engine. No Phase 0–1
+  command builds, promotes, loads, or serves a collaborative artifact.
+- Verification passes 193 fast API tests, 105 ML tests, 54 disposable-
+  PostgreSQL tests, 76 web tests, the 38-case exact-host browser matrix, all
+  three Compose configurations, Ruff over 124 Python files, OpenAPI drift, and
+  the exact full-source UCSD report comparison.
+
+The Phase 0–1 exit criteria are satisfied for the bounded audit and
+ingestion-preparation foundation. Live training and serving remain intentionally
+blocked: product consent copy/routes and Phase 2 build/contributor lineage,
+artifact invalidation horizon, validation, promotion, retirement, and serving
+gates do not yet exist.
 
 ## 9. Implementation Phase 2: Collaborative Artifact and Offline Builder
+
+**Implementation status:** Complete for the guarded fixture/offline artifact
+scope and verified 2026-08-25. Protected live lineage and serving remain later
+phases.
 
 ### Objective
 
@@ -1321,9 +1383,9 @@ limitations, and leave a precise Stage 6 input contract.
 
 ## 18. Command Interface Target
 
-The external-source preflight names are now frozen as implemented. Remaining
-collaborative command names document intended separation and are still
-forward-looking.
+The external-source, Phase 0–1 audit, and guarded Phase 2 fixture-artifact
+command names are frozen as implemented. Live build and artifact retirement
+remain forward-looking until their lifecycle phases are implemented.
 
 | Capability | Optional Make wrapper | Required direct equivalent |
 | --- | --- | --- |
@@ -1331,10 +1393,11 @@ forward-looking.
 | Profile UCSD ingestion preparation | `make ucsd-steam-prepare` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam prepare --root /workspace --format json` |
 | Audit UCSD source-level support | `make ucsd-steam-audit` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --format json` |
 | Check committed UCSD aggregate report | `make ucsd-steam-audit-check` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/external/ucsd-steam/suitability-audit.json --format summary` |
-| Audit eligible live interaction data (planned) | `make collaborative-audit` | `python -m app.commands.collaborative_artifact audit` |
-| Build a new collaborative bundle | `make collaborative-build` | `python -m app.commands.collaborative_artifact build` |
-| Validate configured bundle | `make collaborative-validate` | `python -m app.commands.collaborative_artifact validate` |
-| Inspect bundle metadata | none required | `python -m app.commands.collaborative_artifact inspect` |
+| Report the default-off live interaction gate or audit explicitly enabled eligible live data | `make collaborative-audit` | `python -m app.commands.collaborative_snapshot audit --source live --format json` |
+| Audit the project-authored test fixture | `make collaborative-fixture-audit` | `ENVIRONMENT=test COLLABORATIVE_ALLOW_TEST_FIXTURE=true python -m app.commands.collaborative_snapshot audit --source fixture --format json` |
+| Build a new guarded fixture bundle | `make collaborative-build` | `docker compose --profile quality run --build --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact build --source fixture` |
+| Validate the configured guarded fixture bundle | `make collaborative-validate` | `docker compose --profile quality run --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact validate` |
+| Inspect guarded fixture-bundle metadata | none required | `docker compose --profile quality run --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact inspect` |
 | Preview obsolete-bundle retirement | `make collaborative-retirement-preview` | `python -m app.commands.collaborative_artifact retire` without confirmation |
 | Confirm disposable/obsolete cleanup | no broad wrapper | Same retire command with exact emitted confirmation |
 | Build existing content artifact | `make model-build` | Existing `recommendation_artifact build` command |
@@ -1553,9 +1616,115 @@ infrastructure docs explicit until Section 23 is populated from passing gates.
 
 ## 21. Implementation-Time Decisions
 
-Only the Phase 0–1 external-source preflight decisions are implemented. They
-do not silently resolve the separate live-data, fixture, model, artifact, API,
-or product decisions.
+Phase 0–2 source preflight, first-party snapshot, consent/revision, fixture,
+aggregate audit, sparse trainer, and offline artifact decisions are
+implemented. They do not activate collaborative scoring, a hybrid policy,
+response/event changes, live build, or a product contribution flow.
+
+### As-Built Phase 0–1 First-Party Decisions
+
+1. Contribution authority is separate from personalization consent in
+   `collaborative_contribution_consents`. One current row records the user,
+   non-blank version, grant time, and optional withdrawal time. Existing users
+   receive no row during migration, and no public route grants one.
+2. `collaborative_data_revision` is a singleton monotonic counter. PostgreSQL
+   statement triggers own changes for every source table that can alter cohort
+   eligibility, labels, or exact catalog identity; recommendation events are
+   excluded. A missing singleton produces a typed fail-closed audit error; the
+   next source mutation after a test-only truncate recreates it atomically.
+3. Source deletion is immediate relational state removal. User deletion
+   cascades consent/preferences/interactions and advances the revision.
+   Withdrawal, revocation, expiry changes, feedback changes, and catalog
+   changes likewise invalidate the captured revision. No Phase 0–1 live
+   row-level derived file exists.
+4. Live extraction initializes a verified PostgreSQL `REPEATABLE READ,
+   READ ONLY` transaction by pinning `pg_current_snapshot()` and capturing one
+   `clock_timestamp()` cutoff before returning to extraction. A fresh
+   transaction verifies the captured revision before an aggregate report is
+   emitted. Eligible users require current base consent, unexpired/unrevoked state, and the configured
+   contribution version granted and not withdrawn by the cutoff.
+5. Temporal state includes `occurred_at <= cutoff` and
+   `superseded_at IS NULL OR superseded_at > cutoff`. Stable GameLens slugs and
+   the exact content-catalog fingerprint cross the ML boundary; internal IDs
+   and per-user mapping do not.
+6. Label policy `gamelens-collaborative-labels/1.0.0` is binary. Dislike
+   dominates; like, rating >= 7, then saved positive game preference are
+   positive. Ratings below 7 and viewed/played/wishlist-only rows are absent.
+   Recommendation events and taxonomy preferences are never queried as labels.
+7. Audit schema 1 freezes profile canonicalization, SHA-256 serialization,
+   aggregate distributions, deterministic two-core support, pair support,
+   activation thresholds, privacy flags, and bounded resource limits. Typed
+   states cover insufficiency, catalog mismatch, revision race, and unapproved
+   live input.
+8. The authored fixture is `stage-5-collaborative-interactions-v1` and is
+   guarded by test environment plus explicit fixture permission. Its 12
+   profiles/36 positives/6 items pass functional thresholds; its provenance
+   flags prohibit quality or real-user claims.
+9. The default live command exits successfully with `integration_blocked` and
+   `unapproved_live_source` before database access. An explicitly enabled audit
+   may read eligible live state, but every report keeps
+   `approved_live_training_eligibility=false`.
+10. Phase 0–1 itself adds no dependency and no build/serve command. Its lack of
+    an artifact was an explicit activation blocker subsequently addressed only
+    for the guarded fixture/offline scope in Phase 2.
+
+### As-Built Phase 2 Collaborative Artifact Decisions
+
+1. The existing deterministic support fixed point is now a reusable public
+   boundary. Only profiles with at least two items and items with at least two
+   profiles survive; canonical profile ordering and the Phase 1 interaction
+   fingerprint remain unchanged. The resulting binary CSR is canonical and
+   uses `int64` arithmetic so the allowed 256-contributor case cannot overflow.
+2. Sparse `X.T @ X` produces bounded pair support without materializing a dense
+   item-item matrix. Self-edges and pairs supported by fewer than two profiles
+   are removed. Cosine uses `float64`; round-half-up at scale 1,000,000 produces
+   `int32` units. Per-item top 100 selection orders by units descending, pair
+   support descending, and stable slug ascending, then stores retained neighbor
+   indices in canonical ascending order.
+3. The frozen model contract is `gamelens-item-item-cosine/1.0.0`, artifact
+   schema `1`, and code compatibility `stage-5-v1`. The exact bundle is
+   `manifest.json`, `item-slugs.json`, `item-support.npy`,
+   `neighbors-indices.npy`, `neighbors-indptr.npy`, `similarity-units.npy`, and
+   `pair-support.npy`. Arrays use explicit `int64` support and `int32`
+   index/indptr/similarity dtypes; serialization never enables pickle.
+4. The manifest freezes label, threshold, numeric, limit, matrix, neighborhood,
+   source, build, catalog, interaction, and lifecycle identity plus the exact
+   member set, byte sizes, and SHA-256 checksums. Every source kind requires a
+   timezone-aware `valid_until > built_at`. Fixture metadata must omit live
+   cutoff, consent version, and data revision; live metadata requires them.
+5. The loader reads every member once under per-member and total byte caps,
+   rejects symlinks and path traversal, parses strict duplicate-free/non-finite-
+   free canonical JSON, validates bounded NPY headers/dtype/shape/trailing bytes,
+   and recomputes graph support/cosine coherence. Catalog mismatch, expected
+   revision or consent mismatch, and `now >= valid_until` fail closed with typed
+   reason codes. Returned arrays have immutable byte backing.
+6. The builder creates an exclusive promotion lock and temporary sibling,
+   fsyncs members, writes the manifest last, loads the temporary bundle through
+   the production validator, optionally performs the mandatory last-moment live
+   revision callback, and atomically renames only to an unused immutable target.
+   Failure cleans the temporary directory and never overwrites a target.
+7. The operator CLI exposes `build`, `validate`, and `inspect`. Fixture builds
+   require `ENVIRONMENT=test` plus `COLLABORATIVE_ALLOW_TEST_FIXTURE=true`,
+   re-audit before fit, detect an audit-to-fit fixture change, and receive a
+   deterministic build ID and 30-day validity horizon. The default live build
+   returns `unapproved_live_source` before database access.
+8. Inspection returns artifact identity and aggregate matrix/neighborhood facts
+   without item slugs or profile rows. Scans of deterministic fixture bundles
+   find no internal ID, profile key, credential, stable user key, contributor
+   matrix, raw interaction, or recommendation event.
+9. The project-authored fixture deterministically produces 12 contributors,
+   6 retained items, 36 positive edges, and 20 directed neighbors. Equivalent
+   reordered input produces byte-identical semantic members and immutable
+   loaded arrays. Hand-calculated cosine quantization includes the `707107`
+   golden case and pair-support-one exclusion.
+10. Verification covers support cascades, duplicate profiles, overflow, top-K
+    ties, caps, corruption, missing/extra members, traversal, JSON/NPY safety,
+    dtype/shape/CSR/cosine coherence, catalog/revision/consent mismatch, expiry,
+    promotion races, cleanup, privacy, determinism, and the real fixture
+    pipeline. The full ML suite has 155 passes; one symlink case is skipped on
+    the current Windows host because it cannot create symlinks and remains
+    runnable on capable systems. All 200 API unit tests, Ruff, and
+    `git diff --check` pass.
 
 ### As-Built External-Source Decisions
 
@@ -1603,45 +1772,36 @@ or product decisions.
    artifact exists. No title matching is attempted.
 10. No dependency changed. The dedicated `ucsd-source-audit` service mounts
     `data/` and `ml/` read-only, uses a read-only root filesystem, and disables
-    runtime networking. The general `quality` service mounts only
-    `data/catalog/` and the committed UCSD manifest and aggregate-audit files;
-    it never mounts ignored `data/external/ucsd-steam/payload/` bytes.
-    Thirty-five focused UCSD cases and all 87 ML tests pass; the
+    runtime networking. The general `quality` service mounts `data/catalog/`,
+    `data/fixtures/`, and the committed UCSD manifest and aggregate-audit files
+    read-only; it never mounts ignored `data/external/ucsd-steam/payload/`
+    bytes. Thirty-five focused UCSD cases and all 105 ML tests pass; the
     committed-report check also passes against the full local source.
 
 The remaining implementation must resolve and record:
 
-1. Exact contribution-consent resource, version, copy, re-consent, withdrawal,
-   and whether saved personalization remains separately available.
-2. Exact lineage/revision schema, trigger or service ownership, concurrency,
-   expiry safety horizon, invalidation, retirement, and physical deletion rule.
-3. Snapshot cutoff, source-kind identifiers, canonical serialization,
-   fingerprint, audit schema, aggregate bounds, and privacy review result.
-4. Actual eligible cohort and exclusion counts, whether live data crosses
-   functional gates, and any decision to remain fixture-only.
-5. Final label-policy identity, saved-game preference semantics, reaction
-   precedence, rating threshold, duplicate-source behavior, and unknowns.
-6. Minimum user/item/pair support, activation minima, neighborhood cap, and
-   exact insufficiency codes.
-7. Sparse algorithm, block strategy, dtype, quantization, member shapes,
-   resource limits, and measured build diagnostics.
-8. Collaborative model, artifact schema, code compatibility, manifest members,
-   checksums, build ID, and configuration names.
-9. Query-source precedence/cap, collaborative aggregation formula, source
-   evidence cap, candidate union, and ordering keys.
-10. Hybrid policy identity, active-component gates, weights, rounding, played
-    order, explanation facts, and exact Stage 4 equivalence evidence.
-11. Component readiness states, fallback reasons, database checks, restart,
-    activation, rollback, and crash recovery.
-12. Personalized response additions, event columns/JSON bounds,
-    `stage-5-v1` constraints, OpenAPI compatibility, and frontend copy.
-13. Final commands, exit codes, configuration, Compose topology, fixture
-    provenance, dependencies, and license changes.
-14. Actual test counts, coverage, durations, artifact sizes, aggregate
-    diagnostics, platform evidence, security results, and known gaps.
+1. Product contribution-consent copy, public grant/re-consent/withdrawal
+   routes, and approval to audit an actual live cohort. Saved personalization
+   must remain a separate purpose.
+2. Protected live build/contributor lineage, invalidation, retirement,
+   rollback, and physical bundle deletion. The Phase 2 bundle already freezes a
+   validity horizon, requires a live revision callback, and promotes immutably.
+3. Actual approved live cohort/exclusion aggregates and the explicit decision
+   to activate live build or remain fixture-only.
+4. Query-source precedence/cap, collaborative aggregation formula, evidence
+   cap, candidate union, materialization, and ordering keys.
+5. Hybrid policy identity, active-component gates, weights, rounding, played
+   order, explanation facts, and exact Stage 4 equivalence evidence.
+6. Component readiness states, fallback reasons, database checks, restart,
+   activation, rollback, and crash recovery.
+7. Personalized response additions, event columns/JSON bounds, `stage-5-v1`
+   constraints, OpenAPI compatibility, and frontend copy.
+8. Live lifecycle commands, guarded fixture-artifact E2E topology,
+   dependency/license changes, security results, artifact sizes, and measured
+   runtime diagnostics.
 
-Unresolved items may not become silent defaults. At completion, this checklist
-must be replaced by the exact as-built decision record and links to evidence.
+Unresolved items may not become silent defaults. At Stage 5 completion, this
+checklist must be replaced by exact as-built decisions and passing evidence.
 
 ## 22. Stage 6 Handoff
 
@@ -1676,9 +1836,9 @@ to verified facts only.
 
 ## 23. Verified Completion Record
 
-Pending complete Stage 5 implementation. The verified Phase 0–1
-external-source slice is recorded in Section 21 and the committed aggregate
-audit; it is not a Stage 5 completion claim.
+Pending complete Stage 5 implementation. The verified Phase 0–2 source/audit
+and offline-artifact slices are recorded in Section 21; they are not a Stage 5
+completion claim.
 
 When every Section 19 gate passes, this section must record the implementation
 commit/PR, runtime and lock versions, migration head, consent/lifecycle

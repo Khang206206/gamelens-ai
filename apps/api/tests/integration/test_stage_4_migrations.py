@@ -108,6 +108,16 @@ def test_populated_0002_upgrade_backfills_and_preserves_stage_4_state(
             assert connection.scalar(text("SELECT version_num FROM alembic_version")) == (
                 EXPECTED_SCHEMA_REVISION
             )
+            assert (
+                connection.scalar(text("SELECT count(*) FROM collaborative_contribution_consents"))
+                == 0
+            )
+            assert (
+                connection.scalar(
+                    text("SELECT revision FROM collaborative_data_revision WHERE singleton_id = 1")
+                )
+                == 0
+            )
             user = (
                 connection.execute(
                     text(

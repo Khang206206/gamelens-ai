@@ -19,22 +19,24 @@ The detailed
 [Stage 4 feedback-and-persistence plan](../../docs/stage-4-feedback-persistence-plan.md)
 is complete and verified. Anonymous identity, preference, temporal feedback,
 personalized-event, retention, and revocation contracts are present on the
-implementation branch. Current evidence is 184 fast API tests with 89%
-diagnostic coverage, 52 ML tests with 83%, 76 web tests with 67.15% statement/
-71.4% line coverage, and 49 disposable-PostgreSQL integration tests in 4.53
-seconds. Ruff passes across 112 Python files; generated OpenAPI drift, the web
-static/build gates, npm audits, and all three Compose definitions pass. The
-exact-host Docker browser matrix passes 38/38 in 1.3 minutes without retry: 28
-Chromium, 5 Firefox, and 5 WebKit.
+implementation branch. Current Phase 2 evidence is 200 passing API unit tests
+and 155 passing ML tests, with one Windows symlink-capability skip. Ruff passes
+across the API/ML Python tree. The most recent inherited cross-stack evidence
+remains 76 web tests, 54 disposable-PostgreSQL tests, generated OpenAPI drift,
+the web static/build gates, and all three Compose definitions. The exact-host Docker
+browser matrix passes 38/38 without retry: 28 Chromium, 5 Firefox, and 5 WebKit.
 The endpoint and command tables below describe the current worktree.
 
 The detailed
 [Stage 5 collaborative-and-hybrid plan](../../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-is ready, but its API integration is not implemented. The plan adds an offline
-consent-aware interaction audit, a separate optional collaborative artifact,
-component readiness, and hybrid orchestration only to the saved personalized
-path. Current endpoints, schemas, settings, migrations, events, and commands
-remain Stage 3/4 behavior as documented below.
+now has a Phase 0–2 offline foundation: separate optional contribution consent,
+monotonic source revision, a PostgreSQL repeatable-read/read-only extractor,
+reusable eligible-user joins with streamed bounded source reads, canonical
+aggregate audit, test-only authored fixture command, and a guarded offline
+collaborative artifact builder/validator/inspector. No HTTP route grants
+contribution consent, and no collaborative scorer, hybrid orchestration,
+response/event extension, live build, or serving path is implemented. Current
+HTTP behavior remains Stage 3/4.
 
 ## Responsibilities
 
@@ -234,15 +236,65 @@ The implemented migration chain is:
   -> 0003_stage_4_anonymous_identity
   -> 0004_stage_4_interaction_state
   -> 0005_stage_4_event_contract
+  -> 0006_stage_5_collab_contract
 ```
 
-Readiness expects head `0005_stage_4_event_contract`. The Stage 4 revisions
+Readiness expects head `0006_stage_5_collab_contract`. The Stage 4 revisions
 preserve legacy rows, revoke inaccessible plaintext-key identities without
 fabricating consent, add temporal current-state indexes, and version
 recommendation events. The legacy replacement is exactly
 `md5('legacy-revoked-v1:' || anonymous_key) || lpad(to_hex(id), 32, '0')`,
 whose ID suffix guarantees uniqueness. Populated `0002` upgrade and populated
 downgrade/re-upgrade pass in PostgreSQL.
+
+The Stage 5 migration grants no contribution consent to existing users. It adds
+`collaborative_contribution_consents` and a singleton
+`collaborative_data_revision`. Statement triggers advance the revision for
+source/catalog mutations but exclude recommendation events.
+
+## Stage 5 Phase 0–2 offline commands
+
+The default command is a supported refusal and does not create a database
+engine:
+
+```powershell
+make collaborative-audit
+```
+
+It reports `integration_blocked` because
+`COLLABORATIVE_LIVE_DATA_ENABLED=false` and the contribution-consent version is
+unset. Explicitly enabling those settings permits a read-only aggregate audit,
+not a build or serving activation.
+
+The authored fixture requires `ENVIRONMENT=test` plus the explicit gate:
+
+```powershell
+make collaborative-fixture-audit
+```
+
+Both audit paths write no row-level snapshot or artifact and keep
+`approved_live_training_eligibility=false`.
+
+Phase 2 adds a separate fixture-only artifact workflow:
+
+```powershell
+make collaborative-build
+make collaborative-validate
+docker compose --profile quality run --rm --no-deps `
+    -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality `
+    python -m app.commands.collaborative_artifact inspect
+```
+
+The build command re-audits the fixture, constructs deterministic sparse
+item-item cosine neighborhoods, writes a temporary JSON/NPY bundle, validates it
+with the production loader, and atomically promotes it only when the configured
+path does not exist. Fixture access requires both `ENVIRONMENT=test` and
+`COLLABORATIVE_ALLOW_TEST_FIXTURE=true`. `build` defaults to `--source live`,
+which fails closed with `unapproved_live_source` before database access.
+`validate` and `inspect` are read-only; both enforce member checksums, schema,
+resource, semantic, catalog/lifecycle, and expiry contracts and emit only
+aggregate metadata. They bind the artifact to the catalog read from `--catalog`,
+which defaults to the canonical seed file.
 
 Errors use one envelope:
 
@@ -385,10 +437,15 @@ It emits structured inserted, updated, and unchanged counters.
   or startup side effect.
 - No online fit, background rebuild, hot reload, or automatic artifact
   promotion. Operators build explicitly and restart the API to activate.
-- No collaborative snapshot/trainer/artifact, hybrid serving policy, Stage 5
-  event schema, or real interaction dataset is implemented. The detailed plan
-  requires exact Stage 4 fallback when the optional component is unavailable.
+- The ephemeral collaborative extractor and aggregate audit are implemented,
+  but live access is default-off and no public contribution-consent route is
+  present.
+- The fixture-only collaborative trainer, artifact, hardened loader, and
+  operator CLI are implemented. No collaborative scorer, API loader/readiness,
+  hybrid serving policy, Stage 5 event schema, protected live build, or approved
+  real interaction dataset is implemented. Current requests therefore preserve
+  exact Stage 4 behavior.
 - No formal recommendation-quality evaluation on the synthetic seed; that is
   Stage 6 work.
-- No external metadata source.
+- No external metadata source is integrated.
 - The Docker image is development-oriented; production hardening is Stage 7.

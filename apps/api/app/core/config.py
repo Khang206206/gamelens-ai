@@ -74,6 +74,7 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     model_artifact_path: Path | None = None
+    collaborative_artifact_path: Path | None = None
     anonymous_session_secret: SecretStr = Field(
         default=SecretStr(DEVELOPMENT_SESSION_SECRET),
         min_length=32,
@@ -88,6 +89,14 @@ class Settings(BaseSettings):
     anonymous_session_cookie_samesite: Literal["lax", "strict"] = "lax"
     anonymous_session_ttl_seconds: int = Field(default=15_552_000, ge=3600, le=31_536_000)
     consent_version: str = Field(default="stage-4-v1", min_length=1, max_length=100)
+    collaborative_live_data_enabled: bool = False
+    collaborative_contribution_consent_version: (
+        Annotated[str, Field(min_length=1, max_length=100)] | None
+    ) = None
+    collaborative_allow_test_fixture: bool = False
+    collaborative_fixture_path: Path = (
+        PROJECT_ROOT / "data" / "fixtures" / "interactions" / "collaborative-interactions.json"
+    )
     csrf_header_name: str = Field(
         default="X-CSRF-Token",
         pattern=r"^[A-Za-z][A-Za-z0-9-]{0,63}$",
@@ -95,11 +104,19 @@ class Settings(BaseSettings):
     recommendation_event_retention_days: int = Field(default=90, ge=1, le=3650)
     retention_batch_size: int = Field(default=500, ge=1, le=10_000)
 
-    @field_validator("model_artifact_path", mode="before")
+    @field_validator("model_artifact_path", "collaborative_artifact_path", mode="before")
     @classmethod
     def empty_artifact_path_is_unconfigured(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
             return None
+        return value
+
+    @field_validator("collaborative_contribution_consent_version", mode="before")
+    @classmethod
+    def empty_contribution_consent_version_is_unconfigured(cls, value: object) -> object:
+        if isinstance(value, str):
+            stripped = value.strip()
+            return stripped or None
         return value
 
     @field_validator("cors_origins", mode="before")
@@ -190,6 +207,13 @@ class Settings(BaseSettings):
                     raise ValueError(
                         "insecure cookies require loopback development or reserved test origins"
                     )
+        if (
+            self.collaborative_live_data_enabled
+            and self.collaborative_contribution_consent_version is None
+        ):
+            raise ValueError("live collaborative data requires a contribution consent version")
+        if self.collaborative_allow_test_fixture and self.environment != "test":
+            raise ValueError("collaborative fixture access is limited to ENVIRONMENT=test")
         return self
 
 

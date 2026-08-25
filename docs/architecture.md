@@ -125,26 +125,28 @@ the application boundaries, and 49 disposable-PostgreSQL integration tests
 verify the Stage 4 schema, populated legacy upgrade, transaction/concurrency,
 event/delete correlation, cascades, and retention behavior.
 
-### Planned Stage 5 activation (not implemented)
+### Stage 5 Phase 0–2 offline artifact implemented; activation not implemented
 
 The
 [Stage 5 collaborative-and-hybrid plan](stage-5-collaborative-hybrid-ranking-plan.md)
-proposes a second offline-to-online path. Every node below with a dashed border
-is future behavior; the current runtime still ends at the verified Stage 4
-feedback policy.
-
+defines a second offline-to-online path. Phase 0–1 implements the default-off
+contribution-consent/revision contract, ephemeral extractor, and aggregate
+audit. Phase 2 implements the fixture-guarded sparse builder and separate
+identity-free artifact. Dashed nodes below remain future behavior; the
+application runtime still ends at the verified Stage 4 feedback policy.
 
 The implemented read-only UCSD Steam preflight is a separate offline source
 identity, preparation, and aggregate-support check. It is not connected to the
-future consent-qualified live-data activation path below.
+first-party path and remains explicitly not integrated.
 
 ```mermaid
 flowchart LR
-    State[("Consented preferences and interactions")]:::future
-    Audit["Consent-qualified live-data suitability audit"]:::future
-    Snapshot["Cutoff-bound eligible snapshot"]:::future
-    Builder["Sparse item-item cosine builder"]:::future
-    CF["Identity-free collaborative artifact"]:::future
+    State[("Source state + separate contribution consent")]
+    Revision[("Monotonic source revision")]
+    Audit["Default-off aggregate suitability audit"]
+    Snapshot["Ephemeral cutoff-bound stable-slug profiles"]
+    Builder["Sparse item-item cosine builder"]
+    CF["Identity-free collaborative artifact"]
     Lineage[("Build and contributor lineage")]:::future
     Content["Existing content artifact"]
     Feedback["Existing feedback components"]
@@ -154,6 +156,7 @@ flowchart LR
 
     State --> Audit
     Audit --> Snapshot
+    Revision --> Audit
     Snapshot --> Builder
     Builder --> CF
     Builder --> Lineage
@@ -167,13 +170,20 @@ flowchart LR
     classDef future stroke-dasharray: 6 4
 ```
 
-The proposed builder reads eligible state in one database-time,
-repeatable-read transaction, writes a separate immutable artifact, and keeps
-user identity out of that artifact. PostgreSQL lineage and a dataset revision
-would invalidate collaborative serving after relevant consent, feedback,
-expiry, revocation, or deletion changes. The API would then continue through
-the exact Stage 4 fallback until an explicit rebuild. No request, startup, or
-ordinary migration trains a model.
+The implemented extractor reads eligible state in one database-time
+`REPEATABLE READ, READ ONLY` transaction, captures the revision and exact
+catalog fingerprint, discards transient internal IDs, and writes no row-level
+snapshot. Source mutations advance the PostgreSQL revision, while
+recommendation events do not.
+
+The Phase 2 builder writes a separate immutable identity-free bundle, validates
+the temporary sibling through the production loader, supports a last-moment
+revision callback for live metadata, and promotes only to an unused path. The
+operator CLI deliberately exposes only the guarded authored fixture; protected
+live build/contributor lineage, invalidation/retirement, and API activation
+remain future work. Configuration keeps live access default-off and the API
+continues exact Stage 4 behavior. No request, startup, or ordinary migration
+trains a model.
 
 ## Repository boundaries
 
@@ -236,19 +246,23 @@ thin and repositories remain explicitly user-scoped.
 
 ### Database
 
-PostgreSQL stores games, taxonomy, users, preferences, interactions, and
-recommendation events. Schema changes use Alembic migrations. Flexible JSON
-is limited to request context and compact result summaries where a relational
-shape would not be stable.
+PostgreSQL stores games, taxonomy, users, preferences, interactions,
+recommendation events, optional collaborative contribution consent, and one
+monotonic collaborative source revision. Schema changes use Alembic migrations.
+Flexible JSON is limited to request context and compact result summaries where
+a relational shape would not be stable.
 
 Stage 4 migrations replace plaintext anonymous-key semantics with a consented,
 expiring token digest, add temporal active/superseded interaction rules, and
 extend recommendation events with data and personalization-policy identity.
-The expected Alembic head is `0005_stage_4_event_contract`. Legacy placeholder
+The expected Alembic head is `0006_stage_5_collab_contract`. Legacy placeholder
 rows are deterministically converted to unique revoked, inaccessible
 identities and are not treated as consented sessions. The populated `0002` to
 head upgrade and the documented populated downgrade/re-upgrade gate pass in
-the verified Stage 4 suite.
+the disposable PostgreSQL suite. The Stage 5 migration grants no contribution
+consent to existing users and adds statement-level revision triggers for
+source/catalog tables only. Recommendation events remain generation audit
+records and are not a revision or label source.
 
 ### Machine learning
 
@@ -270,14 +284,21 @@ artifact vectors, and exposes its own identity and contribution. User identity
 and mutable state never enter an artifact or the application-lifecycle ranker
 singleton. The Stage 3 model and artifact identity remain unchanged.
 
-Stage 5 plans a separate sparse item-item artifact and pure collaborative
-scorer because interaction data has different consent, deletion, freshness,
-and rebuild semantics from catalog content. The ML package would receive only
-canonical ephemeral cohort rows during build and stable-slug query context at
-serving. The resulting bundle would contain aggregate item neighborhoods,
-support, fingerprints, configuration, and checksums—not user rows, IDs, token
-digests, or recommendation events. Component readiness and hybrid math would
-remain independently testable; formal ranking evaluation stays in Stage 6.
+Stage 5 Phase 0–2 adds canonical sorted-profile serialization, fixed
+fingerprinting, bounded support/pair aggregates, a strict synthetic fixture
+loader, and a separate sparse item-item cosine artifact. The trainer receives
+only canonical ephemeral profiles and stable-slug catalog identity. The bundle
+contains aggregate item neighborhoods, support, fingerprints, configuration,
+lifecycle metadata, and checksums—not contributor rows, IDs, token digests, or
+recommendation events. Strict JSON/NPY parsing, exact member checks, immutable
+arrays, and validity checks form a separate trust boundary from the content
+artifact.
+
+Stage 5 still plans the pure collaborative scorer and hybrid policy because the
+offline artifact is not yet part of API readiness or request ranking. Component
+readiness and hybrid math remain independently testable; formal ranking
+evaluation stays in Stage 6. Fixture readiness is functional evidence only and
+does not approve a live cohort.
 
 ### External data
 
@@ -342,10 +363,10 @@ The recommendation boundary now exposes honest `ready`, `not_configured`, and
 slice. The offline builder, checksum-validated artifact, immutable ranker,
 generated browser contract, and anonymous explained-result experience are
 active. Account authentication, collaborative/hybrid ranking, formal
-evaluation, and production deployment remain later components. The Stage 5
-engineering plan is ready, but its interaction snapshot, collaborative
-artifact, hybrid policy, lifecycle lineage, API fields, and UI evidence are not
-implemented.
+evaluation, and production deployment remain later components. Stage 5 now has
+the Phase 0–2 interaction audit and offline collaborative artifact foundation;
+its scorer, hybrid policy, protected live lifecycle lineage, API fields, and UI
+evidence are not implemented.
 
 Stage 4 is complete and verified. Its consented identity, durable
 preferences, temporal feedback writes, deterministic feedback adjustment,

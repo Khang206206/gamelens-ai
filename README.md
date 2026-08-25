@@ -10,16 +10,22 @@ game metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 4 complete and verified 2026-08-13; Stage 5 external-source preflight
-slice verified 2026-08-23**
+**Stage 4 complete and verified 2026-08-13; Stage 5 Phase 0–2 audit,
+ingestion-preparation, and collaborative-artifact foundation verified
+2026-08-25**
 
 The detailed
 [Stage 5 collaborative-and-hybrid engineering plan](docs/stage-5-collaborative-hybrid-ranking-plan.md)
-is ready as of 2026-08-19. A read-only UCSD Steam source verifier,
-ingestion-preparation profiler, and aggregate source-level suitability audit
-now implement the external-source part of Phases 0–1. The source remains
-explicitly not integrated; no collaborative trainer, artifact, consent-aware
-live extractor, hybrid scorer, or serving path exists.
+now has two deliberately separate Phase 0–1 paths. The UCSD Steam verifier,
+ingestion-preparation profiler, and aggregate suitability audit inspect only
+ignored local bytes and keep the source explicitly not integrated. The
+first-party path adds separate contribution-consent storage, monotonic source
+revision, a default-off repeatable-read/read-only extractor, canonical
+aggregate audit, and a strictly test-only project-authored fixture. Phase 2 now
+adds the bounded sparse item-item cosine trainer, transparent identity-free
+artifact, hardened validator/immutable loader, aggregate inspector, and a
+guarded fixture build command. No collaborative scorer, hybrid policy, product
+contribution-consent flow, live build, or serving path exists.
 
 The repository now provides:
 
@@ -39,6 +45,19 @@ The repository now provides:
 - A bounded, read-only UCSD Steam source preflight that verifies exact local
   archives, profiles only aggregate source facts, and leaves license,
   provenance approval, GameLens catalog mapping, and activation gates closed.
+- A separate optional contribution-consent and monotonic-revision contract that
+  grants no authority to existing users and excludes recommendation events
+  from labels and revision changes.
+- A default-off, identity-free live interaction audit plus a deterministic
+  project-authored fixture gated to `ENVIRONMENT=test`; neither path writes a
+  row-level snapshot, and only the guarded fixture path may build the separate
+  aggregate collaborative artifact.
+- A canonical binary CSR and bounded sparse item-item cosine pipeline with
+  support pruning, round-half-up similarity units, deterministic top-neighbor
+  selection, and stable-slug tie-breaking.
+- A checksum-complete JSON/NPY collaborative bundle, strict non-pickle loader,
+  immutable arrays, lifecycle checks, atomic unused-path promotion, and
+  privacy-safe aggregate inspection.
 - A bounded, typed `POST /api/v1/recommendations` contract with observable
   content, platform, and popularity components plus structured evidence.
 - Accessible anonymous onboarding and explained results at `/recommendations`;
@@ -130,9 +149,10 @@ The web application, backend, persistent data, and offline ML workflow
 remain separate. Training never runs inside an API request. See
 [Architecture](docs/architecture.md) for detailed boundaries.
 
-Stage 5 plans a separate consent-aware interaction snapshot, collaborative
-artifact, and optional hybrid layer. Those nodes are not active in this
-diagram or the current runtime.
+Stage 5 Phase 0–2 prepares a separate consent-aware interaction extractor,
+aggregate audit, revision contract, test fixture, and offline collaborative
+artifact. The artifact is not loaded by the API ranking runtime yet;
+collaborative scoring and hybrid nodes remain inactive.
 
 ## Technology
 
@@ -235,6 +255,11 @@ non-canonical CSR indices; operators upgrading an existing Stage 3 artifact
 must rotate the path and rebuild and validate the bundle before restarting the
 API.
 
+The Phase 2 collaborative bundle follows the same immutable-path rule but has a
+separate `COLLABORATIVE_ARTIFACT_PATH` and lifecycle. `make collaborative-build`
+and `make collaborative-validate` operate only on the guarded synthetic fixture;
+selecting this path does not activate API scoring yet.
+
 Stop services without deleting development data:
 
 ```powershell
@@ -270,6 +295,8 @@ development and contract checks use the same API base URL.
 | `make logs` / `make api` / `make web` | Follow logs or run API/full stack in the foreground               |
 | `make migrate` / `make seed`          | Upgrade schema or idempotently load the catalog                   |
 | `make model-build` / `model-validate` | Build or validate the configured recommendation artifact          |
+| `make collaborative-audit` / `collaborative-fixture-audit` | Audit the blocked live source or guarded fixture |
+| `make collaborative-build` / `collaborative-validate` | Build or validate the guarded fixture artifact |
 | `make retention-preview`              | Preview eligible event/session retention rows without mutation    |
 | `make ucsd-steam-verify` / `ucsd-steam-prepare` | Verify pinned source bytes or emit preparation aggregates |
 | `make ucsd-steam-audit` / `ucsd-steam-audit-check` | Audit source support or compare it with the committed report |
@@ -299,6 +326,10 @@ Every optional Make target has a direct equivalent in the
 | `CORS_ORIGINS`                                        | Comma-separated explicit browser origins                                      |
 | `LOG_LEVEL`                                           | API structured logging level                                                  |
 | `MODEL_ARTIFACT_PATH`                                 | Builder/API container path to the validated recommendation artifact           |
+| `COLLABORATIVE_ARTIFACT_PATH`                         | Separate immutable collaborative bundle path; blank leaves it unconfigured    |
+| `COLLABORATIVE_LIVE_DATA_ENABLED`                     | Default-off live collaborative extraction gate                               |
+| `COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION`          | Explicit contribution-policy version required before live audit               |
+| `COLLABORATIVE_ALLOW_TEST_FIXTURE`                    | Test-only fixture read/build gate; never enable for production                 |
 | `ANONYMOUS_SESSION_SECRET`                            | Server-only HMAC key; replace the development default outside local use       |
 | `ANONYMOUS_SESSION_COOKIE_NAME` / `_PATH`             | Host-only cookie name and API path scope                                      |
 | `ANONYMOUS_SESSION_COOKIE_SECURE` / `_SAMESITE`       | Cookie transport policy; production requires `Secure=true`                    |
@@ -435,11 +466,12 @@ service-level claims.
 - The 30-game synthetic seed supports functional and reproducibility checks,
   including feedback lifecycle behavior, not recommendation-quality
   evaluation. The UCSD Steam source-preflight commands and aggregate audit do
-  not integrate that external source or authorize its use. No collaborative
-  trainer, artifact, consent-aware live extractor, project-authored
-  activatable Stage 5 interaction fixture, guarded fixture E2E evidence,
-  hybrid serving path, or approved interaction dataset is implemented; formal
-  comparative evaluation remains Stage 6.
+  not integrate that external source or authorize its use. The collaborative
+  trainer, hardened artifact contract, and guarded fixture build are functional
+  infrastructure only. No approved live cohort, product contribution-consent
+  flow, collaborative scorer, hybrid serving path, or approved external
+  interaction dataset is implemented. Formal comparative evaluation remains
+  Stage 6.
 - No external metadata service or approved remote cover-image source.
 - Seed ratings and popularity values are synthetic development signals.
 - Social metadata currently uses a localhost development base. A validated

@@ -7,6 +7,10 @@ from app.db.models.catalog import (
     game_platforms,
     game_tags,
 )
+from app.db.models.collaborative import (
+    CollaborativeContributionConsent,
+    CollaborativeDataRevision,
+)
 from app.db.models.users import (
     Interaction,
     InteractionType,
@@ -17,6 +21,8 @@ from app.db.models.users import (
 )
 
 __all__ = [
+    "CollaborativeContributionConsent",
+    "CollaborativeDataRevision",
     "Game",
     "Genre",
     "Interaction",

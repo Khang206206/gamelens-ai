@@ -221,51 +221,65 @@ is published as commit `c96b6c2` in draft PR
 
 ## Stage 5 — Collaborative and hybrid ranking
 
-**Status:** Engineering plan ready 2026-08-19; external-source preflight slice
-verified 2026-08-23; collaborative runtime not started
+**Status:** External-source preflight verified 2026-08-23; Phase 0–1
+first-party snapshot/audit foundation verified 2026-08-24; Phase 2 offline
+collaborative artifact foundation verified 2026-08-25; ranking runtime not
+started
 
 Detailed execution plan:
 [`stage-5-collaborative-hybrid-ranking-plan.md`](stage-5-collaborative-hybrid-ranking-plan.md)
 
-The implemented Phase 0–1 slice verifies and profiles the ignored local UCSD
-Steam snapshot read-only and records an aggregate source-level suitability
-audit. It does not integrate the source. Stage 5 label authority,
-license/redistribution, ingestion provenance approval, GameLens catalog
-mapping, activatable project-authored fixture evidence, and live-data
-consent/lifecycle gates remain closed.
+Phase 0–1 now includes two deliberately separate paths. The UCSD Steam workflow
+verifies local ignored bytes and aggregate source structure read-only but keeps
+all seven license/provenance/catalog/label/fixture/live integration gates
+closed. The first-party path adds separate contribution-consent storage,
+monotonic source revision, one PostgreSQL repeatable-read/read-only extractor,
+versioned label/canonical audit policy, and a strict project-authored fixture.
+Phase 2 consumes only that identity-free fixture contract to build and validate
+a separate sparse item-item artifact. It does not approve either source for live
+build or serve the artifact.
 
-Build one reviewable slice at a time:
+Completed Phase 0–2 evidence:
 
-1. Re-run the Stage 1–4 gates and freeze contribution-consent, label,
-   provenance, cutoff, lifecycle, artifact, hybrid, API, and fallback
-   contracts.
-2. Keep the implemented read-only external-source suitability audit exact and
-   reproducible; its structural diagnostics are not quality or integration
-   evidence.
-3. Add the still-pending deterministic project-authored multi-user fixture;
-   do not present fixture results as quality evidence.
-4. Extract one consent- and retention-aware as-of interaction snapshot in a
-   database-time repeatable-read transaction, with canonical fingerprinting
-   and no serialized identity.
-5. Build and validate a separate sparse item-item cosine artifact with support
-   thresholds, deterministic pruning, complete checksums, resource caps, and
-   protected lifecycle lineage.
-6. Add a pure collaborative scorer and a versioned hybrid policy whose base,
-   feedback-affinity, collaborative, popularity, platform, and played
-   components remain independently reconstructible.
-7. Compare baseline candidates and component units on deterministic
-   hand-calculated fixtures without reporting recommendation quality.
-8. Preserve exact Stage 4 behavior for missing, insufficient, unsupported,
-   invalid, stale, expired, retired, or privacy-invalid collaborative state.
-9. Extend the saved personalized response, component status,
-   recommendation-generation event, OpenAPI types, and conditional browser
-   evidence while leaving the stateless endpoint unchanged.
-10. Add explicit build/validate/invalidate/retire commands and disposable
-   PostgreSQL/Docker lifecycle fixtures; no startup or request may train.
-11. Pass ML, API, migration, PostgreSQL, web, browser, accessibility, privacy,
-   Docker, dependency, OpenAPI, and complete Stage 1–4 regression gates.
-12. Synchronize verified documentation and leave evaluation-ready artifact,
-    component, cold-start, and limitation contracts for Stage 6.
+1. Default-off live configuration and a supported `integration_blocked` state
+   that performs no database access.
+2. Migration `0006_stage_5_collab_contract` with no fabricated contribution
+   consent, source/catalog revision triggers, event exclusion, cascade, and
+   populated upgrade/downgrade evidence.
+3. As-of cutoff eligibility, dislike/like/rating/saved-game precedence, stable
+   catalog mapping, identity-free canonical profiles, aggregate audit, and
+   typed insufficiency/revision errors.
+4. A test-only 12-profile/36-edge/6-item authored fixture with exact expected
+   labels, exclusions, cold starts, and non-quality provenance.
+5. Full Stage 1–4 regression gates plus exact UCSD report comparison.
+6. Fixed-point support pruning, canonical binary CSR, bounded pair counting,
+   raw cosine, round-half-up quantization, deterministic top-neighbor selection,
+   and canonical sparse storage.
+7. An exact checksum-bound JSON/NPY member set with strict non-pickle parsing,
+   semantic graph validation, immutable loaded arrays, lifecycle/catalog checks,
+   and privacy-safe aggregate inspection.
+8. Fixture-only validate-before-promotion CLI with no-overwrite atomic publish;
+   the default live build fails closed before database access.
+9. Reordered-input determinism, hand-calculated cosine, corruption, traversal,
+   dtype/shape/CSR, expiry, revision-race, privacy, promotion, and functional
+   fixture-pipeline tests; the full ML suite passes 155 tests with one
+   Windows-symlink capability skip.
+
+Build the remaining stages one reviewable slice at a time:
+
+1. Approve product contribution-consent copy/routes and decide whether any live
+   cohort may be audited; saved personalization remains a separate purpose.
+2. Add protected live build/contributor lifecycle lineage, explicit
+   invalidation/retirement/rollback, and approved revision-safe activation. The
+   current operator path remains fixture-only.
+3. Add a pure collaborative scorer and versioned hybrid policy with
+   independently reconstructible components and exact Stage 4 fallback.
+4. Add explicit live invalidate/retire commands, rollback, and disposable
+   lifecycle integration tests.
+5. Extend only the saved personalized response/event/OpenAPI/browser path after
+   the component is valid; leave the stateless endpoint unchanged.
+6. Synchronize passing artifact, scorer, hybrid, privacy, web, browser, and
+   regression evidence before claiming Stage 5 completion.
 
 Stage 5 is complete only when the data source and permission are explicit;
 recommendation events are provably excluded as labels; deleted, withdrawn,

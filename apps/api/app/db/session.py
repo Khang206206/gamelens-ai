@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 logger = logging.getLogger(__name__)
 
 DATABASE_CONNECT_TIMEOUT_SECONDS = 1
-EXPECTED_SCHEMA_REVISION = "0005_stage_4_event_contract"
+EXPECTED_SCHEMA_REVISION = "0006_stage_5_collab_contract"
 REQUIRED_SCHEMA_TABLES = (
     "games",
     "genres",
@@ -21,6 +21,8 @@ REQUIRED_SCHEMA_TABLES = (
     "user_preferences",
     "interactions",
     "recommendation_events",
+    "collaborative_contribution_consents",
+    "collaborative_data_revision",
 )
 REQUIRED_TABLE_COUNT_QUERY = text(
     """

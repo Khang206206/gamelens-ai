@@ -1,10 +1,39 @@
 """Deterministic artifact-backed recommendation primitives."""
 
 from gamelens_recommender.artifacts import ArtifactError, LoadedArtifact, load_artifact
+from gamelens_recommender.collaborative_artifacts import (
+    CollaborativeArtifactError,
+    CollaborativeBuildMetadata,
+    LoadedCollaborativeArtifact,
+    build_collaborative_artifact,
+    inspect_collaborative_artifact,
+    load_collaborative_artifact,
+)
+from gamelens_recommender.collaborative_training import (
+    BinaryInteractionMatrix,
+    CollaborativeNeighborhoods,
+    CollaborativeTrainingError,
+    build_binary_interaction_matrix,
+    fit_collaborative_neighborhoods,
+    fit_item_item_cosine,
+    quantize_similarity,
+    validate_binary_interaction_matrix,
+    validate_collaborative_neighborhoods,
+)
 from gamelens_recommender.feedback import (
     FEEDBACK_POLICY_CONFIG,
     FeedbackPolicyConfig,
     FeedbackRanker,
+)
+from gamelens_recommender.interaction_snapshot import (
+    LABEL_POLICY_ID,
+    SnapshotAuditError,
+    SupportedProfiles,
+    audit_fixture,
+    audit_profiles,
+    canonicalize_profiles,
+    profile_fingerprint,
+    prune_supported_profiles,
 )
 from gamelens_recommender.ranking import ContentRanker, InsufficientContextError
 from gamelens_recommender.schemas import (
@@ -26,23 +55,46 @@ __all__ = [
     "ActiveGameFeedback",
     "ArtifactError",
     "BaseCandidateScore",
+    "BinaryInteractionMatrix",
     "CatalogItem",
     "CatalogSnapshot",
+    "CollaborativeArtifactError",
+    "CollaborativeBuildMetadata",
+    "CollaborativeNeighborhoods",
+    "CollaborativeTrainingError",
     "ContentRanker",
     "FEEDBACK_POLICY_CONFIG",
+    "LABEL_POLICY_ID",
     "FeedbackPolicyConfig",
     "FeedbackPolicyIdentity",
     "FeedbackRanker",
     "InsufficientContextError",
     "LoadedArtifact",
+    "LoadedCollaborativeArtifact",
     "PersonalizedRankingResult",
     "PersonalizedRecommendation",
     "PositiveFeedbackSource",
+    "SnapshotAuditError",
+    "SupportedProfiles",
     "TaxonomyValue",
     "UserContext",
+    "audit_fixture",
+    "audit_profiles",
     "build_artifact",
+    "build_binary_interaction_matrix",
+    "build_collaborative_artifact",
     "canonical_snapshot",
     "load_artifact",
+    "load_collaborative_artifact",
+    "fit_collaborative_neighborhoods",
+    "fit_item_item_cosine",
+    "inspect_collaborative_artifact",
+    "canonicalize_profiles",
+    "profile_fingerprint",
+    "prune_supported_profiles",
+    "quantize_similarity",
+    "validate_binary_interaction_matrix",
+    "validate_collaborative_neighborhoods",
 ]
 
 __version__ = "0.1.0"

@@ -1,7 +1,8 @@
 # Machine-learning workspace
 
 **Status:** Stage 4 feedback policy complete and verified 2026-08-13; Stage 5
-external-source preflight slice verified 2026-08-23.
+external-source preflight verified 2026-08-23; Stage 5 Phase 0–2 interaction
+audit and collaborative-artifact foundation verified 2026-08-25.
 
 This directory owns deterministic catalog normalization, the popularity
 baseline, TF-IDF feature construction, sparse artifact serialization, pure
@@ -18,35 +19,99 @@ user identity or mutable database object and stores no durable state.
 
 The detailed
 [Stage 5 collaborative-and-hybrid plan](../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-is ready. The package now contains only the read-only UCSD Steam
-source-verification, preparation, and aggregate-audit slice of Phases 0–1. No
-collaborative trainer, artifact, loader, scorer, hybrid policy, consent-aware
-live extractor, versioned activatable Stage 5 interaction fixture, guarded
-fixture E2E evidence, or serveable Stage 5 snapshot exists. The focused unit
-tests use a separate in-process synthetic source fixture.
+is being implemented in reviewable phases. The package now contains canonical
+interaction-profile serialization, fingerprinting, bounded aggregate auditing,
+a strict project-authored fixture loader, the sparse item-item trainer, and the
+separate collaborative artifact builder/validator/loader. No collaborative
+scorer, hybrid policy, approved live builder, or serveable Stage 5 component
+exists.
 
-## Planned Stage 5 scope
+## Stage 5 Phase 0–1 interaction audit
 
-The proposed baseline is binary sparse item-item cosine over a consent- and
-retention-qualified snapshot supplied by the API extractor. It will keep raw
-cosine, minimum user/item/pair support, deterministic top-neighbor pruning,
-the existing fixed scale, and stable-slug ties. Matrix factorization, neural
-models, online fitting, shrinkage tuning, and formal quality evaluation remain
-outside this stage.
+`gamelens-collaborative-labels/1.0.0` treats a saved positive game preference,
+an active like, or an active rating of at least 7 as one binary positive edge.
+An active dislike dominates every positive source. Low ratings, views,
+played-only state, wishlist-only state, recommendation events, non-game
+preferences, superseded rows, post-cutoff rows, and ineligible contributors do
+not become positives.
 
-Stage 5 plans a separate transparent collaborative bundle containing only
-item neighborhoods, item/pair support, configuration, catalog and interaction
-fingerprints, aggregate diagnostics, lifecycle identity, and checksums. It
-will not contain the user matrix, internal IDs, stable pseudonyms, credentials,
-raw interactions, or recommendation events. The different artifact is needed
-because consent, deletion, freshness, invalidation, and rebuild differ from
-the catalog-content lifecycle.
+The API supplies only a sorted multiset of sorted stable-slug profiles plus the
+exact content-catalog fingerprint. This package never receives a credential or
+emits an internal user ID/cohort mapping. It computes a fixed canonical
+interaction fingerprint, bounded aggregate distributions, deterministic
+two-core support diagnostics, and typed insufficiency reasons without writing
+a row-level snapshot.
 
-A pure collaborative scorer will expose supported neighbor evidence, and a
-versioned hybrid policy will combine base, feedback-affinity, collaborative,
-and played components once. Unsupported or invalid collaborative state must
-return exact Stage 4 ranking through an explicit fallback. These are planned
-contracts, not current package behavior or recommendation-quality claims.
+Fixture reads are capped at 1,000,000 bytes and reject duplicate or
+unrecognized schema keys, non-finite constants, and bool/int/float JSON type
+aliases before audit.
+
+The test-only fixture audit is:
+
+```powershell
+make collaborative-fixture-audit
+```
+
+The verified fixture has 12 profiles, 36 positive edges, and 6 items and passes
+the functional activation thresholds. The report always keeps
+`approved_live_training_eligibility=false`; this result is neither live-data
+approval nor recommendation-quality evidence.
+
+## Stage 5 Phase 2 collaborative artifact
+
+The implemented baseline consumes identity-free profiles, applies the same
+deterministic user/item support fixed point as the audit, and builds a canonical
+binary `int64` CSR. Bounded sparse pair counts produce raw cosine similarities;
+self-edges and pair support below two are removed. Similarities are quantized
+round-half-up at scale 1,000,000. Top neighbors are selected by similarity,
+pair support, then stable slug and serialized in canonical neighbor-index order.
+The fixture resolves to 12 retained profiles, 6 items, 36 positives, and 20
+directed neighborhood edges.
+
+Model `gamelens-item-item-cosine` version `1.0.0` uses artifact schema `1` and
+code compatibility `stage-5-v1`. Its exact directory members are:
+
+```text
+manifest.json
+item-slugs.json
+item-support.npy
+neighbors-indices.npy
+neighbors-indptr.npy
+similarity-units.npy
+pair-support.npy
+```
+
+The manifest binds configuration, aggregate diagnostics, catalog and
+interaction fingerprints, source/build identity, validity horizon, exact member
+sizes, and SHA-256 checksums. The artifact excludes the contributor matrix,
+internal IDs, stable user keys, credentials, interaction rows, and
+recommendation events. The bounded loader disables pickle and rejects an
+unexpected member set, symlinks, traversal, malformed JSON/NPY, checksum or
+dtype/shape mismatch, noncanonical CSR, invalid support/cosine values, catalog
+or revision mismatch, and expiry. Returned arrays have immutable byte backing.
+
+The guarded functional workflow is:
+
+```powershell
+make collaborative-build
+make collaborative-validate
+docker compose --profile quality run --rm --no-deps `
+  -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality `
+  python -m app.commands.collaborative_artifact inspect
+```
+
+Fixture build requires `ENVIRONMENT=test` and the explicit fixture gate,
+validates a temporary sibling with the production loader, and promotes only to
+an unused path. Live build fails closed before database access because protected
+live lineage and activation are not yet approved. Validation and inspection
+bind the artifact to the catalog read from `--catalog`, which defaults to the
+canonical seed file.
+
+The remaining Stage 5 work is a pure collaborative scorer, versioned hybrid
+policy, serving lifecycle, and product contribution-consent flow. Unsupported
+or invalid collaborative state must preserve exact Stage 4 ranking through an
+explicit fallback. Matrix factorization, neural models, online fitting,
+shrinkage tuning, and formal quality evaluation remain outside this phase.
 
 ## UCSD Steam source preflight
 
@@ -101,8 +166,8 @@ manifest paths. The aggregate
 records the verified 2026-08-23 run. Passing its source-only support thresholds
 does not approve a label or integration: no Stage 5 label authority, dataset
 license/redistribution grant, ingestion-approved provenance, GameLens Steam-ID
-mapping, activatable Stage 5 fixture evidence, or live consent/lifecycle proof
-is recorded.
+mapping, UCSD-backed activatable fixture evidence, or live consent/lifecycle
+proof is recorded.
 
 ## Package and reproducibility
 
@@ -160,7 +225,7 @@ pre-top-K boundary needed by feedback ranking. The Stage 3 `rank()` wrapper,
 model `gamelens-content-tfidf/1.0.0`, artifact schema `1`, and compatibility
 `stage-3-v1` remain unchanged.
 
-## Artifact contract
+## Content artifact contract
 
 Model `gamelens-content-tfidf` version `1.0.0` uses artifact schema `1` and code
 compatibility `stage-3-v1`. A bundle contains `manifest.json`, three transparent
@@ -203,6 +268,9 @@ The Stage 3 gate passed 25 ML tests with 81% diagnostic branch-aware package
 coverage. The current Stage 4 worktree passes 52 ML tests with 83% diagnostic
 coverage plus Ruff lint and format checks across 112 Python files. Cross-stack
 evidence also passes 184 fast API, 76 web, and 49 disposable-PostgreSQL tests.
+The Phase 2 worktree now passes 155 ML tests; one symbolic-link rejection case
+is capability-skipped on this Windows host and remains runnable on systems that
+permit symlink creation. Ruff lint and format checks remain green.
 The 38-case exact-host Docker browser matrix passes in 1.3 minutes without
 retry. The rebuilt
 no-cache `gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e`
@@ -220,7 +288,8 @@ bind mount had min/median/max latency of 89.64/95.54/274.79 ms. These are local
 diagnostics, not performance guarantees or recommendation-quality evidence.
 
 Persistent preferences live in the API/database rather than this package.
-Collaborative filtering and hybrid ranking have a detailed Stage 5 plan but
-are not implemented. Formal offline ranking evaluation remains Stage 6 work.
-The synthetic catalog and any future authored interaction fixture validate
-deterministic behavior only, not recommendation quality.
+The collaborative artifact foundation is implemented offline, but
+collaborative candidate scoring, hybrid ranking, and API serving are not.
+Formal offline ranking evaluation remains Stage 6 work. The synthetic catalog
+and authored interaction fixture validate deterministic behavior only, not
+recommendation quality.

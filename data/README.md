@@ -22,8 +22,14 @@ source, cover binaries, or real-world performance claims and is distributed
 under the repository license.
 
 No external or real-user interaction dataset is committed or integrated. The
-Stage 5 interaction fixture has not been added yet; its requirements are
-recorded in [`fixtures/README.md`](fixtures/README.md).
+project-authored Stage 5 interaction fixture is
+[`fixtures/interactions/collaborative-interactions.json`](fixtures/interactions/collaborative-interactions.json).
+It is strict test-only input with 12 synthetic profiles, 36 positive edges,
+6 supported items, explicit exclusions, and cold-start cases. It is not seeded
+into PostgreSQL, is not representative data, cannot establish recommendation
+quality, and does not approve live training or serving. It may drive the
+explicitly guarded Phase 2 fixture artifact build; that generated bundle remains
+ignored and contains aggregate item neighborhoods rather than profile rows.
 
 ## External-source policy
 

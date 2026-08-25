@@ -11,22 +11,23 @@
 - JSON is reserved for genuinely flexible recommendation-event context.
 
 The Alembic migration chain is the executable source of truth for this model.
-Stage 4 extends the Stage 1 chain through expected head
-`0005_stage_4_event_contract` without embedding seed or retention behavior in
-migrations.
+Stage 5 Phase 1 extends the Stage 1–4 chain through expected head
+`0006_stage_5_collab_contract` without embedding seed, fixture, audit, build,
+or retention behavior in migrations.
 
 The
 [Stage 4 feedback-and-persistence plan](stage-4-feedback-persistence-plan.md)
 defines the activation and migration policy for the existing future-facing
-user tables. Revisions `0003_stage_4_anonymous_identity`,
-`0004_stage_4_interaction_state`, and `0005_stage_4_event_contract` now
-implement the token-digest, consent, temporal-state, and event-identity schema.
-The 49-test disposable-PostgreSQL suite passes, including populated legacy
-upgrade and concurrent feedback serialization.
+user tables. Revisions `0003_stage_4_anonymous_identity` through
+`0005_stage_4_event_contract` implement token-digest, consent, temporal-state,
+and event-identity schema. Revision `0006_stage_5_collab_contract` adds
+separate contribution consent and monotonic collaborative source revision.
+The 54-test disposable-PostgreSQL suite passes, including populated legacy
+upgrade, no fabricated contribution consent, and concurrent snapshot tests.
 
-The current cross-stack evidence also passes 184 fast API, 52 ML, and 76 web
-tests; the PostgreSQL suite completes in 4.53 seconds. The final 38-case
-exact-host Docker browser matrix passes in 1.3 minutes without retry: 28
+The current cross-stack evidence passes 193 fast API, 105 ML, 54 PostgreSQL, and
+76 web tests. The 38-case exact-host Docker browser matrix passes in 59.6
+seconds without retry: 28
 Chromium, 5 Firefox, and 5 WebKit. The rebuilt no-cache
 `gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e`
 removes unused Debian `perl-base` after all install steps, resolving its earlier
@@ -44,6 +45,10 @@ erDiagram
     USER ||--o{ USER_PREFERENCE : has
     USER ||--o{ INTERACTION : creates
     USER ||--o{ RECOMMENDATION_EVENT : receives
+    USER ||--o| COLLABORATIVE_CONTRIBUTION_CONSENT : optionally_grants
+    COLLABORATIVE_DATA_REVISION {
+        bigint revision
+    }
     GAME ||--o{ INTERACTION : receives
     GAME ||--o{ GAME_GENRE : classified_as
     GENRE ||--o{ GAME_GENRE : groups
@@ -149,56 +154,78 @@ replay snapshot or proof of browser receipt, view, click, conversion, or
 positive feedback. Pre-Stage-4 events are marked `legacy-v1` and retain
 nullable data/policy identity.
 
-## Planned Stage 5 Derived-Data Boundary
+## Implemented Stage 5 Phase 0–1 Data Boundary
 
-The
-[Stage 5 engineering plan](stage-5-collaborative-hybrid-ranking-plan.md) is
-ready, but no Stage 5 table, migration, interaction snapshot, or collaborative
-artifact exists yet. PostgreSQL interactions and saved preferences remain the
-source state; generated model input and artifacts are derived data with their
-own provenance and lifecycle.
+### CollaborativeContributionConsent
 
-The proposed snapshot captures one PostgreSQL-generated cutoff in a
-repeatable-read, read-only transaction. Contributor eligibility requires an
-approved, current aggregate-training purpose plus unrevoked and unexpired
-state. A temporal interaction is active at the cutoff only when its occurrence
-is not later than the cutoff and its supersession is null or later than the
-cutoff. Canonical stable game slugs align the snapshot with the exact catalog
-fingerprint.
+`collaborative_contribution_consents` is separate from the base personalization
+consent on `users`. The user ID is both primary key and cascading foreign key;
+`consent_version` is required and non-blank, `granted_at` is required, and an
+optional `withdrawn_at` cannot precede the grant. The populated migration
+creates no consent rows for existing users. No public API currently grants this
+consent, so the product flow and live activation remain blocked.
 
-The proposed positive edge is binary and collapses a saved positive `game`
-preference, an active like, or an active rating of at least 7 when no dislike
-overrides it. Views, played-only, wishlist-only, unknown state, low ratings,
-dislikes, and recommendation events do not become positive matrix entries.
-Superseded occurrences reconstruct as-of state; they are not repeated votes.
-Recommendation events remain generation audit records, never interaction
-labels.
+### CollaborativeDataRevision
 
-The guarded extractor may use an internal user ID transiently to group rows,
-but it serializes no user ID, token digest, stable pseudonym, credential, or
-per-user mapping. A canonical fingerprint and aggregate counts describe the
-input. The planned collaborative artifact stores only item-level neighbors,
-similarity/support arrays, configuration, catalog and interaction identity,
-checksums, cutoff, revision, and validity metadata.
+`collaborative_data_revision` has exactly one logical row
+(`singleton_id=1`), a non-negative bigint revision, and an update timestamp.
+PostgreSQL statement triggers increment it for mutations to users,
+contribution consent, preferences, interactions, games, taxonomies, and
+catalog association tables. Recommendation events do not increment it. The
+trigger atomically recreates the singleton after a test-only truncate and a
+subsequent source mutation. Until then, the live extractor rejects the missing
+revision with a typed fail-closed error.
 
-Phase 0 proposes a separate contribution-consent boundary, a monotonic source
-revision for snapshot/promotion consistency, and protected build/contributor
-lineage in PostgreSQL. Those schema details must be fixed in an Alembic
-revision before implementation. Their purpose is to make a cleared or changed
-included label, withdrawal, revocation, expiry, or user deletion invalidate
-the affected artifact immediately. A new positive after the artifact cutoff
-may wait for the next build without changing the immutable snapshot.
-Identity-bearing lineage must stay in PostgreSQL with user cascades; it must
-not appear in the artifact, API, event JSON, logs, audit reports, or browser.
+User deletion cascades contribution consent and existing user-owned source
+state; the source-table mutation advances the revision. Withdrawal, revocation,
+expiry changes, feedback changes, and catalog changes also advance it. Phase
+0–1 writes no row-level snapshot or model bundle, so there is no derived file
+to retain or delete yet. A future promotion must recheck the captured revision
+and add protected build/contributor lineage before serving is possible.
 
-Generated snapshots and bundles remain ignored. Obsolete bundles are not
-serveable and require an explicit preview/confirmation retirement workflow.
-If consent and derived-data invalidation cannot be proven end to end, live-data
-collaborative activation stays disabled and only the project-authored fixture
-may exercise the functional pipeline.
+### Canonical interaction audit input
+
+The live repository requires PostgreSQL and one verified `REPEATABLE READ,
+READ ONLY` transaction. Its initialization query calls
+`pg_current_snapshot()` to pin MVCC visibility before returning and captures
+one `clock_timestamp()` cutoff in that same query. Eligibility requires current
+base consent, unexpired/unrevoked state, and the
+configured contribution version granted and not withdrawn at the cutoff. An
+interaction is active as of the cutoff only when `occurred_at <= cutoff` and
+`superseded_at IS NULL OR superseded_at > cutoff`.
+
+Preference and interaction reads join one reusable eligible-user subquery and
+stream in 1,000-row batches; they never expand one bind parameter per user.
+Label policy `gamelens-collaborative-labels/1.0.0` produces binary positive
+edges. Dislike dominates; otherwise an active like, rating of at least 7, or
+saved positive game preference is positive. Views, played-only,
+wishlist-only, low ratings, non-game preferences, superseded/post-cutoff rows,
+and recommendation events are absent.
+
+Only the sorted multiset of sorted stable-slug profiles plus the exact current
+catalog fingerprint crosses into ML. Internal user IDs remain transient. Audit
+schema 1 emits aggregate distributions, support diagnostics, catalog and
+interaction fingerprints, cutoff, revision, typed reasons, and privacy flags;
+it writes no per-user row or cohort mapping.
+
+The committed project-authored fixture has 12 synthetic profiles, 36 expected
+positive edges, 6 supported items, exclusions, and cold-start cases. It loads
+only with `ENVIRONMENT=test` plus explicit fixture permission and cannot prove
+quality or live-data authority. Generated snapshots and bundles remain ignored.
+No collaborative artifact or serving path exists in Phase 0–1.
+
+Phase 2 adds a fixture-only offline artifact under the ignored `ml/artifacts/`
+boundary. It contains item-level aggregate support and neighborhoods, not a
+user matrix or contributor lineage. No database table or serving reference was
+added: protected live build/contributor lineage, invalidation, and retirement
+remain required before a live-derived bundle can activate.
 
 ## Index and constraint plan
 
+- Stage 5 adds a one-row-per-user contribution-consent primary/foreign key,
+  grant/withdrawal ordering, and singleton/non-negative revision checks.
+- PostgreSQL statement triggers own monotonic revision changes for every
+  eligible source/catalog table while excluding recommendation events.
 - Unique indexes on game, genre, tag, and platform slugs.
 - Indexes on game title and common catalog filters.
 - Composite indexes on interaction user/time and game/type.
@@ -209,9 +236,10 @@ may exercise the functional pipeline.
 - Check constraints enforce ratings from 0 through 10, non-negative counts and
   popularity, preference weights from -1 through 1, lowercase slug shape,
   interaction-value semantics, and recommendation JSON shapes.
-- User-owned preferences, interactions, and recommendation events cascade when
-  a user is deleted. Game-taxonomy associations cascade with either side.
-  Games referenced by interactions use `RESTRICT`.
+- User-owned contribution consent, preferences, interactions, and
+  recommendation events cascade when a user is deleted. Game-taxonomy
+  associations cascade with either side. Games referenced by interactions use
+  `RESTRICT`.
 
 ## Migration policy
 
@@ -220,11 +248,12 @@ migration, model update, tests, and documentation update. Development seed
 data is loaded by a separate deterministic command and must not be embedded in
 schema migrations.
 
-Stage 4 migrations are implemented for empty, `0001`, `0002`, and populated
-legacy starting points. The disposable PostgreSQL suite passes 49 tests,
-including populated `0002` upgrade, constraints, event/delete cascade,
-concurrent feedback writes, and bounded retention. The migrations revoke
-inaccessible placeholder credentials but do not fabricate consent or assume
-user tables are empty. Populated downgrade/re-upgrade evidence passes in the
-verified Stage 4 gate. Retention and user deletion remain explicit application
-operations rather than migration or seed side effects.
+Stage 4 migrations remain verified for empty, `0001`, `0002`, and populated
+legacy starting points. `0006_stage_5_collab_contract` upgrades and downgrades
+without assuming empty user tables, grants no contribution consent, seeds only
+the non-authority revision singleton, and installs/removes bounded source
+triggers. The 54-test PostgreSQL suite covers populated downgrade/re-upgrade,
+constraints, cascades, source versus event revision changes, label/temporal
+exclusions, repeatable-read concurrency, and typed revision races. Retention,
+user deletion, audits, fixture loading, and model builds remain application or
+operator actions rather than migration side effects.

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from app.core.config import DEVELOPMENT_SESSION_SECRET, Settings
 from pydantic import ValidationError
@@ -137,3 +139,55 @@ def test_insecure_cookie_is_limited_to_loopback_or_test_origins() -> None:
             environment="development",
             cors_origins=["http://web.gamelens.test:3000"],
         )
+
+
+def test_collaborative_live_data_is_default_off_and_requires_contribution_version() -> None:
+    settings = Settings(_env_file=None)
+
+    assert settings.collaborative_live_data_enabled is False
+    assert settings.collaborative_contribution_consent_version is None
+    assert settings.collaborative_allow_test_fixture is False
+    assert settings.collaborative_artifact_path is None
+
+    blank_path = Settings(_env_file=None, collaborative_artifact_path="   ")
+    assert blank_path.collaborative_artifact_path is None
+
+    configured_path = Settings(
+        _env_file=None,
+        collaborative_artifact_path="ml/artifacts/collaborative-v1",
+    )
+    assert configured_path.collaborative_artifact_path == Path("ml/artifacts/collaborative-v1")
+
+    with pytest.raises(ValidationError, match="contribution consent version"):
+        Settings(_env_file=None, collaborative_live_data_enabled=True)
+
+    enabled = Settings(
+        _env_file=None,
+        collaborative_live_data_enabled=True,
+        collaborative_contribution_consent_version=" stage-5-contribution-v1 ",
+    )
+    assert enabled.collaborative_contribution_consent_version == "stage-5-contribution-v1"
+
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            collaborative_contribution_consent_version="x" * 101,
+        )
+
+
+def test_collaborative_fixture_gate_is_test_only() -> None:
+    with pytest.raises(ValidationError, match="ENVIRONMENT=test"):
+        Settings(
+            _env_file=None,
+            environment="development",
+            cors_origins=["http://localhost:3000"],
+            collaborative_allow_test_fixture=True,
+        )
+
+    settings = Settings(
+        _env_file=None,
+        environment="test",
+        cors_origins=["http://testserver"],
+        collaborative_allow_test_fixture=True,
+    )
+    assert settings.collaborative_allow_test_fixture is True

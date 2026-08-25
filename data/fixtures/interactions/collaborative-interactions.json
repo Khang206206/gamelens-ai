@@ -1,0 +1,99 @@
+{
+  "fixture_schema_version": 1,
+  "fixture_id": "stage-5-collaborative-interactions-v1",
+  "source_kind": "fixture",
+  "label_policy": "gamelens-collaborative-labels/1.0.0",
+  "provenance": {
+    "kind": "project-authored",
+    "contains_real_user_data": false,
+    "quality_evidence": false
+  },
+  "profiles": [
+    {
+      "profile_key": "synthetic-01",
+      "positive_game_slugs": ["emberfall-tactics", "neon-drift-circuit", "verdant-vale"],
+      "excluded": [{"game_slug": "abyssal-signal", "reason": "viewed_only"}]
+    },
+    {
+      "profile_key": "synthetic-02",
+      "positive_game_slugs": ["clockwork-orchard", "emberfall-tactics", "neon-drift-circuit"],
+      "excluded": [{"game_slug": "abyssal-signal", "reason": "disliked"}]
+    },
+    {
+      "profile_key": "synthetic-03",
+      "positive_game_slugs": ["clockwork-orchard", "emberfall-tactics", "verdant-vale"],
+      "excluded": [{"game_slug": "abyssal-signal", "reason": "low_rating"}]
+    },
+    {
+      "profile_key": "synthetic-04",
+      "positive_game_slugs": ["clockwork-orchard", "neon-drift-circuit", "verdant-vale"],
+      "excluded": [{"game_slug": "abyssal-signal", "reason": "played_only"}]
+    },
+    {
+      "profile_key": "synthetic-05",
+      "positive_game_slugs": ["emberfall-tactics", "neon-drift-circuit", "starbound-couriers"],
+      "excluded": [{"game_slug": "abyssal-signal", "reason": "wishlisted_only"}]
+    },
+    {
+      "profile_key": "synthetic-06",
+      "positive_game_slugs": ["emberfall-tactics", "starbound-couriers", "verdant-vale"],
+      "excluded": [{"game_slug": "unknown-source-game", "reason": "unknown_game"}]
+    },
+    {
+      "profile_key": "synthetic-07",
+      "positive_game_slugs": ["neon-drift-circuit", "starbound-couriers", "verdant-vale"],
+      "excluded": []
+    },
+    {
+      "profile_key": "synthetic-08",
+      "positive_game_slugs": ["clockwork-orchard", "emberfall-tactics", "starbound-couriers"],
+      "excluded": []
+    },
+    {
+      "profile_key": "synthetic-09",
+      "positive_game_slugs": ["clockwork-orchard", "neon-drift-circuit", "starbound-couriers"],
+      "excluded": []
+    },
+    {
+      "profile_key": "synthetic-10",
+      "positive_game_slugs": ["clockwork-orchard", "starbound-couriers", "verdant-vale"],
+      "excluded": []
+    },
+    {
+      "profile_key": "synthetic-11",
+      "positive_game_slugs": ["emberfall-tactics", "neon-drift-circuit", "paper-kingdoms"],
+      "excluded": []
+    },
+    {
+      "profile_key": "synthetic-12",
+      "positive_game_slugs": ["paper-kingdoms", "starbound-couriers", "verdant-vale"],
+      "excluded": []
+    }
+  ],
+  "cold_start": {
+    "empty_profile_key": "synthetic-cold-start",
+    "unsupported_game_slug": "abyssal-signal"
+  },
+  "expected_audit": {
+    "candidate_profiles": 12,
+    "candidate_positive_edges": 36,
+    "distinct_candidate_items": 6,
+    "ready_for_functional_build": true,
+    "interaction_fingerprint": "d2ec587ef4e06eeaaf918447e58d8c233840575a33299556eb9765b786a1c003",
+    "fixture_contract_fingerprint": "ef19493c08a5f60b1ef868ad1b586581679ca13fa680e896d0a658bcbe9fae05",
+    "exclusion_counts": {
+      "disliked": 1,
+      "low_rating": 1,
+      "played_only": 1,
+      "unknown_game": 1,
+      "viewed_only": 1,
+      "wishlisted_only": 1
+    },
+    "retained_contributors": 12,
+    "retained_items": 6,
+    "retained_positive_edges": 36,
+    "pair_contributions": 36,
+    "distinct_pairs": 14,
+    "supported_pairs": 10
+  }
+}
