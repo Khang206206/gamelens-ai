@@ -230,6 +230,132 @@ def test_affinity_and_played_adjustment_reconstruct_exact_fixed_units(snapshot, 
         assert ("played_adjustment" in value.adjustment_reasons) == (value.slug == "alpha-tactics")
 
 
+def test_feedback_rank_preserves_stage_4_characterization_golden(snapshot, tmp_path) -> None:
+    ranker = _ranker(snapshot, tmp_path)
+    context = UserContext(
+        selected_game_slugs=("alpha-tactics",),
+        preferred_genres=("strategy",),
+        preferred_platforms=("linux",),
+        top_k=3,
+    )
+    feedback = (
+        _reaction("gamma-drift", "liked"),
+        ActiveGameFeedback(game_slug="beta-kingdom", played=True),
+        ActiveGameFeedback(game_slug="delta-command", wishlisted=True),
+    )
+
+    result = ranker.rank(context, feedback)
+
+    assert result.reason == "recommendations"
+    assert (result.policy.name, result.policy.version) == (
+        "gamelens-feedback-adjustment",
+        "1.0.0",
+    )
+    assert [
+        (source.game_slug, source.kind, source.occurred_at) for source in result.positive_sources
+    ] == [("gamma-drift", "liked", NOW)]
+    assert [
+        (
+            value.slug,
+            value.rank,
+            value.base_score_units,
+            tuple(
+                (
+                    component.name,
+                    component.raw_units,
+                    component.weight_units,
+                    component.contribution_units,
+                )
+                for component in value.base_components
+            ),
+            tuple((item.slug, item.name) for item in value.base_evidence.matching_genres),
+            tuple((item.slug, item.name) for item in value.base_evidence.matching_tags),
+            tuple((item.slug, item.name) for item in value.base_evidence.preferred_platforms),
+            tuple(
+                (item.slug, item.title, item.similarity_units)
+                for item in value.base_evidence.similar_selected_games
+            ),
+            value.base_evidence.popularity_percentile_units,
+            value.explanation_summary,
+            value.explanation_reasons,
+            value.base_weight_units,
+            value.base_contribution_units,
+            value.affinity_score_units,
+            value.affinity_weight_units,
+            value.affinity_contribution_units,
+            value.pre_played_score_units,
+            value.played_factor_units,
+            value.played_delta_units,
+            value.final_score_units,
+            value.adjustment_reasons,
+        )
+        for value in result.items
+    ] == [
+        (
+            "delta-command",
+            1,
+            489_035,
+            (
+                ("content", 420_044, 800_000, 336_035),
+                ("platform", 1_000_000, 100_000, 100_000),
+                ("popularity", 530_000, 100_000, 53_000),
+            ),
+            (("strategy", "Strategy"),),
+            (),
+            (("linux", "LINUX"),),
+            (("alpha-tactics", "Alpha Tactics", 389_497),),
+            530_000,
+            "Its content profile is similar to Alpha Tactics.",
+            (
+                "Its content profile is similar to Alpha Tactics.",
+                "It matches your preferred genres: Strategy.",
+                "It is available on preferred platforms: LINUX.",
+            ),
+            900_000,
+            440_132,
+            24_832,
+            100_000,
+            2_483,
+            442_615,
+            1_000_000,
+            0,
+            442_615,
+            ("feedback_affinity",),
+        ),
+        (
+            "beta-kingdom",
+            2,
+            467_586,
+            (
+                ("content", 378_233, 800_000, 302_586),
+                ("platform", 1_000_000, 100_000, 100_000),
+                ("popularity", 650_000, 100_000, 65_000),
+            ),
+            (("strategy", "Strategy"),),
+            (),
+            (("linux", "LINUX"),),
+            (("alpha-tactics", "Alpha Tactics", 341_166),),
+            650_000,
+            "Its content profile is similar to Alpha Tactics.",
+            (
+                "Its content profile is similar to Alpha Tactics.",
+                "It matches your preferred genres: Strategy.",
+                "It is available on preferred platforms: LINUX.",
+            ),
+            900_000,
+            420_827,
+            36_098,
+            100_000,
+            3_610,
+            424_437,
+            500_000,
+            -212_218,
+            212_219,
+            ("feedback_affinity", "played_adjustment"),
+        ),
+    ]
+
+
 def test_feedback_cannot_promote_zero_primary_content_candidate(item_factory, tmp_path) -> None:
     anchor = replace(
         item_factory(

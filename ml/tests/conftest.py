@@ -1,8 +1,16 @@
 from collections.abc import Callable
+from pathlib import Path
+from types import MappingProxyType
 
+import numpy as np
 import pytest
 
-from gamelens_recommender import CatalogItem, TaxonomyValue, canonical_snapshot
+from gamelens_recommender import (
+    CatalogItem,
+    LoadedCollaborativeArtifact,
+    TaxonomyValue,
+    canonical_snapshot,
+)
 
 
 @pytest.fixture
@@ -62,4 +70,54 @@ def snapshot(item_factory: Callable[..., CatalogItem]):
                 popularity=60,
             ),
         ]
+    )
+
+
+@pytest.fixture
+def hand_authored_collaborative_artifact() -> LoadedCollaborativeArtifact:
+    """Immutable CSR fixture authored independently of the collaborative trainer."""
+
+    def immutable(values: list[int], dtype: np.dtype[object]) -> np.ndarray:
+        payload = np.asarray(values, dtype=dtype).tobytes()
+        return np.frombuffer(payload, dtype=dtype)
+
+    item_slugs = (
+        "alpha-source",
+        "beta-candidate",
+        "gamma-empty",
+        "omega-candidate",
+        "zeta-source",
+    )
+    manifest = MappingProxyType(
+        {
+            "build": MappingProxyType({"id": "phase-3a-hand-authored-neighborhood"}),
+            "catalog_fingerprint": "a" * 64,
+            "interaction_fingerprint": "b" * 64,
+            "model": MappingProxyType({"name": "gamelens-item-item-cosine", "version": "1.0.0"}),
+        }
+    )
+    return LoadedCollaborativeArtifact(
+        root=Path("phase-3a-hand-authored-neighborhood"),
+        manifest=manifest,
+        item_slugs=item_slugs,
+        item_support=immutable([4, 3, 2, 3, 4], np.dtype("int64")),
+        neighbor_indices=immutable([1, 3, 4, 0, 4, 0, 4, 0, 1, 3], np.dtype("int32")),
+        neighbor_indptr=immutable([0, 3, 5, 5, 7, 10], np.dtype("int32")),
+        similarity_units=immutable(
+            [
+                577_350,
+                866_025,
+                500_000,
+                577_350,
+                577_350,
+                866_025,
+                577_350,
+                500_000,
+                577_350,
+                577_350,
+            ],
+            np.dtype("int32"),
+        ),
+        pair_support=immutable([2, 3, 2, 2, 2, 3, 2, 2, 2, 2], np.dtype("int64")),
+        slug_to_index=MappingProxyType({slug: index for index, slug in enumerate(item_slugs)}),
     )

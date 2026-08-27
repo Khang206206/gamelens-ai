@@ -400,6 +400,66 @@ def test_pre_truncation_scoring_preserves_stage_3_golden_contract(snapshot, tmp_
             ),
         ),
     ]
+    assert result.reason == "recommendations"
+    assert [
+        (
+            value.slug,
+            value.rank,
+            tuple((item.slug, item.name) for item in value.evidence.matching_genres),
+            tuple((item.slug, item.name) for item in value.evidence.matching_tags),
+            tuple((item.slug, item.name) for item in value.evidence.preferred_platforms),
+            tuple(
+                (item.slug, item.title, item.similarity_units)
+                for item in value.evidence.similar_selected_games
+            ),
+            value.evidence.popularity_percentile_units,
+            value.explanation_summary,
+            value.explanation_reasons,
+        )
+        for value in result.items
+    ] == [
+        (
+            "delta-command",
+            1,
+            (("strategy", "Strategy"),),
+            (),
+            (("linux", "LINUX"),),
+            (("alpha-tactics", "Alpha Tactics", 389_497),),
+            530_000,
+            "Its content profile is similar to Alpha Tactics.",
+            (
+                "Its content profile is similar to Alpha Tactics.",
+                "It matches your preferred genres: Strategy.",
+                "It is available on preferred platforms: LINUX.",
+            ),
+        ),
+        (
+            "beta-kingdom",
+            2,
+            (("strategy", "Strategy"),),
+            (),
+            (("linux", "LINUX"),),
+            (("alpha-tactics", "Alpha Tactics", 341_166),),
+            650_000,
+            "Its content profile is similar to Alpha Tactics.",
+            (
+                "Its content profile is similar to Alpha Tactics.",
+                "It matches your preferred genres: Strategy.",
+                "It is available on preferred platforms: LINUX.",
+            ),
+        ),
+        (
+            "gamma-drift",
+            3,
+            (),
+            (),
+            (),
+            (("alpha-tactics", "Alpha Tactics", 38_481),),
+            350_000,
+            "Its content profile is similar to Alpha Tactics.",
+            ("Its content profile is similar to Alpha Tactics.",),
+        ),
+    ]
 
 
 def test_taxonomy_preference_order_does_not_change_ranking(snapshot, tmp_path) -> None:
