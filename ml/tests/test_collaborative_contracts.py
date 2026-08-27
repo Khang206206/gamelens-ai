@@ -119,7 +119,8 @@ def test_scoring_config_freezes_identity_numeric_policy_bounds_and_ordering() ->
         config.max_neighbors_per_source,
         config.max_visited_edges,
         config.max_candidates,
-    ) == (5, 5, 10, 100, 1_000, 1_000)
+        config.max_source_state_entries,
+    ) == (5, 5, 10, 100, 1_000, 1_000, 100_000)
     assert config.source_precedence == ("dislike", "liked", "rating", "saved_game")
     assert config.aggregation == "available_similarity_mean_round_half_up"
     assert config.evidence_order == (
@@ -139,6 +140,7 @@ def test_scoring_config_freezes_identity_numeric_policy_bounds_and_ordering() ->
         {"version": "2.0.0"},
         {"score_scale": 100},
         {"max_query_sources": 11},
+        {"max_source_state_entries": 99_999},
         {"max_visited_edges": 999},
         {"aggregation": "float_mean"},
         {"candidate_order": ("artifact_index_asc",)},
@@ -190,24 +192,22 @@ def test_source_state_validates_immutable_positive_saved_and_dislike_inputs() ->
             id="noncanonical-saved-slug",
         ),
         pytest.param(
-            CollaborativeSourceState(disliked_slugs=("same-game", "same-game")),
-            id="duplicate-dislike",
+            CollaborativeSourceState(
+                positive_sources=(_positive_source(),)
+                * (COLLABORATIVE_SCORING_CONFIG.max_source_state_entries + 1)
+            ),
+            id="positive-source-input-bound",
         ),
         pytest.param(
             CollaborativeSourceState(
-                positive_sources=tuple(_positive_source(f"source-{suffix}") for suffix in "abcdef")
+                saved_game_slugs=("saved-source",)
+                * (COLLABORATIVE_SCORING_CONFIG.max_source_state_entries + 1)
             ),
-            id="positive-source-cap",
-        ),
-        pytest.param(
-            CollaborativeSourceState(
-                saved_game_slugs=tuple(f"saved-{suffix}" for suffix in "abcdef")
-            ),
-            id="saved-source-cap",
+            id="saved-source-input-bound",
         ),
     ],
 )
-def test_source_state_rejects_mutability_invalid_types_timestamps_slugs_and_caps(
+def test_source_state_rejects_mutability_invalid_types_timestamps_slugs_and_bounds(
     state: CollaborativeSourceState,
 ) -> None:
     with pytest.raises(CollaborativeScoringError) as captured:

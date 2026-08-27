@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from gamelens_recommender.collaborative_artifacts import MAX_GAME_SLUG_LENGTH
@@ -53,13 +53,14 @@ def _validate_slug_tuple(
     *,
     label: str,
     maximum: int,
+    require_distinct: bool = True,
     require_sorted: bool = False,
     code: str = "scoring_input_invalid",
 ) -> tuple[str, ...]:
     if type(value) is not tuple or len(value) > maximum:
         _contract_error(code, f"{label} must be a bounded immutable tuple")
     slugs = tuple(_validate_slug(slug, label=label, code=code) for slug in value)
-    if len(slugs) != len(set(slugs)):
+    if require_distinct and len(slugs) != len(set(slugs)):
         _contract_error(code, f"{label} must contain distinct game slugs")
     if require_sorted and slugs != tuple(sorted(slugs)):
         _contract_error(code, f"{label} must use canonical slug order")
@@ -103,6 +104,7 @@ class CollaborativeScoringConfig:
     max_visited_edges: int = 1_000
     max_candidates: int = 1_000
     max_disliked_slugs: int = MAX_UNIQUE_ITEMS
+    max_source_state_entries: int = MAX_UNIQUE_ITEMS
     source_precedence: tuple[str, ...] = ("dislike", "liked", "rating", "saved_game")
     aggregation: str = "available_similarity_mean_round_half_up"
     evidence_order: tuple[str, ...] = (
@@ -131,6 +133,7 @@ class CollaborativeScoringConfig:
             self.max_visited_edges,
             self.max_candidates,
             self.max_disliked_slugs,
+            self.max_source_state_entries,
             self.source_precedence,
             self.aggregation,
             self.evidence_order,
@@ -145,6 +148,7 @@ class CollaborativeScoringConfig:
             MAX_NEIGHBORS_PER_ITEM,
             1_000,
             1_000,
+            MAX_UNIQUE_ITEMS,
             MAX_UNIQUE_ITEMS,
             ("dislike", "liked", "rating", "saved_game"),
             "available_similarity_mean_round_half_up",
@@ -174,40 +178,35 @@ class CollaborativeSourceState:
         config.validate()
         if (
             type(self.positive_sources) is not tuple
-            or len(self.positive_sources) > config.max_positive_sources
+            or len(self.positive_sources) > config.max_source_state_entries
         ):
             _contract_error(
                 "scoring_input_invalid",
                 "Positive feedback sources must be a bounded immutable tuple",
             )
-        positive_slugs: list[str] = []
         for source in self.positive_sources:
-            if type(source) is not PositiveFeedbackSource or source.kind not in {
-                "liked",
-                "rating",
-            }:
+            if (
+                type(source) is not PositiveFeedbackSource
+                or type(source.kind) is not str
+                or source.kind not in ("liked", "rating")
+            ):
                 _contract_error(
                     "scoring_input_invalid",
                     "Positive feedback source kind is invalid",
                 )
-            positive_slugs.append(
-                _validate_slug(source.game_slug, label="Positive feedback source")
-            )
+            _validate_slug(source.game_slug, label="Positive feedback source")
             _validate_aware_datetime(source.occurred_at, label="Positive feedback occurrence")
-        if len(positive_slugs) != len(set(positive_slugs)):
-            _contract_error(
-                "scoring_input_invalid",
-                "Positive feedback source slugs must be distinct",
-            )
         _validate_slug_tuple(
             self.saved_game_slugs,
             label="Saved game sources",
-            maximum=config.max_saved_game_sources,
+            maximum=config.max_source_state_entries,
+            require_distinct=False,
         )
         _validate_slug_tuple(
             self.disliked_slugs,
             label="Disliked game exclusions",
             maximum=config.max_disliked_slugs,
+            require_distinct=False,
         )
 
 
@@ -258,6 +257,64 @@ class CollaborativeQueryContext:
                 "scoring_input_invalid",
                 "Canonical collaborative query sources must exclude dislikes",
             )
+
+
+def canonicalize_collaborative_query_sources(
+    state: CollaborativeSourceState,
+    config: CollaborativeScoringConfig = COLLABORATIVE_SCORING_CONFIG,
+) -> CollaborativeQueryContext:
+    """Select deterministic, bounded query sources without artifact access."""
+
+    config.validate()
+    if type(state) is not CollaborativeSourceState:
+        _contract_error(
+            "scoring_input_invalid",
+            "Collaborative source state has an invalid type",
+        )
+    state.validate(config)
+
+    disliked_slugs = tuple(sorted(set(state.disliked_slugs)))
+    disliked = set(disliked_slugs)
+    positive_by_slug: dict[str, PositiveFeedbackSource] = {}
+    positive_kind_order = {kind: position for position, kind in enumerate(config.source_precedence)}
+    for source in state.positive_sources:
+        if source.game_slug in disliked:
+            continue
+        current = positive_by_slug.get(source.game_slug)
+        if current is None:
+            positive_by_slug[source.game_slug] = source
+            continue
+        source_precedence = positive_kind_order[source.kind]
+        current_precedence = positive_kind_order[current.kind]
+        if source_precedence < current_precedence or (
+            source_precedence == current_precedence
+            and source.occurred_at.astimezone(UTC) > current.occurred_at.astimezone(UTC)
+        ):
+            positive_by_slug[source.game_slug] = source
+
+    ordered_positive = sorted(positive_by_slug.values(), key=lambda source: source.game_slug)
+    ordered_positive.sort(
+        key=lambda source: source.occurred_at.astimezone(UTC),
+        reverse=True,
+    )
+    selected_positive = ordered_positive[: config.max_positive_sources]
+    positive_sources = tuple(
+        CollaborativeQuerySource(game_slug=source.game_slug, kind=source.kind)
+        for source in selected_positive
+    )
+
+    saved_slugs = sorted(set(state.saved_game_slugs) - disliked - set(positive_by_slug))[
+        : config.max_saved_game_sources
+    ]
+    saved_sources = tuple(
+        CollaborativeQuerySource(game_slug=slug, kind="saved_game") for slug in saved_slugs
+    )
+    context = CollaborativeQueryContext(
+        sources=positive_sources + saved_sources,
+        disliked_slugs=disliked_slugs,
+    )
+    context.validate(config)
+    return context
 
 
 @dataclass(frozen=True)
