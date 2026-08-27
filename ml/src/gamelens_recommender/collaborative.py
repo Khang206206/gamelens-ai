@@ -2,9 +2,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from types import MappingProxyType
 from typing import Literal
 
-from gamelens_recommender.collaborative_artifacts import MAX_GAME_SLUG_LENGTH
+import numpy as np
+
+from gamelens_recommender.collaborative_artifacts import (
+    INDEX_DTYPE,
+    ITEM_SUPPORT_DTYPE,
+    MAX_GAME_SLUG_LENGTH,
+    PAIR_SUPPORT_DTYPE,
+    SIMILARITY_UNITS_DTYPE,
+    LoadedCollaborativeArtifact,
+)
 from gamelens_recommender.collaborative_training import MAX_NEIGHBORS_PER_ITEM
 from gamelens_recommender.config import SCORE_SCALE
 from gamelens_recommender.interaction_snapshot import MAX_PROFILES, MAX_UNIQUE_ITEMS
@@ -217,7 +227,7 @@ class CollaborativeQuerySource:
 
     def validate(self, *, code: str = "scoring_input_invalid") -> None:
         _validate_slug(self.game_slug, label="Collaborative query source", code=code)
-        if self.kind not in {"liked", "rating", "saved_game"}:
+        if type(self.kind) is not str or self.kind not in ("liked", "rating", "saved_game"):
             _contract_error(code, "Collaborative query source kind is invalid")
 
 
@@ -339,7 +349,11 @@ class CollaborativeSourceEdge:
         )
         if source_slug == candidate_slug:
             _contract_error("scoring_result_invalid", "Collaborative self-edge is invalid")
-        if self.source_kind not in {"liked", "rating", "saved_game"}:
+        if type(self.source_kind) is not str or self.source_kind not in (
+            "liked",
+            "rating",
+            "saved_game",
+        ):
             _contract_error("scoring_result_invalid", "Collaborative edge source kind is invalid")
         _validate_bounded_int(
             self.similarity_units,
@@ -353,6 +367,333 @@ class CollaborativeSourceEdge:
             minimum=2,
             maximum=MAX_PROFILES,
         )
+
+
+@dataclass(frozen=True)
+class CollaborativeNeighborhoodEdge:
+    source_slug: str
+    source_kind: CollaborativeQuerySourceKind
+    candidate_slug: str
+    item_support: int
+    similarity_units: int
+    pair_support: int
+
+    def validate(
+        self,
+        config: CollaborativeScoringConfig = COLLABORATIVE_SCORING_CONFIG,
+        *,
+        code: str = "scoring_result_invalid",
+    ) -> None:
+        config.validate()
+        source_slug = _validate_slug(self.source_slug, label="Neighborhood edge source", code=code)
+        candidate_slug = _validate_slug(
+            self.candidate_slug,
+            label="Neighborhood edge candidate",
+            code=code,
+        )
+        if source_slug == candidate_slug:
+            _contract_error(code, "Collaborative neighborhood self-edge is invalid")
+        if type(self.source_kind) is not str or self.source_kind not in (
+            "liked",
+            "rating",
+            "saved_game",
+        ):
+            _contract_error(code, "Collaborative neighborhood edge source kind is invalid")
+        _validate_bounded_int(
+            self.item_support,
+            label="Collaborative neighborhood candidate item support",
+            minimum=2,
+            maximum=MAX_PROFILES,
+            code=code,
+        )
+        _validate_bounded_int(
+            self.similarity_units,
+            label="Collaborative neighborhood similarity",
+            minimum=1,
+            maximum=config.score_scale,
+            code=code,
+        )
+        _validate_bounded_int(
+            self.pair_support,
+            label="Collaborative neighborhood pair support",
+            minimum=2,
+            maximum=MAX_PROFILES,
+            code=code,
+        )
+
+
+@dataclass(frozen=True)
+class CollaborativeSourceNeighborhood:
+    source: CollaborativeQuerySource
+    supported: bool
+    edges: tuple[CollaborativeNeighborhoodEdge, ...] = ()
+
+    def validate(
+        self,
+        config: CollaborativeScoringConfig = COLLABORATIVE_SCORING_CONFIG,
+        *,
+        code: str = "scoring_result_invalid",
+    ) -> None:
+        config.validate()
+        if type(self.source) is not CollaborativeQuerySource:
+            _contract_error(code, "Collaborative neighborhood source is invalid")
+        self.source.validate(code=code)
+        if type(self.supported) is not bool:
+            _contract_error(code, "Collaborative neighborhood support state is invalid")
+        if type(self.edges) is not tuple or len(self.edges) > config.max_neighbors_per_source:
+            _contract_error(code, "Collaborative neighborhood edges must be a bounded tuple")
+        if not self.supported and self.edges:
+            _contract_error(code, "Unsupported collaborative source cannot contain edges")
+        for edge in self.edges:
+            if type(edge) is not CollaborativeNeighborhoodEdge:
+                _contract_error(code, "Collaborative neighborhood contains an invalid edge")
+            edge.validate(config, code=code)
+            if edge.source_slug != self.source.game_slug or edge.source_kind != self.source.kind:
+                _contract_error(code, "Collaborative neighborhood edge source is inconsistent")
+        candidate_slugs = tuple(edge.candidate_slug for edge in self.edges)
+        if len(candidate_slugs) != len(set(candidate_slugs)):
+            _contract_error(code, "Collaborative neighborhood candidates must be distinct")
+        if self.edges != tuple(
+            sorted(
+                self.edges,
+                key=lambda edge: (
+                    -edge.similarity_units,
+                    -edge.pair_support,
+                    edge.candidate_slug,
+                ),
+            )
+        ):
+            _contract_error(code, "Collaborative neighborhood edge order is invalid")
+
+
+@dataclass(frozen=True)
+class CollaborativeNeighborhoodLookupDiagnostics:
+    query_source_count: int
+    supported_source_count: int
+    unsupported_source_count: int
+    zero_degree_source_count: int
+    visited_edge_count: int
+
+    def validate(
+        self,
+        config: CollaborativeScoringConfig = COLLABORATIVE_SCORING_CONFIG,
+        *,
+        code: str = "scoring_result_invalid",
+    ) -> None:
+        config.validate()
+        for label, value in (
+            ("Collaborative lookup query source count", self.query_source_count),
+            ("Collaborative lookup supported source count", self.supported_source_count),
+            ("Collaborative lookup unsupported source count", self.unsupported_source_count),
+            ("Collaborative lookup zero-degree source count", self.zero_degree_source_count),
+        ):
+            _validate_bounded_int(
+                value,
+                label=label,
+                minimum=0,
+                maximum=config.max_query_sources,
+                code=code,
+            )
+        _validate_bounded_int(
+            self.visited_edge_count,
+            label="Collaborative lookup visited edge count",
+            minimum=0,
+            maximum=config.max_visited_edges,
+            code=code,
+        )
+        if self.supported_source_count + self.unsupported_source_count != self.query_source_count:
+            _contract_error(code, "Collaborative lookup source counts are inconsistent")
+        if self.zero_degree_source_count > self.supported_source_count:
+            _contract_error(code, "Collaborative lookup zero-degree count is inconsistent")
+
+
+@dataclass(frozen=True)
+class CollaborativeNeighborhoodLookupResult:
+    neighborhoods: tuple[CollaborativeSourceNeighborhood, ...]
+    diagnostics: CollaborativeNeighborhoodLookupDiagnostics
+
+    @property
+    def supported_source_slugs(self) -> tuple[str, ...]:
+        return tuple(row.source.game_slug for row in self.neighborhoods if row.supported)
+
+    @property
+    def unsupported_source_slugs(self) -> tuple[str, ...]:
+        return tuple(row.source.game_slug for row in self.neighborhoods if not row.supported)
+
+    def validate(
+        self,
+        config: CollaborativeScoringConfig = COLLABORATIVE_SCORING_CONFIG,
+        *,
+        code: str = "scoring_result_invalid",
+    ) -> None:
+        config.validate()
+        if (
+            type(self.neighborhoods) is not tuple
+            or len(self.neighborhoods) > config.max_query_sources
+        ):
+            _contract_error(code, "Collaborative neighborhoods must be a bounded tuple")
+        for row in self.neighborhoods:
+            if type(row) is not CollaborativeSourceNeighborhood:
+                _contract_error(code, "Collaborative lookup contains an invalid neighborhood")
+            row.validate(config, code=code)
+        source_slugs = tuple(row.source.game_slug for row in self.neighborhoods)
+        if len(source_slugs) != len(set(source_slugs)):
+            _contract_error(code, "Collaborative lookup sources must be distinct")
+        if type(self.diagnostics) is not CollaborativeNeighborhoodLookupDiagnostics:
+            _contract_error(code, "Collaborative lookup diagnostics are invalid")
+        self.diagnostics.validate(config, code=code)
+        supported_count = sum(row.supported for row in self.neighborhoods)
+        zero_degree_count = sum(row.supported and not row.edges for row in self.neighborhoods)
+        visited_edge_count = sum(len(row.edges) for row in self.neighborhoods)
+        if (
+            self.diagnostics.query_source_count != len(self.neighborhoods)
+            or self.diagnostics.supported_source_count != supported_count
+            or self.diagnostics.unsupported_source_count
+            != len(self.neighborhoods) - supported_count
+            or self.diagnostics.zero_degree_source_count != zero_degree_count
+            or self.diagnostics.visited_edge_count != visited_edge_count
+        ):
+            _contract_error(code, "Collaborative lookup diagnostics do not match its rows")
+
+
+def _validate_lookup_artifact(
+    artifact: object,
+    config: CollaborativeScoringConfig,
+) -> LoadedCollaborativeArtifact:
+    code = "scoring_artifact_incompatible"
+    if type(artifact) is not LoadedCollaborativeArtifact:
+        _contract_error(code, "Collaborative lookup artifact has an invalid type")
+    item_count = len(artifact.item_slugs) if type(artifact.item_slugs) is tuple else 0
+    if not 1 <= item_count <= MAX_UNIQUE_ITEMS:
+        _contract_error(code, "Collaborative lookup item axis is invalid")
+    if not isinstance(artifact.neighbor_indices, np.ndarray):
+        _contract_error(code, "Collaborative lookup artifact arrays are incompatible")
+    edge_count = len(artifact.neighbor_indices)
+    array_contracts = (
+        (artifact.item_support, ITEM_SUPPORT_DTYPE, (item_count,)),
+        (artifact.neighbor_indices, INDEX_DTYPE, (edge_count,)),
+        (artifact.neighbor_indptr, INDEX_DTYPE, (item_count + 1,)),
+        (artifact.similarity_units, SIMILARITY_UNITS_DTYPE, (edge_count,)),
+        (artifact.pair_support, PAIR_SUPPORT_DTYPE, (edge_count,)),
+    )
+    if any(
+        not isinstance(value, np.ndarray)
+        or value.dtype != dtype
+        or value.shape != shape
+        or value.flags.writeable
+        for value, dtype, shape in array_contracts
+    ):
+        _contract_error(code, "Collaborative lookup artifact arrays are incompatible")
+    if (
+        int(artifact.neighbor_indptr[0]) != 0
+        or int(artifact.neighbor_indptr[-1]) != edge_count
+        or type(artifact.slug_to_index) is not MappingProxyType
+        or len(artifact.slug_to_index) != item_count
+    ):
+        _contract_error(code, "Collaborative lookup artifact index is incompatible")
+    if edge_count > item_count * config.max_neighbors_per_source:
+        _contract_error(code, "Collaborative lookup artifact edge count exceeds its bound")
+    return artifact
+
+
+def lookup_collaborative_neighborhoods(
+    artifact: LoadedCollaborativeArtifact,
+    context: CollaborativeQueryContext,
+    config: CollaborativeScoringConfig = COLLABORATIVE_SCORING_CONFIG,
+) -> CollaborativeNeighborhoodLookupResult:
+    """Copy the bounded CSR rows for canonical query sources into frozen records."""
+
+    config.validate()
+    if type(context) is not CollaborativeQueryContext:
+        _contract_error("scoring_input_invalid", "Collaborative query context has an invalid type")
+    context.validate(config)
+    artifact = _validate_lookup_artifact(artifact, config)
+    item_count = len(artifact.item_slugs)
+    edge_count = len(artifact.neighbor_indices)
+    neighborhoods: list[CollaborativeSourceNeighborhood] = []
+    visited_edge_count = 0
+    supported_source_count = 0
+    zero_degree_source_count = 0
+    for source in context.sources:
+        source_index = artifact.slug_to_index.get(source.game_slug)
+        if source_index is None:
+            neighborhoods.append(CollaborativeSourceNeighborhood(source=source, supported=False))
+            continue
+        if (
+            type(source_index) is not int
+            or not 0 <= source_index < item_count
+            or artifact.item_slugs[source_index] != source.game_slug
+        ):
+            _contract_error(
+                "scoring_artifact_incompatible",
+                "Collaborative source index is incompatible",
+            )
+        supported_source_count += 1
+        start = int(artifact.neighbor_indptr[source_index])
+        end = int(artifact.neighbor_indptr[source_index + 1])
+        if not 0 <= start <= end <= edge_count:
+            _contract_error(
+                "scoring_artifact_incompatible",
+                "Collaborative source row boundaries are incompatible",
+            )
+        row_edge_count = end - start
+        if row_edge_count > config.max_neighbors_per_source:
+            _contract_error(
+                "scoring_artifact_incompatible",
+                "Collaborative source row exceeds its edge bound",
+            )
+        visited_edge_count += row_edge_count
+        if visited_edge_count > config.max_visited_edges:
+            _contract_error(
+                "scoring_artifact_incompatible",
+                "Collaborative lookup exceeds its visited-edge bound",
+            )
+        if row_edge_count == 0:
+            zero_degree_source_count += 1
+        edges: list[CollaborativeNeighborhoodEdge] = []
+        for position in range(start, end):
+            candidate_index = int(artifact.neighbor_indices[position])
+            if not 0 <= candidate_index < item_count:
+                _contract_error(
+                    "scoring_artifact_incompatible",
+                    "Collaborative neighbor index is incompatible",
+                )
+            edge = CollaborativeNeighborhoodEdge(
+                source_slug=source.game_slug,
+                source_kind=source.kind,
+                candidate_slug=artifact.item_slugs[candidate_index],
+                item_support=int(artifact.item_support[candidate_index]),
+                similarity_units=int(artifact.similarity_units[position]),
+                pair_support=int(artifact.pair_support[position]),
+            )
+            edge.validate(config, code="scoring_artifact_incompatible")
+            edges.append(edge)
+        edges.sort(
+            key=lambda edge: (
+                -edge.similarity_units,
+                -edge.pair_support,
+                edge.candidate_slug,
+            )
+        )
+        row = CollaborativeSourceNeighborhood(
+            source=source,
+            supported=True,
+            edges=tuple(edges),
+        )
+        row.validate(config, code="scoring_artifact_incompatible")
+        neighborhoods.append(row)
+    result = CollaborativeNeighborhoodLookupResult(
+        neighborhoods=tuple(neighborhoods),
+        diagnostics=CollaborativeNeighborhoodLookupDiagnostics(
+            query_source_count=len(context.sources),
+            supported_source_count=supported_source_count,
+            unsupported_source_count=len(context.sources) - supported_source_count,
+            zero_degree_source_count=zero_degree_source_count,
+            visited_edge_count=visited_edge_count,
+        ),
+    )
+    result.validate(config)
+    return result
 
 
 @dataclass(frozen=True)
