@@ -25,10 +25,11 @@ separate contribution consent and monotonic collaborative source revision.
 The 54-test disposable-PostgreSQL suite passes, including populated legacy
 upgrade, no fabricated contribution consent, and concurrent snapshot tests.
 
-The current cross-stack evidence passes 193 fast API, 105 ML, 54 PostgreSQL, and
-76 web tests. The 38-case exact-host Docker browser matrix passes in 59.6
-seconds without retry: 28
-Chromium, 5 Firefox, and 5 WebKit. The rebuilt no-cache
+The latest Stage 5 Phase 3 ML gate passes 256 tests with one Windows symlink-
+capability skip. The most recent applicable cross-stack evidence remains 200
+fast API, 54 PostgreSQL, and 76 web tests. The 38-case exact-host Docker browser
+matrix passes in 59.6 seconds without retry: 28 Chromium, 5 Firefox, and 5
+WebKit. The rebuilt no-cache
 `gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e`
 removes unused Debian `perl-base` after all install steps, resolving its earlier
 two critical and two high findings. Runtime imports, `pip check`, and all 49
@@ -219,6 +220,12 @@ boundary. It contains item-level aggregate support and neighborhoods, not a
 user matrix or contributor lineage. No database table or serving reference was
 added: protected live build/contributor lineage, invalidation, and retirement
 remain required before a live-derived bundle can activate.
+
+Phase 3 is entirely inside the ML package. Canonical source selection, sparse
+candidate scoring, and exact-row base/affinity materialization add no table,
+migration, repository query, contributor row, serving reference, or new data-
+retention obligation. Phase 4 hybrid math will consume stable-slug component
+records; Phase 5 remains responsible for lifecycle-aware database readiness.
 
 ## Index and constraint plan
 

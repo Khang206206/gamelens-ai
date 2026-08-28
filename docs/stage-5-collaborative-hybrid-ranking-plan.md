@@ -5,7 +5,9 @@
 - **Document status:** Engineering plan ready on 2026-08-19; external-source
   preflight verified on 2026-08-23; Phase 0–1 first-party audit foundation
   verified on 2026-08-24; Phase 2 offline collaborative artifact foundation
-  verified on 2026-08-25. Scoring and runtime activation have not started.
+  verified on 2026-08-25; Phase 3 pure collaborative scoring and exact-row
+  handoff verified on 2026-08-28. Phase 4 hybrid policy and runtime activation
+  have not started.
 - **Stage 4 prerequisite:** Complete and verified on 2026-08-13.
 - **Planning and target implementation branch:**
   `feat/stage-5-collaborative-and-hybrid-ranking`
@@ -15,11 +17,11 @@
   independently observable.
 
 Sections 1–20 remain the forward-looking engineering plan except where the
-Phase 0–2 slices are explicitly marked verified. Section 21 records only
+Phase 0–3 slices are explicitly marked verified. Section 21 records only
 measured implementation decisions. Section 22 is a provisional Stage 6
 handoff, and Section 23 remains pending until every acceptance gate passes.
-The offline artifact foundation does not make a Stage 5 collaborative runtime
-capability available.
+The Phase 3 scorer is an ML-only pure component. It does not make a Stage 5
+hybrid API/runtime capability available.
 
 ## 1. Context
 
@@ -31,11 +33,13 @@ bounded recommendation-generation events. The implemented contracts and
 verification evidence are recorded in the
 [Stage 4 plan](stage-4-feedback-persistence-plan.md).
 
-The current recommender is not collaborative. Model
+The currently served recommender is not collaborative. Model
 `gamelens-content-tfidf/1.0.0` learns catalog-level TF-IDF features, and policy
 `gamelens-feedback-adjustment/1.0.0` applies a deterministic per-request
 content affinity plus dislike and played rules. Neither component learns
-cross-user interaction patterns.
+cross-user interaction patterns. The ML package now also exposes a pure
+artifact-backed collaborative candidate scorer, but no API orchestration or
+hybrid policy consumes it yet.
 
 Stage 4 also leaves four constraints that control Stage 5:
 
@@ -666,7 +670,7 @@ interaction signal.
 
 ## 6. Target Repository Structure
 
-Phase 0–2 names marked `(+ implemented)` are as built. Later-phase illustrative
+Phase 0–3 names marked `(+ implemented)` are as built. Later-phase illustrative
 entries remain `(+ planned)`; generated snapshots and artifacts remain ignored.
 
 ```text
@@ -708,9 +712,10 @@ entries remain `(+ planned)`; generated snapshots and artifacts remain ignored.
 |   |   |-- interaction_snapshot.py                     (+ implemented)
 |   |   |-- collaborative_artifacts.py                  (+ implemented)
 |   |   |-- collaborative_training.py                   (+ implemented)
-|   |   |-- collaborative.py                            (+ planned)
+|   |   |-- collaborative.py                            (+ implemented)
 |   |   `-- hybrid.py                                   (+ planned)
-|   `-- tests/                                          (* changed)
+|   `-- tests/
+|       `-- test_phase3_handoff.py                      (+ implemented)
 |-- .env.example                                        (* changed)
 |-- docker-compose.yml                                  (* changed)
 `-- Makefile                                            (* changed)
@@ -959,24 +964,340 @@ without introducing identity or opaque executable serialization.
 
 ## 10. Implementation Phase 3: Pure Collaborative Candidate Scoring
 
+**Implementation status:** Complete for the ML-only scorer/materialization
+boundary and verified 2026-08-28. Hybrid policy, API orchestration, lifecycle
+readiness, response/event fields, and UI activation remain later phases.
+
 ### Objective
 
 Convert bounded source-game context and the validated artifact into
-deterministic collaborative candidates and reconstructible evidence.
+deterministic collaborative candidates and reconstructible evidence. Deliver
+the work as independently testable slices so source selection, CSR lookup,
+aggregation, exclusions, and Stage 3/4 materialization regressions can be
+isolated without involving HTTP, PostgreSQL, lifecycle readiness, or hybrid
+weights.
+
+### Phase Boundary and Dependency Order
+
+Phase 3 is an ML-package boundary only. It receives an already validated
+`LoadedCollaborativeArtifact`, stable game slugs, and immutable source/exclusion
+state. It does not load a path, inspect consent, query a database, know a user
+identity, choose a serving fallback, apply hybrid or played weights, truncate to
+request top-K, map an API response, or write an event.
+
+The implementation is split along the following dependency graph:
+
+```text
+3A contracts and characterization goldens
+ |-- 3B query-source canonicalization -> 3C CSR edge lookup -> 3D pure scorer
+ `-- 3E exact-row base materializer -> 3F exact-row affinity materializer
+                                      \
+                         3D + 3F -> 3G ML-only handoff and hardening
+```
+
+After 3A, the scoring branch (3B–3D) and materialization branch (3E–3F) may be
+implemented in parallel. Work within each branch remains sequential. Phase 4
+may not start until 3G passes, and no slice may hide a failing earlier-slice
+test behind orchestration fallback.
+
+### Completed Slice Record
+
+| Slice | Implemented boundary | Commit |
+| --- | --- | --- |
+| 3A | Frozen scoring contracts and Stage 3/4 characterization goldens | `73b4528` |
+| 3B | Canonical immutable query-source selection | `7a57dcd` |
+| 3C | Bounded sparse CSR neighborhood lookup | `5e25a64` |
+| 3D | Pure aggregation, exclusions, evidence, diagnostics, and typed outcomes | `844c695` |
+| 3E | Exact-row base/content/platform/popularity materialization | `a5b755c` |
+| 3F | Exact-row feedback-affinity materialization | `d0b6676` |
+| 3G | Public handoff boundary, end-to-end fixture trace, and hardening | `fa0ebd0` |
+
+The final focused Phase 3 regression set passes 154 tests. The complete ML
+suite passes 256 tests with one symbolic-link capability skip on the current
+Windows host. Ruff lint, Ruff format check, privacy-string review, mutation and
+permutation cases, resource bounds, and `git diff --check` pass. No dependency,
+artifact format, API, database, event, response, fallback, or UI contract
+changed in Phase 3.
+
+### As-Built Contract Freeze from Slice 3A
+
+Slice 3A adopted the following contract. These values are explicit production
+defaults protected by the Phase 3 tests rather than incidental behavior:
+
+1. Query-source kinds are `liked`, `rating`, and `saved_game`. Active dislikes
+   remove a slug from every source kind and remain candidate exclusions.
+2. Duplicate-source precedence is dislike, then liked, then qualifying rating,
+   then saved game. Positive feedback is ordered by occurrence time descending
+   and slug ascending, preserving the existing most-recent-five limit. Saved
+   games have no runtime recency contract, are ordered by slug, and retain the
+   existing five-game limit. After cross-kind collapse, the total scorer input
+   is therefore bounded by ten sources.
+3. A source absent from the artifact item axis is unsupported. A retained
+   source row with no neighbor edges is supported but has no edge. Neither case
+   fabricates a zero-similarity edge.
+4. A candidate score is the round-half-up integer mean of all available stored
+   `similarity_units` from supported query sources. The calculation uses integer
+   or `Decimal` arithmetic only; it never converts stored units back through a
+   binary float. Missing edges are absent from both numerator and denominator.
+5. Every contributing edge is returned because the source count is already
+   bounded. Edge evidence is ordered by similarity units descending, pair
+   support descending, then source slug ascending. This preserves exact score
+   reconstruction and avoids a separate lossy evidence cap; Phase 6 may present
+   a smaller display-only subset without changing scorer evidence.
+6. Query-source candidates are excluded first, then explicit dislikes. The
+   scorer does not apply content eligibility, played state, wishlist state,
+   hybrid weights, or top-K.
+7. Candidate ordering is collaborative score units descending, then stable slug
+   ascending. Artifact row/index order is never an ordering contract. With at
+   most ten sources and one hundred retained neighbors per source, visited
+   edges and returned candidates are each bounded by 1,000 before deduplication
+   and exclusions.
+8. Expected support outcomes are typed result reasons:
+   `recommendations`, `no_query_sources`, `no_supported_sources`,
+   `no_candidate_edges`, and `no_eligible_candidates`. Invalid input or an
+   incompatible supposedly validated artifact is a typed contract error and
+   returns no partial candidates. The scorer never performs fallback itself.
+9. Frozen output records include canonical query sources, supported and
+   unsupported source slugs, each candidate's score and item support, every
+   contributing source edge with pair support, and bounded aggregate counters
+   for sources, visited edges, candidates before exclusions, exclusions, and
+   returned candidates. They contain no timestamp beyond what source selection
+   needs, user/cohort identity, mutable array/view, prose, or HTTP field.
+
+The implemented production records are `CollaborativeQuerySource`,
+`CollaborativeSourceEdge`, `CollaborativeCandidateScore`,
+`CollaborativeScoringDiagnostics`, and `CollaborativeScoringResult`, colocated
+with the scorer in `ml/src/gamelens_recommender/collaborative.py`. Slice 3A
+froze these names together with their field meaning, bounds, reason taxonomy,
+numeric policy, and ordering before 3B.
+
+### Slice 3A: Contracts, Characterization, and Test Harness
+
+#### Work
+
+1. Add frozen input/output/config types and one typed scorer-contract error.
+   Validate tuple ownership, canonical slugs, source kinds, timezone-aware
+   feedback timestamps, integer bounds, and configuration identity before any
+   sparse traversal.
+2. Add a tiny hand-authored immutable neighborhood fixture whose row pointers,
+   neighbor indices, similarities, and pair supports are independent of the
+   trainer. Keep a second test path that uses the real Phase 2 fixture bundle.
+3. Record characterization goldens for the unchanged
+   `ContentRanker.score_candidates()`, `ContentRanker.rank()`, and
+   `FeedbackRanker.rank()` paths before refactoring them.
+4. Map each contract field and reason to a focused test name so later failures
+   identify the owning slice.
+
+#### Checkpoint
+
+- Schema/config tests and Stage 3/4 characterization tests pass with no scorer
+  algorithm, API change, artifact-format change, or new dependency.
+- The hand-authored fixture catches CSR off-by-one and ordering bugs without
+  relying on the fitting code to reproduce the same mistake.
+
+### Slice 3B: Query-Source Canonicalization
+
+#### Work
+
+1. Implement one pure source-selection function over immutable positive
+   feedback sources, saved-game slugs, and disliked slugs.
+2. Apply precedence, recency, per-kind caps, cross-kind deduplication, and the
+   final stable order exactly once. The scorer consumes this canonical result
+   rather than reimplementing source policy.
+3. Preserve the existing Stage 4 liked/rating semantics; extracting a reusable
+   helper may not change `FeedbackRanker.rank()` output.
+
+#### Focused Verification
+
+- Permutations and duplicate representations produce the same canonical tuple.
+- Equal timestamps use slug ordering; timezone offsets representing the same
+  instant compare consistently.
+- Dislike precedence, liked-over-rating, feedback-over-saved, five-plus-five
+  caps, empty input, invalid slugs/types/timestamps, and input immutability are
+  covered without loading an artifact.
+
+#### Checkpoint
+
+- Given only input source state, a failure can be diagnosed without CSR or
+  ranking code, and every downstream test uses the same canonicalizer.
+
+### Slice 3C: Sparse Neighborhood Lookup
+
+#### Work
+
+1. Resolve each supported source through `slug_to_index`, slice exactly one CSR
+   row through `neighbor_indptr`, and copy the matching candidate slug,
+   similarity units, pair support, and support metadata into frozen edge
+   records.
+2. Treat unsupported source and supported zero-degree row as different states.
+3. Count visited edges before aggregation and assert the bound derived from the
+   validated artifact's per-row neighbor limit. Do not build a dense item-item
+   vector or depend on physical neighbor-index order.
+
+#### Focused Verification
+
+- First, middle, last, and empty CSR rows return the exact expected edges.
+- Unsupported slugs perform no row read; index zero and final `indptr` boundary
+  are covered explicitly.
+- Edge similarity and pair-support values remain aligned after evidence sort.
+- Repeated/interleaved calls cannot mutate artifact arrays, mappings, or
+  returned results.
+
+#### Checkpoint
+
+- Raw edge lists and counters match the hand-authored fixture before any mean,
+  exclusion, candidate ordering, or content materialization exists.
+
+### Slice 3D: Aggregation, Exclusions, Evidence, and Typed Outcomes
+
+#### Work
+
+1. Add `CollaborativeScorer` over the 3B canonical sources and 3C edge stream.
+   Aggregate candidate buckets in one bounded pass and finalize them only after
+   all supported source rows have been visited.
+2. Compute the fixed-point mean once from the full contributing-edge sum and
+   count. Return all contributing edges in their explicit evidence order.
+3. Exclude every canonical query source and dislike before return, apply the
+   frozen candidate sort, and populate disjoint diagnostic counters using the
+   documented source-before-dislike exclusion precedence.
+4. Return the most specific no-support reason reached. Invalid contracts raise
+   the typed error before traversal; expected sparsity returns a normal result.
+
+#### Focused Verification
+
+- Hand-calculated one-source, multi-source, missing-edge, half-unit rounding,
+  equal-score, and pair-support-tie cases match exact integer units and order.
+- Each score is reconstructed from every returned edge; no returned edge is
+  non-contributing and no contributing edge is omitted.
+- Permuted equivalent inputs, source-row order, and candidate discovery order
+  produce equal results.
+- A source cannot recommend itself, a dislike cannot re-enter through another
+  source, and filtering happens before the result is handed to top-K logic.
+- Empty sources, all-unsupported sources, zero-degree sources, all-excluded
+  candidates, the 1,000-edge boundary, and one-over-limit input each reach the
+  exact result reason or contract error.
+
+#### Checkpoint
+
+- The pure collaborative scorer is complete and testable using only the
+  collaborative artifact. It has no import from API code, SQLAlchemy, content
+  ranking, feedback blending, or hybrid policy.
+
+### Slice 3E: Exact-Row Base Materialization
+
+#### Work
+
+1. Add a narrowly named `ContentRanker` entry point for a canonical bounded set
+   of exact candidate slugs. Factor shared base-component calculation so the
+   existing full-catalog path and the new exact-row path cannot drift.
+2. Compute content similarity only for requested rows, plus the existing
+   platform, popularity, and base units. Return a `BaseCandidateScore` even when
+   content units are zero.
+3. Keep the zero-content eligibility filter solely in the existing
+   `score_candidates()`/`rank()` path. The exact-row method does not exclude,
+   sort for final ranking, blend signals, or materialize prose.
+4. Reject duplicate, noncanonical, oversized, or missing slugs with a typed
+   incompatibility/contract error rather than returning fabricated components.
+
+#### Focused Verification
+
+- Materializing the ordinary content-supported slug set reproduces every
+  existing base component exactly.
+- A known zero-content row receives zero content evidence plus exact platform,
+  popularity, and base units.
+- Empty, one-row, last-row, mixed-support, unknown, duplicate, cap, and input-
+  permutation cases are deterministic and bounded.
+- Existing Stage 3 candidate membership, scores, order, evidence, reason, and
+  public wrapper remain byte-for-byte/value-for-value equivalent to the 3A
+  characterization goldens.
+
+#### Checkpoint
+
+- Collaborative-only catalog rows can be scored without weakening Stage 3
+  eligibility and any regression is local to `ranking.py` tests.
+
+### Slice 3F: Exact-Row Affinity Materialization
+
+#### Work
+
+1. Extract the existing positive-profile and affinity calculation behind one
+   pure exact-slug helper owned by the feedback-ranking module. Reuse the 3B
+   positive-source selection semantics rather than adding another precedence
+   path.
+2. Return raw affinity units and whether an affinity profile is active for each
+   requested slug. Do not apply base/affinity weights, played adjustment,
+   exclusions, final ordering, top-K, explanation prose, or hybrid logic.
+3. Make the existing `FeedbackRanker.rank()` delegate to the shared calculation
+   while preserving its public result and policy identity.
+
+#### Focused Verification
+
+- No positive profile returns inactive/zero affinity without inventing support.
+- Liked, qualifying-rating, recency-cap, source exclusion, zero-affinity, and
+  exact-row subset cases match the pre-refactor Stage 4 units.
+- Existing Stage 4 items, scores, order, evidence, adjustment reasons, played
+  behavior, wishlist neutrality, and result reasons remain exactly equal to the
+  3A characterization goldens.
+
+#### Checkpoint
+
+- Base and affinity materialization can be debugged independently, and Phase 4
+  will not need to reach into `FeedbackRanker.rank()` internals.
+
+### Slice 3G: ML-Only Handoff and Hardening
+
+#### Work
+
+1. Add one integration test that builds and production-loads the Phase 2
+   fixture artifact, selects sources, scores collaborative candidates, checks
+   catalog-fingerprint compatibility with the content artifact, and
+   materializes the resulting exact slugs through 3E and 3F.
+2. Prove a collaborative-only candidate can reach the Phase 4 handoff with
+   exact collaborative, content, platform, popularity, base, and affinity units
+   plus explicit empty content evidence where appropriate. Phase 4, not the
+   scorer, owns candidate-union origin, weights, played adjustment, final rank,
+   and fallback.
+3. Export only the stable public Phase 3 types/functions, document their
+   complexity and purity boundary, and keep internal CSR helpers private.
+4. Run mutation, permutation, privacy-string, resource-bound, full ML, Ruff,
+   format, and Stage 1–4 regression gates. Record measured test evidence only
+   after all gates pass.
+
+#### Checkpoint
+
+- One deterministic fixture trace can be followed from canonical query sources
+  through exact CSR offsets, candidate sums/counts, exclusions, final
+  collaborative order, and specified-row components without HTTP or fallback.
+- `ml/src/gamelens_recommender/collaborative.py` has no dependency on content or
+  feedback rankers; the integration test joins their outputs by stable slug.
+
+### Debugging Ownership
+
+| Symptom | Owning slice and first evidence to inspect |
+| --- | --- |
+| Wrong source present, missing, or capped | 3B canonical source tuple and precedence tests |
+| Wrong neighbor, similarity, or pair support | 3C source index, `indptr` slice, and raw edge list |
+| Wrong collaborative units, order, or exclusion | 3D edge sum/count, exclusion counters, and candidate golden |
+| Existing content result changed | 3E Stage 3 characterization diff |
+| Existing personalized result changed | 3F Stage 4 characterization diff |
+| Collaborative-only slug cannot be joined | 3G catalog fingerprint and exact-row handoff test |
+
+Pure code returns typed reasons and bounded counters but emits no log itself.
+Later API orchestration may log only those aggregate fields. It must not dump
+source lists, artifact arrays, interaction state, or user identity while
+diagnosing a failure.
 
 ### Work
 
-1. Define immutable input/output schemas independent of HTTP and SQLAlchemy.
-2. Canonicalize and cap positive feedback and saved-game query sources.
-3. Add the pure specified-row base/affinity materializer required to represent
-   collaborative-only candidates without changing Stage 3 eligibility.
-4. Resolve sparse neighbor edges, aggregate available similarities, and retain
-   bounded top source evidence per candidate.
-5. Exclude all query sources and disliked games before candidate return.
-6. Represent unsupported source, unsupported candidate, and no-edge cases
-   explicitly rather than assigning fabricated similarity.
-7. Apply fixed-point quantization and stable ordering.
-8. Add pure golden, property, boundary, and mutation-safety tests.
+1. Complete slices 3A through 3G in dependency order and keep each checkpoint
+   green before the next dependent slice starts.
+2. Use parametrized/permutation property tests with the existing dependencies;
+   do not add Hypothesis or another package solely for this phase.
+3. Keep commits aligned to slice boundaries. Do not combine CSR aggregation,
+   Stage 3/4 refactors, and Phase 4 hybrid math in one change.
+4. Run the focused new scorer suite after 3B–3D, the existing recommender suite
+   after 3E, the existing feedback suite after 3F, then the complete ML and
+   lint/format gates at 3G.
 
 ### Verification
 
@@ -985,19 +1306,32 @@ deterministic collaborative candidates and reconstructible evidence.
 - Every score is recomputable from returned source edges.
 - A source cannot recommend itself, and a dislike cannot re-enter through a
   second source.
-- A collaborative-only candidate exposes zero/empty content evidence where
-  appropriate plus exact platform, popularity, base, affinity, and origin
-  fields; the existing ranker wrappers remain unchanged.
+- A collaborative-only candidate reaches the Phase 4 handoff with zero/empty
+  content evidence where appropriate plus exact platform, popularity, base,
+  affinity, and origin-ready membership; Phase 4 alone assigns union origin.
+  The existing ranker wrappers remain unchanged.
 - Empty/unsupported context returns a typed no-support result without mutating
   the artifact or falling back inside the scorer.
+- Stored similarity units are never round-tripped through float, every sparse
+  traversal and output is bounded, and a deterministic trace identifies which
+  slice owns any mismatch.
 
 ### Exit Criteria
 
 - The scorer is deterministic, bounded, identity-free, and independently
   testable.
 - Candidate evidence is sufficient for the hybrid policy and response mapper.
+- Exact-row base and affinity seams preserve all Stage 3/4 public behavior and
+  permit zero-content collaborative candidates without changing eligibility.
+- Focused Phase 3 tests, the complete ML suite, Ruff, format, privacy review,
+  and all applicable Stage 1–4 regression gates pass with no new dependency.
+- Phase 3 contains no API activation, lifecycle readiness, fallback, response,
+  event, UI, or ranking-quality claim; those remain later phases.
 
 ## 11. Implementation Phase 4: Versioned Hybrid Ranking Policy
+
+**Implementation status:** Not started. Phase 3 now supplies the stable scorer,
+exact-row base, and exact-row affinity inputs required by this phase.
 
 ### Objective
 
@@ -1616,9 +1950,9 @@ infrastructure docs explicit until Section 23 is populated from passing gates.
 
 ## 21. Implementation-Time Decisions
 
-Phase 0–2 source preflight, first-party snapshot, consent/revision, fixture,
-aggregate audit, sparse trainer, and offline artifact decisions are
-implemented. They do not activate collaborative scoring, a hybrid policy,
+Phase 0–3 source preflight, first-party snapshot, consent/revision, fixture,
+aggregate audit, sparse trainer, offline artifact, and pure scoring decisions
+are implemented. They do not activate a hybrid policy, API readiness,
 response/event changes, live build, or a product contribution flow.
 
 ### As-Built Phase 0–1 First-Party Decisions
@@ -1726,6 +2060,57 @@ response/event changes, live build, or a product contribution flow.
     runnable on capable systems. All 200 API unit tests, Ruff, and
     `git diff --check` pass.
 
+### As-Built Phase 3 Pure Scoring Decisions
+
+1. Query sources are immutable stable-slug records with kinds `liked`,
+   `rating`, and `saved_game`. Dislikes dominate all positive forms;
+   liked-over-rating and feedback-over-saved precedence, recency/slug ordering,
+   and five-positive plus five-saved caps are applied once by
+   `canonicalize_collaborative_query_sources()`.
+2. Sparse lookup resolves only canonical source rows through `slug_to_index`
+   and exact `neighbor_indptr` slices. Unsupported sources and supported
+   zero-degree rows remain distinct. At most 10 source rows, 100 neighbors per
+   row, 1,000 visited edges, and 1,000 returned candidates are permitted.
+3. `CollaborativeScorer` computes each candidate as the round-half-up integer
+   mean of all present stored `similarity_units`. Missing edges do not enter the
+   numerator or denominator. Source and dislike exclusions precede return;
+   candidates order by collaborative units descending then slug ascending.
+4. Results carry policy identity, canonical source partitions, exact candidate
+   units/item support, every contributing edge with pair support, bounded
+   diagnostics, and typed reasons for recommendations, empty input,
+   unsupported sources, no edges, and all-excluded candidates. Contract errors
+   return no partial result and the scorer performs no fallback.
+5. `ContentRanker.materialize_base_candidates()` scores at most 1,000 exact
+   catalog rows and preserves zero-content candidates with exact platform,
+   popularity, and base units. Existing `score_candidates()` eligibility,
+   ranking, evidence, and Stage 3 wrapper behavior remain unchanged.
+6. `FeedbackRanker.materialize_affinity_candidates()` returns exact affinity
+   units and profile-active state for the same bounded slug seam. The existing
+   Stage 4 `rank()` path delegates to the shared calculation without changing
+   items, ordering, played adjustment, explanations, policy identity, or
+   result reasons.
+7. The production-loaded fixture trace uses source `emberfall-tactics`, exact
+   CSR offset range `[4, 8)`, and four deterministic candidates. The
+   collaborative-only `starbound-couriers` handoff has collaborative/content/
+   platform/popularity/base/affinity units
+   `428571/0/1000000/599117/159912/0` plus empty genre, tag, and selected-game
+   content evidence. Catalog fingerprints match before outputs are joined by
+   stable slug.
+8. Stable Phase 3 contracts are exported from the package root. Internal CSR
+   lookup helpers are not root exports. Complexity and purity boundaries are
+   recorded in code; `collaborative.py` imports neither content nor feedback
+   rankers and performs no I/O, identity lookup, weights, played adjustment,
+   top-K, fallback, prose, or HTTP mapping.
+9. Slice commits are `73b4528`, `7a57dcd`, `5e25a64`, `844c695`, `a5b755c`,
+   `d0b6676`, and `fa0ebd0`. The focused Phase 3 set passes 154 tests; the full
+   ML suite passes 256 with one Windows symbolic-link capability skip. Ruff
+   lint/format, mutation, permutation, privacy-string, resource-bound, and
+   Stage 3/4 characterization gates pass with no new dependency.
+10. Candidate union origin, hybrid weights, played application after hybrid
+    blending, final rank, serving fallback, readiness, lifecycle validation,
+    API/event schemas, UI evidence, and ranking-quality claims remain outside
+    Phase 3 and are not implied by these fixture results.
+
 ### As-Built External-Source Decisions
 
 1. Source kind is `external_snapshot`; report schema is 1; manifest schema is
@@ -1788,8 +2173,9 @@ The remaining implementation must resolve and record:
    validity horizon, requires a live revision callback, and promotes immutably.
 3. Actual approved live cohort/exclusion aggregates and the explicit decision
    to activate live build or remain fixture-only.
-4. Query-source precedence/cap, collaborative aggregation formula, evidence
-   cap, candidate union, materialization, and ordering keys.
+4. Candidate-union origin, hybrid ordering, and exclusion ownership across the
+   combined base/affinity/collaborative set. Query-source selection, raw
+   collaborative ordering, and exact-row materialization are frozen in Phase 3.
 5. Hybrid policy identity, active-component gates, weights, rounding, played
    order, explanation facts, and exact Stage 4 equivalence evidence.
 6. Component readiness states, fallback reasons, database checks, restart,
@@ -1836,9 +2222,9 @@ to verified facts only.
 
 ## 23. Verified Completion Record
 
-Pending complete Stage 5 implementation. The verified Phase 0–2 source/audit
-and offline-artifact slices are recorded in Section 21; they are not a Stage 5
-completion claim.
+Pending complete Stage 5 implementation. The verified Phase 0–3 source/audit,
+offline-artifact, and pure-scoring slices are recorded in Section 21; they are
+not a Stage 5 completion claim.
 
 When every Section 19 gate passes, this section must record the implementation
 commit/PR, runtime and lock versions, migration head, consent/lifecycle

@@ -168,13 +168,14 @@ result identity. The event is audit/correlation data for server generation,
 not a standalone replay snapshot, impression, click, conversion, or positive
 label.
 
-## Planned Stage 5 collaborative and hybrid layer
+## Implemented Stage 5 collaborative foundation and planned hybrid layer
 
 The detailed
 [Stage 5 engineering plan](stage-5-collaborative-hybrid-ranking-plan.md) is
-ready, but none of the behavior in this section is implemented yet. Current
-runtime ranking remains the Stage 3 content model plus the Stage 4 feedback
-policy described above.
+being implemented in phases. Phase 0–3 source governance, offline artifact, and
+pure collaborative scoring/materialization boundaries are complete. Current
+API runtime ranking remains the Stage 3 content model plus the Stage 4 feedback
+policy described above; Phase 4 hybrid composition has not started.
 
 Stage 5 first audits whether an interaction source is authorized, sufficiently
 supported, catalog-aligned, and retention-aware. Existing Stage 4 storage
@@ -185,12 +186,19 @@ at least 7 when no dislike overrides them collapse to one binary user-game
 edge. Views, played-only, wishlist-only, unknown state, low ratings, dislikes,
 and recommendation events do not become positive matrix entries.
 
-The baseline is deterministic sparse item-item cosine with minimum user, item,
-and pair support, zero diagonal, bounded top-neighbor pruning, fixed-point
-similarity, and stable-slug ties. It is deliberately not matrix factorization,
-deep learning, or an online learner. A separate checksum-covered artifact
-stores item-level neighbors and aggregate support, never the user matrix,
-internal IDs, credentials, or raw interactions.
+The implemented baseline is deterministic sparse item-item cosine with minimum
+user, item, and pair support, zero diagonal, bounded top-neighbor pruning,
+fixed-point similarity, and stable-slug ties. It is deliberately not matrix
+factorization, deep learning, or an online learner. A separate checksum-covered
+artifact stores item-level neighbors and aggregate support, never the user
+matrix, internal IDs, credentials, or raw interactions.
+
+The Phase 3 scorer canonicalizes at most ten positive/saved query sources,
+reads at most 1,000 stored neighbor edges, averages only present fixed-point
+similarities, excludes source/disliked slugs, and returns reconstructible edge
+evidence plus typed no-support outcomes. Exact-row content/base and affinity
+materializers preserve zero-content collaborative candidates for the next
+phase without changing existing Stage 3/4 eligibility or ranking wrappers.
 
 The planned saved-personalization path unions content-supported candidates
 with supported collaborative neighbors before exclusions and top-K. A
@@ -257,13 +265,14 @@ Stage 4 feedback computation consumes the loaded artifact read-only. User
 state remains bounded per-request input and is never serialized back into the
 bundle or retained on the application-lifecycle ranker.
 
-Stage 5 plans a second immutable artifact because interaction data has a
+Stage 5 implements a second immutable artifact because interaction data has a
 different consent, freshness, invalidation, and rebuild lifecycle from catalog
-content. Its explicit audit/build/validate/promote/retire flow must verify
-catalog and interaction fingerprints, cutoff, policy, support, checksums,
-lineage, consent, revision, and validity horizon. A collaborative failure must
-disable only that optional component and preserve the content/feedback path.
-No Stage 5 artifact or command exists yet.
+content. The implemented guarded fixture path audits, builds, validates,
+promotes to an unused path, and inspects catalog/interaction fingerprints,
+policy, support, checksums, and validity metadata. Protected live lineage,
+invalidation/retirement, API readiness, and rollback remain later phases. A
+collaborative failure must disable only that optional component and preserve
+the content/feedback path once serving orchestration exists.
 
 ## Evaluation
 
@@ -289,7 +298,8 @@ recommendation-event logging are implemented on the Stage 4 branch. The
 PostgreSQL, fast, static/build, OpenAPI, dependency-audit, Compose, and image
 gates and the 38/38 exact-host Docker browser matrix pass; Stage 4 is verified
 complete.
-Collaborative filtering and content/collaborative hybrid ranking now have a
-detailed Stage 5 plan but remain unimplemented. Formal ranking evaluation is
-Stage 6 work. Semantic embeddings, exploration, LLM
+The identity-free collaborative artifact and pure candidate scorer are
+implemented through Stage 5 Phase 3. Hybrid ranking, lifecycle-aware serving,
+response/event changes, and conditional browser evidence remain unimplemented.
+Formal ranking evaluation is Stage 6 work. Semantic embeddings, exploration, LLM
 explanations, and diversity reranking remain outside the first MVP model.

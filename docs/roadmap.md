@@ -223,8 +223,9 @@ is published as commit `c96b6c2` in draft PR
 
 **Status:** External-source preflight verified 2026-08-23; Phase 0–1
 first-party snapshot/audit foundation verified 2026-08-24; Phase 2 offline
-collaborative artifact foundation verified 2026-08-25; ranking runtime not
-started
+collaborative artifact foundation verified 2026-08-25; Phase 3 pure
+collaborative scorer and exact-row handoff verified 2026-08-28; Phase 4 hybrid
+policy and ranking runtime not started
 
 Detailed execution plan:
 [`stage-5-collaborative-hybrid-ranking-plan.md`](stage-5-collaborative-hybrid-ranking-plan.md)
@@ -236,10 +237,12 @@ closed. The first-party path adds separate contribution-consent storage,
 monotonic source revision, one PostgreSQL repeatable-read/read-only extractor,
 versioned label/canonical audit policy, and a strict project-authored fixture.
 Phase 2 consumes only that identity-free fixture contract to build and validate
-a separate sparse item-item artifact. It does not approve either source for live
-build or serve the artifact.
+a separate sparse item-item artifact. Phase 3 adds canonical query-source
+selection, bounded CSR traversal, reconstructible collaborative scoring, and
+exact-row base/affinity materialization in the ML package. Neither phase
+approves a source for live build or serves the artifact.
 
-Completed Phase 0–2 evidence:
+Completed Phase 0–3 evidence:
 
 1. Default-off live configuration and a supported `integration_blocked` state
    that performs no database access.
@@ -262,8 +265,17 @@ Completed Phase 0–2 evidence:
    the default live build fails closed before database access.
 9. Reordered-input determinism, hand-calculated cosine, corruption, traversal,
    dtype/shape/CSR, expiry, revision-race, privacy, promotion, and functional
-   fixture-pipeline tests; the full ML suite passes 155 tests with one
-   Windows-symlink capability skip.
+   fixture-pipeline tests.
+10. Frozen query-source precedence/caps, typed no-support reasons, exact integer
+    means, complete source-edge evidence, source/dislike exclusions, stable
+    ordering, and explicit 10-source/1,000-edge/1,000-candidate bounds.
+11. Exact-row base and affinity seams that preserve Stage 3/4 wrappers while a
+    zero-content collaborative-only slug reaches the Phase 4 handoff with exact
+    component units and empty content evidence.
+12. Slice commits `73b4528` through `fa0ebd0`; 154 focused Phase 3 tests and the
+    full 256-test ML suite pass with one Windows-symlink capability skip. Ruff,
+    format, mutation, permutation, privacy-string, resource-bound, and diff
+    checks pass.
 
 Build the remaining stages one reviewable slice at a time:
 
@@ -272,8 +284,9 @@ Build the remaining stages one reviewable slice at a time:
 2. Add protected live build/contributor lifecycle lineage, explicit
    invalidation/retirement/rollback, and approved revision-safe activation. The
    current operator path remains fixture-only.
-3. Add a pure collaborative scorer and versioned hybrid policy with
-   independently reconstructible components and exact Stage 4 fallback.
+3. Implement the Phase 4 versioned hybrid policy over the completed scorer and
+   exact-row materializers, with independently reconstructible contributions
+   and exact Stage 4 fallback.
 4. Add explicit live invalidate/retire commands, rollback, and disposable
    lifecycle integration tests.
 5. Extend only the saved personalized response/event/OpenAPI/browser path after

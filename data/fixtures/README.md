@@ -34,7 +34,10 @@ make collaborative-validate
 ```
 
 That bundle contains item-level support and neighborhoods, never profiles or
-profile keys, and is accepted only under the same test-only gate.
+profile keys, and is accepted only under the same test-only gate. Phase 3 uses
+the production-loaded temporary bundle to verify canonical source selection,
+exact CSR traversal, collaborative scoring, and exact-row content/affinity
+handoff without adding identity or making the fixture serveable.
 
 Fixture results demonstrate functional behavior and reproducibility only. They
 are not evidence of recommendation quality or representative user behavior.

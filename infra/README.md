@@ -123,20 +123,24 @@ metadata, caches, test output, and untracked data from generic root-context
 builds. The API Dockerfile has a stricter Dockerfile-specific deny-all
 allowlist; the web images use `apps/web/.dockerignore` at their context root.
 
-## Planned Stage 5 artifact topology
+## Stage 5 offline foundation and planned activation topology
 
 The
 [Stage 5 collaborative-and-hybrid plan](../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-is ready, but none of the topology in this section is implemented. Existing
-Compose profiles, settings, targets, mounts, migrations, and test counts remain
-the verified Stage 4 system above.
+has completed Phase 0–3. Phase 0–2 adds the contribution/revision migration,
+default-off audit commands, guarded fixture artifact build/validate/inspect
+workflow, and separate collaborative artifact configuration. Phase 3 is ML-only
+and adds no Compose, mount, service, database, or browser topology. API
+activation and hybrid E2E topology remain unimplemented.
 
-Stage 5 plans a second one-shot offline workflow for interaction audit,
-collaborative build, and validation. The builder would read an eligible
-database-time snapshot and write a separate immutable artifact path; the API
-would mount the validated result read-only alongside the existing content
-artifact. A collaborative bundle would never be trained or mutated by API/web
-startup, a request, migration, seed, broad test, or ordinary teardown.
+The implemented guarded workflow audits the project-authored fixture, builds a
+separate immutable collaborative bundle, validates it with the production
+loader, and promotes only to an unused path. Live audit is default-off, live
+build is explicitly unapproved, and the API does not load or serve this bundle.
+A future activation phase will mount an approved validated result read-only
+alongside the existing content artifact. A collaborative bundle will never be
+trained or mutated by API/web startup, a request, migration, seed, broad test,
+or ordinary teardown.
 
 The disposable PostgreSQL and E2E projects would receive an isolated
 project-authored multi-user fixture, build both artifacts, exercise hybrid and
@@ -146,7 +150,9 @@ disposable volumes. Development data and content artifacts would remain
 untouched. Fixture artifacts must require both the test environment and an
 explicit test-only flag; ordinary development and production must reject them.
 
-Audit, build, validate, promotion, rollback, invalidation, and retirement must
-have documented direct commands. Cleanup remains preview-first with exact
-confirmation and cannot target an active artifact or a broad directory. A
-production scheduler, registry service, or hot reload remains Stage 7 work.
+Audit, fixture build, validation, aggregate inspection, and immutable promotion
+have direct commands. Protected live build, rollback, invalidation, retirement,
+and physical deletion remain future lifecycle work. Cleanup remains preview-
+first with exact confirmation and cannot target an active artifact or a broad
+directory. A production scheduler, registry service, or hot reload remains
+Stage 7 work.

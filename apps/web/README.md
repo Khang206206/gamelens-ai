@@ -14,8 +14,9 @@ responsive run plus release review pass.
 
 The detailed
 [Stage 5 collaborative-and-hybrid plan](../../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-is ready, but no hybrid response field, consent copy, evidence component, or fallback UI
-from that plan exists yet. The current browser renders Stage 4 server order and evidence.
+has completed its Phase 3 ML-only scorer boundary, but no hybrid response field,
+contribution-consent copy, evidence component, or fallback UI from that plan exists yet.
+The current browser renders Stage 4 server order and evidence.
 
 ## Responsibilities
 
@@ -211,8 +212,9 @@ diff/privacy review is clean.
   cross-device recovery, or background retention guarantees.
 - The synthetic 30-game fixture verifies functionality and reproducibility, not
   recommendation quality; formal evaluation remains Stage 6.
-- Collaborative/hybrid ranking and its conditional evidence have a detailed Stage 5 plan
-  but are not implemented; the browser currently exposes only Stage 3/4 fields.
+- The Stage 5 pure collaborative scorer is implemented only in the ML package;
+  hybrid ranking and conditional evidence are not served, and the browser currently
+  exposes only Stage 3/4 fields.
 - The deterministic catalog has no cover binaries or approved remote image source, so
   every game uses a project-owned generated placeholder.
 - Ratings and popularity are synthetic development signals, not market data or

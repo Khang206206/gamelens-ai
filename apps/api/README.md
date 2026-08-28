@@ -19,24 +19,26 @@ The detailed
 [Stage 4 feedback-and-persistence plan](../../docs/stage-4-feedback-persistence-plan.md)
 is complete and verified. Anonymous identity, preference, temporal feedback,
 personalized-event, retention, and revocation contracts are present on the
-implementation branch. Current Phase 2 evidence is 200 passing API unit tests
-and 155 passing ML tests, with one Windows symlink-capability skip. Ruff passes
-across the API/ML Python tree. The most recent inherited cross-stack evidence
-remains 76 web tests, 54 disposable-PostgreSQL tests, generated OpenAPI drift,
-the web static/build gates, and all three Compose definitions. The exact-host Docker
-browser matrix passes 38/38 without retry: 28 Chromium, 5 Firefox, and 5 WebKit.
+implementation branch. Current Stage 5 evidence is 200 passing API unit tests
+from Phase 2 and 256 passing ML tests through Phase 3, with one Windows
+symlink-capability skip. Ruff passes across the API/ML Python tree. The most
+recent inherited cross-stack evidence remains 76 web tests, 54 disposable-
+PostgreSQL tests, generated OpenAPI drift, the web static/build gates, and all
+three Compose definitions. The exact-host Docker browser matrix passes 38/38
+without retry: 28 Chromium, 5 Firefox, and 5 WebKit.
 The endpoint and command tables below describe the current worktree.
 
 The detailed
 [Stage 5 collaborative-and-hybrid plan](../../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-now has a Phase 0–2 offline foundation: separate optional contribution consent,
+now has a Phase 0–3 offline/ML foundation: separate optional contribution consent,
 monotonic source revision, a PostgreSQL repeatable-read/read-only extractor,
 reusable eligible-user joins with streamed bounded source reads, canonical
 aggregate audit, test-only authored fixture command, and a guarded offline
-collaborative artifact builder/validator/inspector. No HTTP route grants
-contribution consent, and no collaborative scorer, hybrid orchestration,
-response/event extension, live build, or serving path is implemented. Current
-HTTP behavior remains Stage 3/4.
+collaborative artifact builder/validator/inspector. The ML package now also has
+the pure collaborative scorer and exact-row base/affinity handoff. No HTTP route
+grants contribution consent, and no API collaborative loader/readiness, hybrid
+orchestration, response/event extension, live build, or serving path is
+implemented. Current HTTP behavior remains Stage 3/4.
 
 ## Responsibilities
 
@@ -440,11 +442,11 @@ It emits structured inserted, updated, and unchanged counters.
 - The ephemeral collaborative extractor and aggregate audit are implemented,
   but live access is default-off and no public contribution-consent route is
   present.
-- The fixture-only collaborative trainer, artifact, hardened loader, and
-  operator CLI are implemented. No collaborative scorer, API loader/readiness,
-  hybrid serving policy, Stage 5 event schema, protected live build, or approved
-  real interaction dataset is implemented. Current requests therefore preserve
-  exact Stage 4 behavior.
+- The fixture-only collaborative trainer, artifact, hardened loader, operator
+  CLI, and ML-only pure scorer/materializers are implemented. No API
+  loader/readiness, hybrid serving policy, Stage 5 event schema, protected live
+  build, or approved real interaction dataset is implemented. Current requests
+  therefore preserve exact Stage 4 behavior.
 - No formal recommendation-quality evaluation on the synthetic seed; that is
   Stage 6 work.
 - No external metadata source is integrated.

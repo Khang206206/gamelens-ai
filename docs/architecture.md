@@ -125,15 +125,16 @@ the application boundaries, and 49 disposable-PostgreSQL integration tests
 verify the Stage 4 schema, populated legacy upgrade, transaction/concurrency,
 event/delete correlation, cascades, and retention behavior.
 
-### Stage 5 Phase 0–2 offline artifact implemented; activation not implemented
+### Stage 5 Phase 0–3 offline artifact and pure scoring implemented; activation not implemented
 
 The
 [Stage 5 collaborative-and-hybrid plan](stage-5-collaborative-hybrid-ranking-plan.md)
 defines a second offline-to-online path. Phase 0–1 implements the default-off
 contribution-consent/revision contract, ephemeral extractor, and aggregate
 audit. Phase 2 implements the fixture-guarded sparse builder and separate
-identity-free artifact. Dashed nodes below remain future behavior; the
-application runtime still ends at the verified Stage 4 feedback policy.
+identity-free artifact. Phase 3 implements the pure bounded scorer plus exact-
+row base and affinity materializers. Dashed nodes below remain future behavior;
+the application runtime still ends at the verified Stage 4 feedback policy.
 
 The implemented read-only UCSD Steam preflight is a separate offline source
 identity, preparation, and aggregate-support check. It is not connected to the
@@ -147,9 +148,11 @@ flowchart LR
     Snapshot["Ephemeral cutoff-bound stable-slug profiles"]
     Builder["Sparse item-item cosine builder"]
     CF["Identity-free collaborative artifact"]
+    Scorer["Pure collaborative candidate scorer"]
     Lineage[("Build and contributor lineage")]:::future
     Content["Existing content artifact"]
     Feedback["Existing feedback components"]
+    Materializers["Exact-row base and affinity materializers"]
     Hybrid["Versioned hybrid policy"]:::future
     API["Saved recommendation use case"]
     Event[("Versioned generation event")]
@@ -160,9 +163,11 @@ flowchart LR
     Snapshot --> Builder
     Builder --> CF
     Builder --> Lineage
-    Content --> Hybrid
-    Feedback --> Hybrid
-    CF --> Hybrid
+    CF --> Scorer
+    Content --> Materializers
+    Feedback --> Materializers
+    Scorer --> Hybrid
+    Materializers --> Hybrid
     Lineage --> Hybrid
     Hybrid --> API
     API --> Event
@@ -284,7 +289,7 @@ artifact vectors, and exposes its own identity and contribution. User identity
 and mutable state never enter an artifact or the application-lifecycle ranker
 singleton. The Stage 3 model and artifact identity remain unchanged.
 
-Stage 5 Phase 0–2 adds canonical sorted-profile serialization, fixed
+Stage 5 Phase 0–3 adds canonical sorted-profile serialization, fixed
 fingerprinting, bounded support/pair aggregates, a strict synthetic fixture
 loader, and a separate sparse item-item cosine artifact. The trainer receives
 only canonical ephemeral profiles and stable-slug catalog identity. The bundle
@@ -294,11 +299,14 @@ recommendation events. Strict JSON/NPY parsing, exact member checks, immutable
 arrays, and validity checks form a separate trust boundary from the content
 artifact.
 
-Stage 5 still plans the pure collaborative scorer and hybrid policy because the
-offline artifact is not yet part of API readiness or request ranking. Component
-readiness and hybrid math remain independently testable; formal ranking
-evaluation stays in Stage 6. Fixture readiness is functional evidence only and
-does not approve a live cohort.
+Phase 3 consumes that validated artifact through canonical source selection,
+exact bounded CSR row traversal, fixed-point aggregation, typed support reasons,
+and reconstructible source-edge evidence. Exact-row base and affinity seams
+permit a zero-content collaborative candidate to reach the Phase 4 boundary
+without changing the existing Stage 3/4 wrappers. The scorer has no database,
+HTTP, lifecycle, fallback, or hybrid dependency. Component readiness and hybrid
+math remain Phase 4–5 work; formal ranking evaluation stays in Stage 6. Fixture
+readiness is functional evidence only and does not approve a live cohort.
 
 ### External data
 
@@ -362,11 +370,11 @@ The recommendation boundary now exposes honest `ready`, `not_configured`, and
 `unavailable` states plus the bounded `POST /api/v1/recommendations` vertical
 slice. The offline builder, checksum-validated artifact, immutable ranker,
 generated browser contract, and anonymous explained-result experience are
-active. Account authentication, collaborative/hybrid ranking, formal
+active. Account authentication, served collaborative/hybrid ranking, formal
 evaluation, and production deployment remain later components. Stage 5 now has
-the Phase 0–2 interaction audit and offline collaborative artifact foundation;
-its scorer, hybrid policy, protected live lifecycle lineage, API fields, and UI
-evidence are not implemented.
+the Phase 0–3 interaction audit, offline collaborative artifact, and pure ML
+scoring/materialization foundation; its hybrid policy, protected live lifecycle
+lineage, API fields, runtime activation, and UI evidence are not implemented.
 
 Stage 4 is complete and verified. Its consented identity, durable
 preferences, temporal feedback writes, deterministic feedback adjustment,
