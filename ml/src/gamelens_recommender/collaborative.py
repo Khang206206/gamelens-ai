@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import Literal
@@ -696,6 +696,10 @@ def lookup_collaborative_neighborhoods(
     return result
 
 
+def _round_half_up_mean(total_units: int, count: int) -> int:
+    return (2 * total_units + count) // (2 * count)
+
+
 @dataclass(frozen=True)
 class CollaborativeCandidateScore:
     slug: str
@@ -748,6 +752,15 @@ class CollaborativeCandidateScore:
             _contract_error(
                 "scoring_result_invalid",
                 "Collaborative candidate source edges must be distinct",
+            )
+        expected_score = _round_half_up_mean(
+            sum(edge.similarity_units for edge in self.source_edges),
+            len(self.source_edges),
+        )
+        if self.collaborative_score_units != expected_score:
+            _contract_error(
+                "scoring_result_invalid",
+                "Collaborative candidate score is not reconstructible from its edges",
             )
         if self.source_edges != tuple(
             sorted(
@@ -1009,3 +1022,137 @@ class CollaborativeScoringResult:
                 "scoring_result_invalid",
                 "Collaborative scoring reason does not match the result state",
             )
+
+
+@dataclass
+class _CollaborativeCandidateBucket:
+    item_support: int
+    similarity_sum: int = 0
+    source_edges: list[CollaborativeSourceEdge] = field(default_factory=list)
+
+
+class CollaborativeScorer:
+    def __init__(
+        self,
+        artifact: LoadedCollaborativeArtifact,
+        config: CollaborativeScoringConfig = COLLABORATIVE_SCORING_CONFIG,
+    ) -> None:
+        config.validate()
+        self.artifact = _validate_lookup_artifact(artifact, config)
+        self.config = config
+
+    @property
+    def identity(self) -> CollaborativeScoringIdentity:
+        return self.config.identity
+
+    def score(self, context: CollaborativeQueryContext) -> CollaborativeScoringResult:
+        if type(context) is not CollaborativeQueryContext:
+            _contract_error(
+                "scoring_input_invalid",
+                "Collaborative scorer context has an invalid type",
+            )
+        context.validate(self.config)
+        lookup = lookup_collaborative_neighborhoods(
+            self.artifact,
+            context,
+            self.config,
+        )
+        buckets: dict[str, _CollaborativeCandidateBucket] = {}
+        for neighborhood in lookup.neighborhoods:
+            if not neighborhood.supported:
+                continue
+            for raw_edge in neighborhood.edges:
+                bucket = buckets.get(raw_edge.candidate_slug)
+                if bucket is None:
+                    bucket = _CollaborativeCandidateBucket(item_support=raw_edge.item_support)
+                    buckets[raw_edge.candidate_slug] = bucket
+                    if len(buckets) > self.config.max_candidates:
+                        _contract_error(
+                            "scoring_artifact_incompatible",
+                            "Collaborative aggregation exceeds its candidate bound",
+                        )
+                elif bucket.item_support != raw_edge.item_support:
+                    _contract_error(
+                        "scoring_artifact_incompatible",
+                        "Collaborative candidate item support is inconsistent",
+                    )
+                bucket.similarity_sum += raw_edge.similarity_units
+                bucket.source_edges.append(
+                    CollaborativeSourceEdge(
+                        source_slug=raw_edge.source_slug,
+                        source_kind=raw_edge.source_kind,
+                        candidate_slug=raw_edge.candidate_slug,
+                        similarity_units=raw_edge.similarity_units,
+                        pair_support=raw_edge.pair_support,
+                    )
+                )
+
+        query_source_slugs = {source.game_slug for source in context.sources}
+        disliked_slugs = set(context.disliked_slugs)
+        query_source_exclusion_count = 0
+        dislike_exclusion_count = 0
+        candidates: list[CollaborativeCandidateScore] = []
+        for candidate_slug in sorted(buckets):
+            if candidate_slug in query_source_slugs:
+                query_source_exclusion_count += 1
+                continue
+            if candidate_slug in disliked_slugs:
+                dislike_exclusion_count += 1
+                continue
+            bucket = buckets[candidate_slug]
+            source_edges = tuple(
+                sorted(
+                    bucket.source_edges,
+                    key=lambda edge: (
+                        -edge.similarity_units,
+                        -edge.pair_support,
+                        edge.source_slug,
+                    ),
+                )
+            )
+            candidate = CollaborativeCandidateScore(
+                slug=candidate_slug,
+                collaborative_score_units=_round_half_up_mean(
+                    bucket.similarity_sum,
+                    len(source_edges),
+                ),
+                item_support=bucket.item_support,
+                source_edges=source_edges,
+            )
+            candidate.validate(self.config)
+            candidates.append(candidate)
+        candidates.sort(
+            key=lambda candidate: (-candidate.collaborative_score_units, candidate.slug)
+        )
+
+        if not context.sources:
+            reason: CollaborativeScoringReason = "no_query_sources"
+        elif lookup.diagnostics.supported_source_count == 0:
+            reason = "no_supported_sources"
+        elif lookup.diagnostics.visited_edge_count == 0:
+            reason = "no_candidate_edges"
+        elif not candidates:
+            reason = "no_eligible_candidates"
+        else:
+            reason = "recommendations"
+        result = CollaborativeScoringResult(
+            reason=reason,
+            identity=self.identity,
+            query_sources=context.sources,
+            supported_source_slugs=lookup.supported_source_slugs,
+            unsupported_source_slugs=lookup.unsupported_source_slugs,
+            candidates=tuple(candidates),
+            diagnostics=CollaborativeScoringDiagnostics(
+                query_source_count=lookup.diagnostics.query_source_count,
+                supported_source_count=lookup.diagnostics.supported_source_count,
+                unsupported_source_count=lookup.diagnostics.unsupported_source_count,
+                zero_degree_source_count=lookup.diagnostics.zero_degree_source_count,
+                visited_edge_count=lookup.diagnostics.visited_edge_count,
+                candidate_count_before_exclusions=len(buckets),
+                query_source_exclusion_count=query_source_exclusion_count,
+                dislike_exclusion_count=dislike_exclusion_count,
+                returned_candidate_count=len(candidates),
+            ),
+        )
+        result.validate(self.config)
+        return result
