@@ -9,6 +9,8 @@ from scipy import sparse
 
 from gamelens_recommender.artifacts import LoadedArtifact
 from gamelens_recommender.collaborative import (
+    COLLABORATIVE_SCORING_CONFIG,
+    CollaborativeQueryContext,
     CollaborativeScoringError,
     CollaborativeSourceState,
     canonicalize_collaborative_query_sources,
@@ -120,6 +122,78 @@ class AffinityMaterializationResult:
 
 
 @dataclass(frozen=True)
+class PreparedFeedbackRankingContext:
+    """Validated immutable Stage 4 state reusable by later ranking policies."""
+
+    effective_context: UserContext
+    positive_sources: tuple[PositiveFeedbackSource, ...]
+    collaborative_query_context: CollaborativeQueryContext
+    candidate_exclusion_slugs: tuple[str, ...]
+    played_slugs: tuple[str, ...]
+
+    def validate(self) -> None:
+        if type(self.effective_context) is not UserContext:
+            raise ValueError("Prepared feedback content context is invalid")
+        self.effective_context.validate()
+        if type(self.positive_sources) is not tuple or any(
+            type(source) is not PositiveFeedbackSource for source in self.positive_sources
+        ):
+            raise ValueError("Prepared positive feedback sources are invalid")
+        if type(self.collaborative_query_context) is not CollaborativeQueryContext:
+            raise ValueError("Prepared collaborative query context is invalid")
+        self.collaborative_query_context.validate()
+        expected_positive_context = canonicalize_collaborative_query_sources(
+            CollaborativeSourceState(
+                positive_sources=self.positive_sources,
+                disliked_slugs=self.collaborative_query_context.disliked_slugs,
+            )
+        )
+        positive_query_sources = tuple(
+            source
+            for source in self.collaborative_query_context.sources
+            if source.kind != "saved_game"
+        )
+        if positive_query_sources != expected_positive_context.sources or tuple(
+            (source.game_slug, source.kind) for source in positive_query_sources
+        ) != tuple((source.game_slug, source.kind) for source in self.positive_sources):
+            raise ValueError("Prepared positive source order is inconsistent")
+        saved_slugs = tuple(
+            source.game_slug
+            for source in self.collaborative_query_context.sources
+            if source.kind == "saved_game"
+        )
+        if (
+            len(saved_slugs) > COLLABORATIVE_SCORING_CONFIG.max_saved_game_sources
+            or saved_slugs != tuple(sorted(set(saved_slugs)))
+            or not set(saved_slugs) <= set(self.effective_context.selected_game_slugs)
+            or set(saved_slugs)
+            & (
+                {source.game_slug for source in positive_query_sources}
+                | set(self.collaborative_query_context.disliked_slugs)
+            )
+        ):
+            raise ValueError("Prepared saved-game source state is inconsistent")
+        expected_exclusions = tuple(
+            sorted(
+                set(self.effective_context.selected_game_slugs)
+                | {source.game_slug for source in self.positive_sources}
+                | set(self.collaborative_query_context.disliked_slugs)
+            )
+        )
+        if (
+            type(self.candidate_exclusion_slugs) is not tuple
+            or self.candidate_exclusion_slugs != expected_exclusions
+        ):
+            raise ValueError("Prepared candidate exclusions are inconsistent")
+        if (
+            type(self.played_slugs) is not tuple
+            or self.played_slugs != tuple(sorted(set(self.played_slugs)))
+            or any(SLUG_PATTERN.fullmatch(slug) is None for slug in self.played_slugs)
+        ):
+            raise ValueError("Prepared played slugs are invalid")
+
+
+@dataclass(frozen=True)
 class _ScoredPersonalizedCandidate:
     base: BaseCandidateScore
     base_weight_units: int
@@ -203,25 +277,81 @@ class FeedbackRanker:
         if any(slug not in self.artifact.slug_to_row for slug in slugs):
             raise ValueError("Feedback game is not present in the artifact")
 
-    def _positive_sources(
+    def prepare_ranking_context(
         self,
+        context: UserContext,
         feedback: tuple[ActiveGameFeedback, ...],
-    ) -> tuple[PositiveFeedbackSource, ...]:
-        sources = tuple(
+    ) -> PreparedFeedbackRankingContext:
+        """Prepare Stage 4 state without candidate scoring or final ranking.
+
+        Validation order and effective content behavior are part of the existing
+        Stage 4 contract. The returned collaborative query context only exposes
+        canonical stable-slug source state; it performs no artifact lookup.
+        """
+
+        context.validate()
+        missing_context = [
+            slug for slug in context.selected_game_slugs if slug not in self.artifact.slug_to_row
+        ]
+        if missing_context:
+            raise ValueError("Selected game is not present in the artifact")
+        self._validate_feedback(feedback)
+
+        disliked_slugs = tuple(
+            sorted(value.game_slug for value in feedback if value.reaction == "disliked")
+        )
+        disliked = set(disliked_slugs)
+        effective_context = UserContext(
+            selected_game_slugs=tuple(
+                slug for slug in context.selected_game_slugs if slug not in disliked
+            ),
+            preferred_genres=context.preferred_genres,
+            preferred_tags=context.preferred_tags,
+            preferred_platforms=context.preferred_platforms,
+            top_k=context.top_k,
+        )
+        if not (
+            effective_context.selected_game_slugs
+            or effective_context.preferred_genres
+            or effective_context.preferred_tags
+        ):
+            raise InsufficientContextError(
+                "Disliked games leave the saved context without a content signal"
+            )
+
+        raw_positive_sources = tuple(
             source
             for value in feedback
             if (source := _positive_source(value, self.config)) is not None
         )
-        source_by_slug = {source.game_slug: source for source in sources}
-        canonical = canonicalize_collaborative_query_sources(
+        source_by_slug = {source.game_slug: source for source in raw_positive_sources}
+        collaborative_query_context = canonicalize_collaborative_query_sources(
             CollaborativeSourceState(
-                positive_sources=sources,
-                disliked_slugs=tuple(
-                    value.game_slug for value in feedback if value.reaction == "disliked"
-                ),
+                positive_sources=raw_positive_sources,
+                saved_game_slugs=effective_context.selected_game_slugs,
+                disliked_slugs=disliked_slugs,
             )
         )
-        return tuple(source_by_slug[source.game_slug] for source in canonical.sources)
+        positive_sources = tuple(
+            source_by_slug[source.game_slug]
+            for source in collaborative_query_context.sources
+            if source.kind != "saved_game"
+        )
+        prepared = PreparedFeedbackRankingContext(
+            effective_context=effective_context,
+            positive_sources=positive_sources,
+            collaborative_query_context=collaborative_query_context,
+            candidate_exclusion_slugs=tuple(
+                sorted(
+                    set(effective_context.selected_game_slugs)
+                    | {source.game_slug for source in positive_sources}
+                    | set(disliked_slugs)
+                )
+            ),
+            played_slugs=tuple(sorted(value.game_slug for value in feedback if value.played)),
+        )
+        prepared.validate()
+        return prepared
 
     def _validate_canonical_positive_sources(
         self,
@@ -332,34 +462,9 @@ class FeedbackRanker:
         context: UserContext,
         feedback: tuple[ActiveGameFeedback, ...],
     ) -> PersonalizedRankingResult:
-        context.validate()
-        missing_context = [
-            slug for slug in context.selected_game_slugs if slug not in self.artifact.slug_to_row
-        ]
-        if missing_context:
-            raise ValueError("Selected game is not present in the artifact")
-        self._validate_feedback(feedback)
-
-        disliked = {value.game_slug for value in feedback if value.reaction == "disliked"}
-        effective_context = UserContext(
-            selected_game_slugs=tuple(
-                slug for slug in context.selected_game_slugs if slug not in disliked
-            ),
-            preferred_genres=context.preferred_genres,
-            preferred_tags=context.preferred_tags,
-            preferred_platforms=context.preferred_platforms,
-            top_k=context.top_k,
-        )
-        if not (
-            effective_context.selected_game_slugs
-            or effective_context.preferred_genres
-            or effective_context.preferred_tags
-        ):
-            raise InsufficientContextError(
-                "Disliked games leave the saved context without a content signal"
-            )
-
-        positive_sources = self._positive_sources(feedback)
+        prepared = self.prepare_ranking_context(context, feedback)
+        effective_context = prepared.effective_context
+        positive_sources = prepared.positive_sources
         base_candidates = self.content_ranker.score_candidates(effective_context)
         if not base_candidates:
             return PersonalizedRankingResult(
@@ -383,9 +488,8 @@ class FeedbackRanker:
                 for candidate in affinity_result.candidates
             )
 
-        source_slugs = {source.game_slug for source in positive_sources}
-        excluded = disliked | source_slugs
-        played = {value.game_slug for value in feedback if value.played}
+        excluded = set(prepared.candidate_exclusion_slugs)
+        played = set(prepared.played_slugs)
         scored: list[_ScoredPersonalizedCandidate] = []
         for candidate in base_candidates:
             if candidate.slug in excluded:

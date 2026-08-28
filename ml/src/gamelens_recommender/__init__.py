@@ -42,6 +42,7 @@ from gamelens_recommender.feedback import (
     AffinityMaterializationResult,
     FeedbackPolicyConfig,
     FeedbackRanker,
+    PreparedFeedbackRankingContext,
 )
 from gamelens_recommender.interaction_snapshot import (
     LABEL_POLICY_ID,
@@ -112,6 +113,7 @@ __all__ = [
     "PersonalizedRankingResult",
     "PersonalizedRecommendation",
     "PositiveFeedbackSource",
+    "PreparedFeedbackRankingContext",
     "SnapshotAuditError",
     "SupportedProfiles",
     "TaxonomyValue",
