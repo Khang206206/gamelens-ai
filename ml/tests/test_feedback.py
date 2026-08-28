@@ -7,14 +7,22 @@ import pytest
 
 from gamelens_recommender import (
     ActiveGameFeedback,
+    BaseCandidateScore,
     ContentRanker,
     FeedbackPolicyConfig,
     FeedbackRanker,
     InsufficientContextError,
+    PositiveFeedbackSource,
     UserContext,
     build_artifact,
     canonical_snapshot,
     load_artifact,
+)
+from gamelens_recommender import feedback as feedback_module
+from gamelens_recommender.feedback import (
+    AffinityCandidateScore,
+    AffinityMaterializationError,
+    AffinityMaterializationResult,
 )
 from gamelens_recommender.ranking import contribution
 
@@ -228,6 +236,332 @@ def test_affinity_and_played_adjustment_reconstruct_exact_fixed_units(snapshot, 
         assert 0 <= value.final_score_units <= 1_000_000
         assert "feedback_affinity" in value.adjustment_reasons
         assert ("played_adjustment" in value.adjustment_reasons) == (value.slug == "alpha-tactics")
+
+
+def test_exact_affinity_without_positive_profile_returns_inactive_zero_units(
+    snapshot,
+    tmp_path,
+) -> None:
+    ranker = _ranker(snapshot, tmp_path)
+
+    result = ranker.materialize_affinity_candidates(
+        (),
+        ("gamma-drift", "alpha-tactics"),
+    )
+
+    assert result == AffinityMaterializationResult(
+        profile_active=False,
+        candidates=(
+            AffinityCandidateScore("alpha-tactics", 0),
+            AffinityCandidateScore("gamma-drift", 0),
+        ),
+    )
+
+
+def test_exact_affinity_matches_liked_and_qualifying_rating_stage_4_units(
+    snapshot,
+    tmp_path,
+) -> None:
+    ranker = _ranker(snapshot, tmp_path)
+    context = UserContext(
+        selected_game_slugs=("alpha-tactics",),
+        preferred_genres=("strategy",),
+        preferred_platforms=("linux",),
+        top_k=4,
+    )
+    liked = ranker.rank(context, (_reaction("gamma-drift", "liked"),))
+    rating = ranker.rank(
+        context,
+        (
+            ActiveGameFeedback(
+                game_slug="gamma-drift",
+                rating=Decimal("7.00"),
+                rating_occurred_at=NOW,
+            ),
+        ),
+    )
+
+    liked_exact = ranker.materialize_affinity_candidates(
+        liked.positive_sources,
+        ("gamma-drift", "delta-command", "beta-kingdom"),
+    )
+    rating_exact = ranker.materialize_affinity_candidates(
+        rating.positive_sources,
+        ("beta-kingdom", "gamma-drift", "delta-command"),
+    )
+
+    assert tuple(source.kind for source in liked.positive_sources) == ("liked",)
+    assert tuple(source.kind for source in rating.positive_sources) == ("rating",)
+    assert ranker.materialize_affinity_candidates(
+        liked.positive_sources,
+        (),
+    ) == AffinityMaterializationResult(profile_active=True, candidates=())
+    assert (
+        liked_exact
+        == rating_exact
+        == AffinityMaterializationResult(
+            profile_active=True,
+            candidates=(
+                AffinityCandidateScore("beta-kingdom", 36_098),
+                AffinityCandidateScore("delta-command", 24_832),
+                AffinityCandidateScore("gamma-drift", 1_000_000),
+            ),
+        )
+    )
+    expected_by_slug = {
+        candidate.slug: candidate.affinity_score_units for candidate in liked_exact.candidates
+    }
+    for ranked in (liked, rating):
+        assert "gamma-drift" not in {candidate.slug for candidate in ranked.items}
+        assert all(
+            candidate.affinity_score_units == expected_by_slug[candidate.slug]
+            for candidate in ranked.items
+        )
+
+
+def test_exact_affinity_can_be_active_with_zero_candidate_affinity(
+    item_factory,
+    tmp_path,
+) -> None:
+    source = replace(
+        item_factory(
+            "orbit-source",
+            title="Quasar",
+            description="stellar nebula cosmos",
+            genres=("space",),
+            tags=("cosmic",),
+        ),
+        developer="Nebula Studio",
+        publisher="Galaxy Works",
+    )
+    target = replace(
+        item_factory(
+            "harvest-target",
+            title="Orchard",
+            description="farming crops village",
+            genres=("simulation",),
+            tags=("cozy",),
+        ),
+        developer="Meadow Studio",
+        publisher="Garden Works",
+    )
+    ranker = _ranker(canonical_snapshot((source, target)), tmp_path)
+
+    result = ranker.materialize_affinity_candidates(
+        (PositiveFeedbackSource("orbit-source", "liked", NOW),),
+        ("harvest-target",),
+    )
+
+    assert result == AffinityMaterializationResult(
+        profile_active=True,
+        candidates=(AffinityCandidateScore("harvest-target", 0),),
+    )
+
+
+def test_exact_affinity_reads_only_source_and_canonical_candidate_rows(
+    snapshot,
+    tmp_path,
+) -> None:
+    artifact = load_artifact(build_artifact(snapshot, tmp_path / "model"))
+    matrix = artifact.matrix
+    row_reads: list[tuple[int, ...]] = []
+
+    class RecordingMatrix:
+        shape = matrix.shape
+
+        def __getitem__(self, rows):
+            row_reads.append(tuple(int(row) for row in rows))
+            return matrix[rows]
+
+    ranker = FeedbackRanker(replace(artifact, matrix=RecordingMatrix()))
+    sources = (PositiveFeedbackSource("gamma-drift", "liked", NOW),)
+    first = ranker.materialize_affinity_candidates(
+        sources,
+        ("delta-command", "beta-kingdom"),
+    )
+    second = ranker.materialize_affinity_candidates(
+        sources,
+        ("beta-kingdom", "delta-command"),
+    )
+
+    source_rows = (artifact.slug_to_row["gamma-drift"],)
+    candidate_rows = (
+        artifact.slug_to_row["beta-kingdom"],
+        artifact.slug_to_row["delta-command"],
+    )
+    assert first == second
+    assert first.candidates == (
+        AffinityCandidateScore("beta-kingdom", 36_098),
+        AffinityCandidateScore("delta-command", 24_832),
+    )
+    assert row_reads == [source_rows, candidate_rows, source_rows, candidate_rows]
+
+
+def test_feedback_rank_delegates_affinity_to_exact_materializer(
+    snapshot,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    ranker = _ranker(snapshot, tmp_path)
+    original = ranker.materialize_affinity_candidates
+    calls: list[tuple[tuple[PositiveFeedbackSource, ...], tuple[str, ...]]] = []
+
+    def recording_materializer(positive_sources, candidate_slugs):
+        calls.append((positive_sources, candidate_slugs))
+        return original(positive_sources, candidate_slugs)
+
+    monkeypatch.setattr(ranker, "materialize_affinity_candidates", recording_materializer)
+    result = ranker.rank(
+        UserContext(preferred_genres=("strategy",), top_k=4),
+        (_reaction("gamma-drift", "liked"),),
+    )
+
+    assert len(calls) == 1
+    exact = original(*calls[0])
+    exact_by_slug = {
+        candidate.slug: candidate.affinity_score_units for candidate in exact.candidates
+    }
+    assert all(
+        candidate.affinity_score_units == exact_by_slug[candidate.slug]
+        for candidate in result.items
+    )
+
+
+def test_feedback_rank_batches_large_stage_4_candidate_sets_without_narrowing(
+    snapshot,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    ranker = _ranker(snapshot, tmp_path)
+    candidates = (
+        BaseCandidateScore(
+            slug="alpha-tactics",
+            base_score_units=1_000_000,
+            content_score_units=1_000_000,
+            platform_score_units=0,
+            popularity_score_units=0,
+        ),
+        *(
+            BaseCandidateScore(
+                slug=f"candidate-{index}",
+                base_score_units=1,
+                content_score_units=1,
+                platform_score_units=0,
+                popularity_score_units=0,
+            )
+            for index in range(1_000)
+        ),
+    )
+    batch_sizes: list[int] = []
+
+    monkeypatch.setattr(ranker.content_ranker, "score_candidates", lambda _context: candidates)
+
+    def inactive_materializer(_positive_sources, candidate_slugs):
+        batch_sizes.append(len(candidate_slugs))
+        return AffinityMaterializationResult(
+            profile_active=False,
+            candidates=tuple(AffinityCandidateScore(slug, 0) for slug in candidate_slugs),
+        )
+
+    monkeypatch.setattr(ranker, "materialize_affinity_candidates", inactive_materializer)
+    result = ranker.rank(
+        UserContext(preferred_genres=("strategy",), top_k=1),
+        (),
+    )
+
+    assert batch_sizes == [1_000, 1]
+    assert tuple(candidate.slug for candidate in result.items) == ("alpha-tactics",)
+
+
+@pytest.mark.parametrize(
+    ("candidate_slugs", "expected_code"),
+    [
+        pytest.param(
+            ["beta-kingdom"],
+            "materialization_input_invalid",
+            id="mutable-candidates",
+        ),
+        pytest.param(
+            ("beta-kingdom", "beta-kingdom"),
+            "materialization_input_invalid",
+            id="duplicate-candidate",
+        ),
+        pytest.param(
+            ("Beta-Kingdom",),
+            "materialization_input_invalid",
+            id="noncanonical-candidate",
+        ),
+        pytest.param(
+            ("unknown-game",),
+            "materialization_artifact_incompatible",
+            id="missing-candidate",
+        ),
+        pytest.param(
+            tuple(f"unknown-{index}" for index in range(1_000)),
+            "materialization_artifact_incompatible",
+            id="candidate-at-cap",
+        ),
+        pytest.param(
+            tuple(f"unknown-{index}" for index in range(1_001)),
+            "materialization_input_invalid",
+            id="candidate-over-cap",
+        ),
+    ],
+)
+def test_exact_affinity_rejects_invalid_or_incompatible_candidates(
+    snapshot,
+    tmp_path,
+    monkeypatch,
+    candidate_slugs,
+    expected_code,
+) -> None:
+    ranker = _ranker(snapshot, tmp_path)
+
+    def unexpected_profile_traversal(_vector):
+        raise AssertionError("Invalid exact candidates must fail before profile traversal")
+
+    monkeypatch.setattr(feedback_module, "_normalize_profile", unexpected_profile_traversal)
+    with pytest.raises(AffinityMaterializationError) as captured:
+        ranker.materialize_affinity_candidates((), candidate_slugs)
+
+    assert captured.value.code == expected_code
+
+
+@pytest.mark.parametrize(
+    ("positive_sources", "expected_code"),
+    [
+        pytest.param(
+            [PositiveFeedbackSource("gamma-drift", "liked", NOW)],
+            "materialization_input_invalid",
+            id="mutable-sources",
+        ),
+        pytest.param(
+            (
+                PositiveFeedbackSource("alpha-tactics", "liked", NOW),
+                PositiveFeedbackSource("beta-kingdom", "rating", _at(1)),
+            ),
+            "materialization_input_invalid",
+            id="noncanonical-source-order",
+        ),
+        pytest.param(
+            (PositiveFeedbackSource("unknown-game", "liked", NOW),),
+            "materialization_artifact_incompatible",
+            id="missing-source",
+        ),
+    ],
+)
+def test_exact_affinity_rejects_noncanonical_or_incompatible_sources(
+    snapshot,
+    tmp_path,
+    positive_sources,
+    expected_code,
+) -> None:
+    ranker = _ranker(snapshot, tmp_path)
+
+    with pytest.raises(AffinityMaterializationError) as captured:
+        ranker.materialize_affinity_candidates(positive_sources, ("beta-kingdom",))
+
+    assert captured.value.code == expected_code
 
 
 def test_feedback_rank_preserves_stage_4_characterization_golden(snapshot, tmp_path) -> None:
