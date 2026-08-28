@@ -5,15 +5,27 @@ from typing import Literal
 
 from gamelens_recommender.collaborative import (
     COLLABORATIVE_SCORING_CONFIG,
+    CollaborativeCandidateScore,
     CollaborativeScoringDiagnostics,
     CollaborativeScoringError,
     CollaborativeScoringIdentity,
     CollaborativeScoringResult,
     CollaborativeSourceEdge,
 )
-from gamelens_recommender.config import SCORE_SCALE
+from gamelens_recommender.config import ARTIFACT_LIMITS, RANKING_CONFIG, SCORE_SCALE
+from gamelens_recommender.feedback import (
+    AffinityMaterializationError,
+    FeedbackRanker,
+    PreparedFeedbackRankingContext,
+)
+from gamelens_recommender.ranking import (
+    MAX_EXACT_BASE_CANDIDATES,
+    BaseCandidateMaterializationError,
+    contribution,
+)
 from gamelens_recommender.schemas import (
     SLUG_PATTERN,
+    BaseCandidateScore,
     FeedbackPolicyIdentity,
     PersonalizedRankingReason,
     PersonalizedRankingResult,
@@ -233,6 +245,291 @@ class CollaborativeComponentReady:
 
 
 CollaborativeComponentOutcome = CollaborativeComponentReady | CollaborativeComponentUnavailable
+
+
+def _validate_base_candidate(
+    candidate: BaseCandidateScore,
+    *,
+    code: HybridContractErrorCode,
+) -> None:
+    if type(candidate) is not BaseCandidateScore:
+        _contract_error(code, "Hybrid base candidate is invalid")
+    if type(candidate.slug) is not str or SLUG_PATTERN.fullmatch(candidate.slug) is None:
+        _contract_error(code, "Hybrid base candidate slug is invalid")
+    units = (
+        candidate.base_score_units,
+        candidate.content_score_units,
+        candidate.platform_score_units,
+        candidate.popularity_score_units,
+    )
+    if any(type(value) is not int or not 0 <= value <= SCORE_SCALE for value in units):
+        _contract_error(code, "Hybrid base candidate units are invalid")
+    expected_base_units = sum(
+        contribution(raw_units, weight_units)
+        for raw_units, weight_units in (
+            (candidate.content_score_units, RANKING_CONFIG.content_weight_units),
+            (candidate.platform_score_units, RANKING_CONFIG.platform_weight_units),
+            (candidate.popularity_score_units, RANKING_CONFIG.popularity_weight_units),
+        )
+    )
+    if candidate.base_score_units != expected_base_units:
+        _contract_error(code, "Hybrid base candidate is not reconstructible")
+
+
+@dataclass(frozen=True)
+class HybridCandidateComponents:
+    """Exact raw component state for one eligible union candidate."""
+
+    slug: str
+    candidate_origin: HybridCandidateOrigin
+    base: BaseCandidateScore
+    affinity_score_units: int
+    collaborative_candidate: CollaborativeCandidateScore | None
+
+    def validate(self) -> None:
+        if type(self.slug) is not str or SLUG_PATTERN.fullmatch(self.slug) is None:
+            _contract_error("hybrid_result_invalid", "Hybrid candidate slug is invalid")
+        if self.candidate_origin not in HYBRID_CANDIDATE_ORIGINS:
+            _contract_error("hybrid_result_invalid", "Hybrid candidate origin is invalid")
+        _validate_base_candidate(self.base, code="hybrid_result_invalid")
+        if self.base.slug != self.slug:
+            _contract_error("hybrid_result_invalid", "Hybrid base candidate slug is inconsistent")
+        if (
+            type(self.affinity_score_units) is not int
+            or not 0 <= self.affinity_score_units <= SCORE_SCALE
+        ):
+            _contract_error("hybrid_result_invalid", "Hybrid candidate affinity units are invalid")
+
+        content_supported = self.base.content_score_units > 0
+        if self.collaborative_candidate is None:
+            if self.candidate_origin != "content" or not content_supported:
+                _contract_error(
+                    "hybrid_result_invalid",
+                    "Content-only hybrid candidate state is inconsistent",
+                )
+            return
+        if type(self.collaborative_candidate) is not CollaborativeCandidateScore:
+            _contract_error("hybrid_result_invalid", "Hybrid collaborative candidate is invalid")
+        try:
+            self.collaborative_candidate.validate()
+        except CollaborativeScoringError as error:
+            raise HybridContractError(
+                "hybrid_result_invalid",
+                "Hybrid collaborative candidate is invalid",
+            ) from error
+        if self.collaborative_candidate.slug != self.slug:
+            _contract_error(
+                "hybrid_result_invalid",
+                "Hybrid collaborative candidate slug is inconsistent",
+            )
+        expected_origin: HybridCandidateOrigin = "both" if content_supported else "collaborative"
+        if self.candidate_origin != expected_origin:
+            _contract_error(
+                "hybrid_result_invalid",
+                "Hybrid collaborative candidate origin is inconsistent",
+            )
+
+
+@dataclass(frozen=True)
+class HybridCandidateUnion:
+    """Canonical pre-weight, pre-played, pre-rank candidate union."""
+
+    affinity_profile_active: bool
+    candidates: tuple[HybridCandidateComponents, ...]
+
+    @property
+    def collaborative_candidate_count(self) -> int:
+        return sum(candidate.collaborative_candidate is not None for candidate in self.candidates)
+
+    def validate(self) -> None:
+        if type(self.affinity_profile_active) is not bool:
+            _contract_error("hybrid_result_invalid", "Hybrid affinity profile state is invalid")
+        if (
+            type(self.candidates) is not tuple
+            or len(self.candidates) > ARTIFACT_LIMITS.max_items
+            or any(
+                type(candidate) is not HybridCandidateComponents for candidate in self.candidates
+            )
+        ):
+            _contract_error("hybrid_result_invalid", "Hybrid candidate union is invalid")
+        for candidate in self.candidates:
+            candidate.validate()
+        slugs = tuple(candidate.slug for candidate in self.candidates)
+        if slugs != tuple(sorted(set(slugs))):
+            _contract_error(
+                "hybrid_result_invalid",
+                "Hybrid candidate union order or membership is invalid",
+            )
+        if not self.affinity_profile_active and any(
+            candidate.affinity_score_units != 0 for candidate in self.candidates
+        ):
+            _contract_error(
+                "hybrid_result_invalid",
+                "Inactive hybrid affinity profile has a non-zero candidate score",
+            )
+
+
+def _validate_candidate_union_inputs(
+    feedback_ranker: FeedbackRanker,
+    prepared_context: PreparedFeedbackRankingContext,
+    collaborative_result: CollaborativeScoringResult,
+) -> None:
+    if type(feedback_ranker) is not FeedbackRanker:
+        _contract_error("hybrid_input_invalid", "Hybrid feedback ranker is invalid")
+    if type(prepared_context) is not PreparedFeedbackRankingContext:
+        _contract_error("hybrid_input_invalid", "Prepared hybrid ranking context is invalid")
+    try:
+        prepared_context.validate()
+    except ValueError as error:
+        raise HybridContractError(
+            "hybrid_input_invalid",
+            "Prepared hybrid ranking context is invalid",
+        ) from error
+    if type(collaborative_result) is not CollaborativeScoringResult:
+        _contract_error("hybrid_input_invalid", "Collaborative scoring result is invalid")
+    try:
+        collaborative_result.validate()
+    except CollaborativeScoringError as error:
+        raise HybridContractError(
+            "hybrid_input_invalid",
+            "Collaborative scoring result is invalid",
+        ) from error
+    if collaborative_result.reason != "recommendations":
+        _contract_error(
+            "hybrid_input_invalid",
+            "Candidate union requires collaborative recommendation support",
+        )
+    if collaborative_result.query_sources != prepared_context.collaborative_query_context.sources:
+        _contract_error(
+            "hybrid_input_invalid",
+            "Collaborative query sources do not match the prepared ranking context",
+        )
+
+    artifact_slugs = set(feedback_ranker.artifact.slug_to_row)
+    prepared_slugs = (
+        set(prepared_context.candidate_exclusion_slugs)
+        | set(prepared_context.played_slugs)
+        | {source.game_slug for source in prepared_context.collaborative_query_context.sources}
+        | set(prepared_context.collaborative_query_context.disliked_slugs)
+    )
+    if not prepared_slugs <= artifact_slugs or any(
+        candidate.slug not in artifact_slugs for candidate in collaborative_result.candidates
+    ):
+        _contract_error(
+            "hybrid_input_invalid",
+            "Hybrid candidate state is incompatible with the content artifact",
+        )
+
+
+def materialize_hybrid_candidate_union(
+    feedback_ranker: FeedbackRanker,
+    prepared_context: PreparedFeedbackRankingContext,
+    collaborative_result: CollaborativeScoringResult,
+) -> HybridCandidateUnion:
+    """Join exact Stage 4 and collaborative components without final policy math.
+
+    The raw union is formed before hard exclusions. Exact base and affinity
+    materialization is chunked at the Phase 3 row bound. This seam applies no
+    hybrid weights, played factor, top-K truncation, final rank, fallback, or
+    explanation prose.
+    """
+
+    _validate_candidate_union_inputs(feedback_ranker, prepared_context, collaborative_result)
+    content_candidates = feedback_ranker.content_ranker.score_candidates(
+        prepared_context.effective_context
+    )
+    if type(content_candidates) is not tuple or any(
+        type(candidate) is not BaseCandidateScore for candidate in content_candidates
+    ):
+        _contract_error("hybrid_input_invalid", "Stage 4 content candidates are invalid")
+    for candidate in content_candidates:
+        _validate_base_candidate(candidate, code="hybrid_input_invalid")
+        if (
+            candidate.slug not in feedback_ranker.artifact.slug_to_row
+            or candidate.content_score_units <= 0
+        ):
+            _contract_error(
+                "hybrid_input_invalid",
+                "Stage 4 content candidate eligibility is invalid",
+            )
+    content_by_slug = {candidate.slug: candidate for candidate in content_candidates}
+    if len(content_by_slug) != len(content_candidates):
+        _contract_error("hybrid_input_invalid", "Stage 4 content candidates are not distinct")
+    collaborative_by_slug = {
+        candidate.slug: candidate for candidate in collaborative_result.candidates
+    }
+
+    raw_union_slugs = set(content_by_slug) | set(collaborative_by_slug)
+    candidate_slugs = tuple(
+        sorted(raw_union_slugs - set(prepared_context.candidate_exclusion_slugs))
+    )
+    base_by_slug: dict[str, BaseCandidateScore] = {}
+    affinity_by_slug: dict[str, int] = {}
+    expected_affinity_profile_active = bool(prepared_context.positive_sources)
+    for start in range(0, len(candidate_slugs), MAX_EXACT_BASE_CANDIDATES):
+        chunk = candidate_slugs[start : start + MAX_EXACT_BASE_CANDIDATES]
+        try:
+            base_chunk = feedback_ranker.content_ranker.materialize_base_candidates(
+                prepared_context.effective_context,
+                chunk,
+            )
+            affinity_chunk = feedback_ranker.materialize_affinity_candidates(
+                prepared_context.positive_sources,
+                chunk,
+            )
+        except (BaseCandidateMaterializationError, AffinityMaterializationError) as error:
+            raise HybridContractError(
+                "hybrid_input_invalid",
+                "Hybrid candidate component materialization failed",
+            ) from error
+        if (
+            tuple(candidate.slug for candidate in base_chunk) != chunk
+            or tuple(candidate.slug for candidate in affinity_chunk.candidates) != chunk
+            or affinity_chunk.profile_active != expected_affinity_profile_active
+        ):
+            _contract_error(
+                "hybrid_input_invalid",
+                "Hybrid candidate component materialization is inconsistent",
+            )
+        for candidate in base_chunk:
+            _validate_base_candidate(candidate, code="hybrid_input_invalid")
+            base_by_slug[candidate.slug] = candidate
+        affinity_by_slug.update(
+            (candidate.slug, candidate.affinity_score_units)
+            for candidate in affinity_chunk.candidates
+        )
+
+    if any(
+        slug in content_by_slug and base_by_slug.get(slug) != content_by_slug[slug]
+        for slug in candidate_slugs
+    ):
+        _contract_error(
+            "hybrid_input_invalid",
+            "Exact base materialization drifted from Stage 4 content scoring",
+        )
+
+    candidates = tuple(
+        HybridCandidateComponents(
+            slug=slug,
+            candidate_origin=(
+                "both"
+                if slug in content_by_slug and slug in collaborative_by_slug
+                else "content"
+                if slug in content_by_slug
+                else "collaborative"
+            ),
+            base=base_by_slug[slug],
+            affinity_score_units=affinity_by_slug[slug],
+            collaborative_candidate=collaborative_by_slug.get(slug),
+        )
+        for slug in candidate_slugs
+    )
+    result = HybridCandidateUnion(
+        affinity_profile_active=expected_affinity_profile_active,
+        candidates=candidates,
+    )
+    result.validate()
+    return result
 
 
 @dataclass(frozen=True)
