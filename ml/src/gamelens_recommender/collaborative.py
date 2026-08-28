@@ -273,7 +273,12 @@ def canonicalize_collaborative_query_sources(
     state: CollaborativeSourceState,
     config: CollaborativeScoringConfig = COLLABORATIVE_SCORING_CONFIG,
 ) -> CollaborativeQueryContext:
-    """Select deterministic, bounded query sources without artifact access."""
+    """Select bounded query sources without artifact access or mutable state.
+
+    Runtime is ``O(P log P + S log S)`` for positive and saved inputs, both of
+    which are contract-bounded. The function performs no artifact I/O, scoring,
+    fallback, ranking, or user-identity lookup.
+    """
 
     config.validate()
     if type(state) is not CollaborativeSourceState:
@@ -1032,6 +1037,13 @@ class _CollaborativeCandidateBucket:
 
 
 class CollaborativeScorer:
+    """Pure, bounded collaborative scorer over one validated immutable artifact.
+
+    Scoring is ``O(S + E + C log C)`` with at most 10 query sources, 1,000
+    visited edges, and 1,000 candidates. It performs no content/feedback
+    ranking, I/O, fallback, hybrid weighting, played adjustment, or top-K cut.
+    """
+
     def __init__(
         self,
         artifact: LoadedCollaborativeArtifact,
@@ -1046,6 +1058,8 @@ class CollaborativeScorer:
         return self.config.identity
 
     def score(self, context: CollaborativeQueryContext) -> CollaborativeScoringResult:
+        """Return reconstructible collaborative units without mutating inputs."""
+
         if type(context) is not CollaborativeQueryContext:
             _contract_error(
                 "scoring_input_invalid",

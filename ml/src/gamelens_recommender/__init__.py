@@ -1,6 +1,21 @@
 """Deterministic artifact-backed recommendation primitives."""
 
 from gamelens_recommender.artifacts import ArtifactError, LoadedArtifact, load_artifact
+from gamelens_recommender.collaborative import (
+    COLLABORATIVE_SCORING_CONFIG,
+    CollaborativeCandidateScore,
+    CollaborativeQueryContext,
+    CollaborativeQuerySource,
+    CollaborativeScorer,
+    CollaborativeScoringConfig,
+    CollaborativeScoringDiagnostics,
+    CollaborativeScoringError,
+    CollaborativeScoringIdentity,
+    CollaborativeScoringResult,
+    CollaborativeSourceEdge,
+    CollaborativeSourceState,
+    canonicalize_collaborative_query_sources,
+)
 from gamelens_recommender.collaborative_artifacts import (
     CollaborativeArtifactError,
     CollaborativeBuildMetadata,
@@ -22,6 +37,9 @@ from gamelens_recommender.collaborative_training import (
 )
 from gamelens_recommender.feedback import (
     FEEDBACK_POLICY_CONFIG,
+    AffinityCandidateScore,
+    AffinityMaterializationError,
+    AffinityMaterializationResult,
     FeedbackPolicyConfig,
     FeedbackRanker,
 )
@@ -35,7 +53,11 @@ from gamelens_recommender.interaction_snapshot import (
     profile_fingerprint,
     prune_supported_profiles,
 )
-from gamelens_recommender.ranking import ContentRanker, InsufficientContextError
+from gamelens_recommender.ranking import (
+    BaseCandidateMaterializationError,
+    ContentRanker,
+    InsufficientContextError,
+)
 from gamelens_recommender.schemas import (
     ActiveGameFeedback,
     BaseCandidateScore,
@@ -53,14 +75,30 @@ from gamelens_recommender.training import build_artifact
 
 __all__ = [
     "ActiveGameFeedback",
+    "AffinityCandidateScore",
+    "AffinityMaterializationError",
+    "AffinityMaterializationResult",
     "ArtifactError",
     "BaseCandidateScore",
+    "BaseCandidateMaterializationError",
     "BinaryInteractionMatrix",
+    "COLLABORATIVE_SCORING_CONFIG",
     "CatalogItem",
     "CatalogSnapshot",
     "CollaborativeArtifactError",
     "CollaborativeBuildMetadata",
+    "CollaborativeCandidateScore",
     "CollaborativeNeighborhoods",
+    "CollaborativeQueryContext",
+    "CollaborativeQuerySource",
+    "CollaborativeScorer",
+    "CollaborativeScoringConfig",
+    "CollaborativeScoringDiagnostics",
+    "CollaborativeScoringError",
+    "CollaborativeScoringIdentity",
+    "CollaborativeScoringResult",
+    "CollaborativeSourceEdge",
+    "CollaborativeSourceState",
     "CollaborativeTrainingError",
     "ContentRanker",
     "FEEDBACK_POLICY_CONFIG",
@@ -84,6 +122,7 @@ __all__ = [
     "build_binary_interaction_matrix",
     "build_collaborative_artifact",
     "canonical_snapshot",
+    "canonicalize_collaborative_query_sources",
     "load_artifact",
     "load_collaborative_artifact",
     "fit_collaborative_neighborhoods",

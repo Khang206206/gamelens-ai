@@ -286,6 +286,12 @@ class FeedbackRanker:
         positive_sources: tuple[PositiveFeedbackSource, ...],
         candidate_slugs: tuple[str, ...],
     ) -> AffinityMaterializationResult:
+        """Score affinity for at most 1,000 exact rows without final ranking.
+
+        Runtime is linear in the bounded source and candidate sparse rows. This
+        seam applies no candidate union, hybrid weights, played state, or fallback.
+        """
+
         self._validate_canonical_positive_sources(positive_sources)
         canonical_slugs = self._canonical_exact_candidate_slugs(candidate_slugs)
         if any(slug not in self.artifact.slug_to_row for slug in canonical_slugs):

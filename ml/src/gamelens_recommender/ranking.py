@@ -157,6 +157,12 @@ class ContentRanker:
         context: UserContext,
         candidate_slugs: tuple[str, ...],
     ) -> tuple[BaseCandidateScore, ...]:
+        """Score at most 1,000 exact rows in canonical slug order.
+
+        Runtime is linear in the requested sparse rows. This seam does not
+        choose eligibility, candidate origin, final weights, rank, or fallback.
+        """
+
         canonical_slugs = self._canonical_exact_candidate_slugs(candidate_slugs)
         missing = [slug for slug in canonical_slugs if slug not in self.artifact.slug_to_row]
         if missing:
