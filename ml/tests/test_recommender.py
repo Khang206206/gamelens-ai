@@ -11,6 +11,7 @@ import pytest
 
 from gamelens_recommender import (
     ArtifactError,
+    BaseCandidateScore,
     CatalogItem,
     ContentRanker,
     UserContext,
@@ -22,6 +23,7 @@ from gamelens_recommender import ranking as ranking_module
 from gamelens_recommender.baseline import popularity_baseline
 from gamelens_recommender.config import POPULARITY_CONFIG, RANKING_CONFIG
 from gamelens_recommender.features import build_content_document, fit_features
+from gamelens_recommender.ranking import BaseCandidateMaterializationError
 
 
 def _replace_artifact_member(root: Path, name: str, value: bytes) -> None:
@@ -460,6 +462,169 @@ def test_pre_truncation_scoring_preserves_stage_3_golden_contract(snapshot, tmp_
             ("Its content profile is similar to Alpha Tactics.",),
         ),
     ]
+
+
+def test_exact_base_materialization_matches_full_catalog_components(snapshot, tmp_path) -> None:
+    artifact = load_artifact(build_artifact(snapshot, tmp_path / "model"))
+    ranker = ContentRanker(artifact)
+    context = UserContext(
+        selected_game_slugs=("alpha-tactics",),
+        preferred_genres=("strategy",),
+        preferred_platforms=("linux",),
+    )
+    full_catalog = ranker.score_candidates(context)
+    requested = tuple(reversed(tuple(candidate.slug for candidate in full_catalog)))
+
+    exact = ranker.materialize_base_candidates(context, requested)
+
+    assert exact == tuple(sorted(full_catalog, key=lambda candidate: candidate.slug))
+
+
+def test_exact_base_materialization_keeps_zero_content_and_selected_rows(
+    snapshot,
+    tmp_path,
+) -> None:
+    artifact = load_artifact(build_artifact(snapshot, tmp_path / "model"))
+    ranker = ContentRanker(artifact)
+    zero_content_context = UserContext(
+        preferred_genres=("strategy",),
+        preferred_platforms=("console",),
+    )
+
+    assert all(
+        candidate.slug != "gamma-drift"
+        for candidate in ranker.score_candidates(zero_content_context)
+    )
+    assert ranker.materialize_base_candidates(
+        zero_content_context,
+        ("gamma-drift",),
+    ) == (
+        BaseCandidateScore(
+            slug="gamma-drift",
+            base_score_units=135_000,
+            content_score_units=0,
+            platform_score_units=1_000_000,
+            popularity_score_units=350_000,
+        ),
+    )
+
+    selected_context = UserContext(selected_game_slugs=("alpha-tactics",))
+    assert all(
+        candidate.slug != "alpha-tactics" for candidate in ranker.score_candidates(selected_context)
+    )
+    selected = ranker.materialize_base_candidates(selected_context, ("alpha-tactics",))
+    assert selected[0].slug == "alpha-tactics"
+    assert selected[0].content_score_units == 1_000_000
+
+
+def test_exact_base_materialization_reads_only_canonical_requested_rows(
+    snapshot,
+    tmp_path,
+) -> None:
+    artifact = load_artifact(build_artifact(snapshot, tmp_path / "model"))
+    matrix = artifact.matrix
+    row_reads: list[tuple[int, ...]] = []
+
+    class RecordingMatrix:
+        shape = matrix.shape
+
+        def __getitem__(self, rows):
+            row_reads.append(tuple(int(row) for row in rows))
+            return matrix[rows]
+
+    ranker = ContentRanker(replace(artifact, matrix=RecordingMatrix()))
+    context = UserContext(preferred_genres=("strategy",))
+    first = ranker.materialize_base_candidates(
+        context,
+        ("gamma-drift", "beta-kingdom"),
+    )
+    second = ranker.materialize_base_candidates(
+        context,
+        ("beta-kingdom", "gamma-drift"),
+    )
+
+    expected_rows = (
+        artifact.slug_to_row["beta-kingdom"],
+        artifact.slug_to_row["gamma-drift"],
+    )
+    assert first == second
+    assert tuple(candidate.slug for candidate in first) == (
+        "beta-kingdom",
+        "gamma-drift",
+    )
+    assert {candidate.content_score_units for candidate in first} == {0, 247_788}
+    assert row_reads == [expected_rows, expected_rows]
+
+
+def test_exact_base_materialization_accepts_empty_candidate_set(snapshot, tmp_path) -> None:
+    artifact = load_artifact(build_artifact(snapshot, tmp_path / "model"))
+    ranker = ContentRanker(artifact)
+
+    assert (
+        ranker.materialize_base_candidates(
+            UserContext(preferred_genres=("strategy",)),
+            (),
+        )
+        == ()
+    )
+
+
+@pytest.mark.parametrize(
+    ("candidate_slugs", "expected_code"),
+    [
+        pytest.param(
+            ["beta-kingdom"],
+            "materialization_input_invalid",
+            id="mutable-container",
+        ),
+        pytest.param(
+            ("beta-kingdom", "beta-kingdom"),
+            "materialization_input_invalid",
+            id="duplicate",
+        ),
+        pytest.param(
+            ("Beta-Kingdom",),
+            "materialization_input_invalid",
+            id="noncanonical",
+        ),
+        pytest.param(
+            ("unknown-game",),
+            "materialization_artifact_incompatible",
+            id="missing",
+        ),
+        pytest.param(
+            tuple(f"unknown-{index}" for index in range(1_000)),
+            "materialization_artifact_incompatible",
+            id="at-cap",
+        ),
+        pytest.param(
+            tuple(f"unknown-{index}" for index in range(1_001)),
+            "materialization_input_invalid",
+            id="over-cap",
+        ),
+    ],
+)
+def test_exact_base_materialization_rejects_invalid_or_incompatible_slugs(
+    snapshot,
+    tmp_path,
+    monkeypatch,
+    candidate_slugs,
+    expected_code,
+) -> None:
+    artifact = load_artifact(build_artifact(snapshot, tmp_path / "model"))
+    ranker = ContentRanker(artifact)
+
+    def unexpected_context_traversal(_context):
+        raise AssertionError("Invalid exact candidates must fail before context traversal")
+
+    monkeypatch.setattr(ranker, "_validated_user_vector", unexpected_context_traversal)
+    with pytest.raises(BaseCandidateMaterializationError) as captured:
+        ranker.materialize_base_candidates(
+            UserContext(preferred_genres=("strategy",)),
+            candidate_slugs,
+        )
+
+    assert captured.value.code == expected_code
 
 
 def test_taxonomy_preference_order_does_not_change_ranking(snapshot, tmp_path) -> None:

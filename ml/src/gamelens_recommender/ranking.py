@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Literal
 
 import numpy as np
 from scipy import sparse
@@ -9,6 +10,7 @@ from gamelens_recommender.artifacts import LoadedArtifact
 from gamelens_recommender.config import RANKING_CONFIG, SCORE_SCALE, RankingConfig
 from gamelens_recommender.features import build_preference_document
 from gamelens_recommender.schemas import (
+    SLUG_PATTERN,
     BaseCandidateScore,
     RankedRecommendation,
     RankingResult,
@@ -18,6 +20,18 @@ from gamelens_recommender.schemas import (
     TaxonomyValue,
     UserContext,
 )
+
+MAX_EXACT_BASE_CANDIDATES = 1_000
+BaseCandidateMaterializationErrorCode = Literal[
+    "materialization_input_invalid",
+    "materialization_artifact_incompatible",
+]
+
+
+class BaseCandidateMaterializationError(ValueError):
+    def __init__(self, code: BaseCandidateMaterializationErrorCode, message: str) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 class InsufficientContextError(ValueError):
@@ -74,17 +88,104 @@ class ContentRanker:
         )
         return _normalized(combined)
 
-    def score_candidates(self, context: UserContext) -> tuple[BaseCandidateScore, ...]:
+    def _validated_user_vector(self, context: UserContext) -> sparse.csr_matrix:
         context.validate()
         missing = [
             slug for slug in context.selected_game_slugs if slug not in self.artifact.slug_to_row
         ]
         if missing:
             raise ValueError("Selected game is not present in the artifact")
-        user_vector = self._user_vector(context)
+        return self._user_vector(context)
+
+    def _base_candidate_score(
+        self,
+        *,
+        row: int,
+        content_units: int,
+        platform_slugs: frozenset[str],
+    ) -> BaseCandidateScore:
+        item = self.artifact.items[row]
+        platform_match_count = sum(value.slug in platform_slugs for value in item.platforms)
+        platform_raw = platform_match_count / len(platform_slugs) if platform_slugs else 0
+        platform_units = quantize(platform_raw)
+        popularity_units = quantize(float(self.artifact.popularity[row]))
+        final_units = sum(
+            contribution(raw, weight)
+            for raw, weight in (
+                (content_units, self.config.content_weight_units),
+                (platform_units, self.config.platform_weight_units),
+                (popularity_units, self.config.popularity_weight_units),
+            )
+        )
+        return BaseCandidateScore(
+            slug=item.slug,
+            base_score_units=final_units,
+            content_score_units=content_units,
+            platform_score_units=platform_units,
+            popularity_score_units=popularity_units,
+        )
+
+    @staticmethod
+    def _canonical_exact_candidate_slugs(candidate_slugs: tuple[str, ...]) -> tuple[str, ...]:
+        if type(candidate_slugs) is not tuple:
+            raise BaseCandidateMaterializationError(
+                "materialization_input_invalid",
+                "Exact candidate slugs must be an immutable tuple",
+            )
+        if len(candidate_slugs) > MAX_EXACT_BASE_CANDIDATES:
+            raise BaseCandidateMaterializationError(
+                "materialization_input_invalid",
+                "Exact candidate slug count exceeds the materialization limit",
+            )
+        if any(
+            type(slug) is not str or SLUG_PATTERN.fullmatch(slug) is None
+            for slug in candidate_slugs
+        ):
+            raise BaseCandidateMaterializationError(
+                "materialization_input_invalid",
+                "Exact candidate slugs must be canonical",
+            )
+        if len(candidate_slugs) != len(set(candidate_slugs)):
+            raise BaseCandidateMaterializationError(
+                "materialization_input_invalid",
+                "Exact candidate slugs must be distinct",
+            )
+        return tuple(sorted(candidate_slugs))
+
+    def materialize_base_candidates(
+        self,
+        context: UserContext,
+        candidate_slugs: tuple[str, ...],
+    ) -> tuple[BaseCandidateScore, ...]:
+        canonical_slugs = self._canonical_exact_candidate_slugs(candidate_slugs)
+        missing = [slug for slug in canonical_slugs if slug not in self.artifact.slug_to_row]
+        if missing:
+            raise BaseCandidateMaterializationError(
+                "materialization_artifact_incompatible",
+                "Exact candidate slug is not present in the content artifact",
+            )
+
+        user_vector = self._validated_user_vector(context)
+        if not canonical_slugs:
+            return ()
+
+        rows = tuple(self.artifact.slug_to_row[slug] for slug in canonical_slugs)
+        similarities = (self.artifact.matrix[list(rows)] @ user_vector.T).toarray().ravel()
+        platform_slugs = frozenset(context.preferred_platforms)
+        return tuple(
+            self._base_candidate_score(
+                row=row,
+                content_units=quantize(float(similarity)),
+                platform_slugs=platform_slugs,
+            )
+            for row, similarity in zip(rows, similarities, strict=True)
+        )
+
+    def score_candidates(self, context: UserContext) -> tuple[BaseCandidateScore, ...]:
+        user_vector = self._validated_user_vector(context)
         similarities = (self.artifact.matrix @ user_vector.T).toarray().ravel()
         selected = set(context.selected_game_slugs)
-        platform_slugs = set(context.preferred_platforms)
+        platform_slugs = frozenset(context.preferred_platforms)
         candidates: list[BaseCandidateScore] = []
         for row, item in enumerate(self.artifact.items):
             if item.slug in selected:
@@ -92,25 +193,11 @@ class ContentRanker:
             content_units = quantize(float(similarities[row]))
             if content_units == 0:
                 continue
-            platform_match_count = sum(value.slug in platform_slugs for value in item.platforms)
-            platform_raw = platform_match_count / len(platform_slugs) if platform_slugs else 0
-            platform_units = quantize(platform_raw)
-            popularity_units = quantize(float(self.artifact.popularity[row]))
-            final_units = sum(
-                contribution(raw, weight)
-                for raw, weight in (
-                    (content_units, self.config.content_weight_units),
-                    (platform_units, self.config.platform_weight_units),
-                    (popularity_units, self.config.popularity_weight_units),
-                )
-            )
             candidates.append(
-                BaseCandidateScore(
-                    slug=item.slug,
-                    base_score_units=final_units,
-                    content_score_units=content_units,
-                    platform_score_units=platform_units,
-                    popularity_score_units=popularity_units,
+                self._base_candidate_score(
+                    row=row,
+                    content_units=content_units,
+                    platform_slugs=platform_slugs,
                 )
             )
         candidates.sort(
