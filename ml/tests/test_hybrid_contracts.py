@@ -266,8 +266,12 @@ def test_phase4_hybrid_result_contract_is_additive_and_immutable() -> None:
         rank=1,
         candidate_origin="both",
         base_score_units=500_000,
-        base_components=(ScoreComponent("content", 500_000, 800_000, 400_000),),
-        base_evidence=RecommendationEvidence((), (), (), (), 500_000),
+        base_components=(
+            ScoreComponent("content", 500_000, 800_000, 400_000),
+            ScoreComponent("platform", 0, 100_000, 0),
+            ScoreComponent("popularity", 1_000_000, 100_000, 100_000),
+        ),
+        base_evidence=RecommendationEvidence((), (), (), (), 1_000_000),
         base_weight_units=800_000,
         base_contribution_units=400_000,
         affinity_score_units=200_000,
@@ -303,12 +307,40 @@ def test_phase4_hybrid_result_contract_is_additive_and_immutable() -> None:
 
     assert not hasattr(result, "fallback_reason")
     assert result.items[0].collaborative_source_edges == (edge,)
+    content_only = replace(
+        item,
+        slug="content-candidate",
+        rank=2,
+        candidate_origin="content",
+        collaborative_supported=False,
+        collaborative_score_units=0,
+        collaborative_contribution_units=0,
+        collaborative_item_support=None,
+        collaborative_source_edges=(),
+        pre_played_score_units=420_000,
+        final_score_units=420_000,
+        adjustment_reasons=("feedback_affinity",),
+    )
+    expanded = replace(result, items=(item, content_only))
+    validate_hybrid_ranking_result(expanded)
+    assert len(expanded.items) > expanded.collaborative_diagnostics.returned_candidate_count
+
     with pytest.raises(FrozenInstanceError):
         item.rank = 2
     with pytest.raises(HybridContractError) as captured:
         validate_hybrid_ranking_result(replace(result, mode="stage_4_fallback"))
 
     assert captured.value.code == "hybrid_result_invalid"
+    for invalid_item in (
+        replace(item, base_contribution_units=399_999),
+        replace(item, collaborative_contribution_units=39_999),
+        replace(item, pre_played_score_units=459_999),
+        replace(item, final_score_units=459_999),
+        replace(item, adjustment_reasons=("feedback_affinity",)),
+    ):
+        with pytest.raises(HybridContractError) as captured:
+            validate_hybrid_ranking_result(replace(result, items=(invalid_item,)))
+        assert captured.value.code == "hybrid_result_invalid"
 
 
 def test_phase4_stage4_branch_characterization_matrix(snapshot, tmp_path) -> None:

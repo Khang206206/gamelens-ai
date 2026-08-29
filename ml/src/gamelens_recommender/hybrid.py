@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from gamelens_recommender.collaborative import (
@@ -276,6 +276,29 @@ def _validate_base_candidate(
         _contract_error(code, "Hybrid base candidate is not reconstructible")
 
 
+def _hybrid_tie_break_key(
+    *,
+    final_score_units: int,
+    pre_played_score_units: int,
+    base_contribution_units: int,
+    collaborative_contribution_units: int,
+    affinity_contribution_units: int,
+    content_score_units: int,
+    popularity_score_units: int,
+    slug: str,
+) -> tuple[int, int, int, int, int, int, int, str]:
+    return (
+        -final_score_units,
+        -pre_played_score_units,
+        -base_contribution_units,
+        -collaborative_contribution_units,
+        -affinity_contribution_units,
+        -content_score_units,
+        -popularity_score_units,
+        slug,
+    )
+
+
 @dataclass(frozen=True)
 class HybridCandidateComponents:
     """Exact raw component state for one eligible union candidate."""
@@ -533,6 +556,314 @@ def materialize_hybrid_candidate_union(
 
 
 @dataclass(frozen=True)
+class RankedHybridCandidate:
+    """One selected candidate after versioned math, before evidence prose."""
+
+    rank: int
+    candidate: HybridCandidateComponents
+    base_weight_units: int
+    base_contribution_units: int
+    affinity_weight_units: int
+    affinity_contribution_units: int
+    collaborative_weight_units: int
+    collaborative_contribution_units: int
+    pre_played_score_units: int
+    played_factor_units: int
+    played_delta_units: int
+    final_score_units: int
+    adjustment_reasons: tuple[HybridAdjustmentReason, ...]
+
+    def validate(self, config: HybridPolicyConfig = HYBRID_POLICY_CONFIG) -> None:
+        config.validate()
+        if type(self.rank) is not int or self.rank <= 0:
+            _contract_error("hybrid_result_invalid", "Ranked hybrid candidate rank is invalid")
+        if type(self.candidate) is not HybridCandidateComponents:
+            _contract_error("hybrid_result_invalid", "Ranked hybrid candidate is invalid")
+        self.candidate.validate()
+        if self.affinity_weight_units == config.affinity_weight_units:
+            affinity_profile_active = True
+            expected_base_weight = config.base_weight_units_with_affinity
+        elif self.affinity_weight_units == 0 and self.candidate.affinity_score_units == 0:
+            affinity_profile_active = False
+            expected_base_weight = config.base_weight_units_without_affinity
+        else:
+            _contract_error(
+                "hybrid_result_invalid",
+                "Ranked hybrid candidate affinity weight is invalid",
+            )
+        if (
+            self.base_weight_units != expected_base_weight
+            or self.collaborative_weight_units != config.collaborative_weight_units
+        ):
+            _contract_error(
+                "hybrid_result_invalid",
+                "Ranked hybrid candidate request weights are invalid",
+            )
+        unit_values = (
+            self.base_contribution_units,
+            self.affinity_contribution_units,
+            self.collaborative_contribution_units,
+            self.pre_played_score_units,
+            self.played_factor_units,
+            self.final_score_units,
+        )
+        if any(type(value) is not int or not 0 <= value <= SCORE_SCALE for value in unit_values):
+            _contract_error("hybrid_result_invalid", "Ranked hybrid candidate units are invalid")
+        if (
+            type(self.played_delta_units) is not int
+            or not -SCORE_SCALE <= self.played_delta_units <= 0
+        ):
+            _contract_error(
+                "hybrid_result_invalid",
+                "Ranked hybrid candidate played delta is invalid",
+            )
+        if type(self.adjustment_reasons) is not tuple or any(
+            type(reason) is not str
+            or reason
+            not in {
+                "feedback_affinity",
+                "collaborative_similarity",
+                "played_adjustment",
+            }
+            for reason in self.adjustment_reasons
+        ):
+            _contract_error(
+                "hybrid_result_invalid",
+                "Ranked hybrid candidate adjustment reasons are invalid",
+            )
+
+        collaborative_score_units = (
+            self.candidate.collaborative_candidate.collaborative_score_units
+            if self.candidate.collaborative_candidate is not None
+            else 0
+        )
+        expected_base_contribution = contribution(
+            self.candidate.base.base_score_units,
+            self.base_weight_units,
+        )
+        expected_affinity_contribution = contribution(
+            self.candidate.affinity_score_units,
+            self.affinity_weight_units,
+        )
+        expected_collaborative_contribution = contribution(
+            collaborative_score_units,
+            self.collaborative_weight_units,
+        )
+        expected_pre_played = (
+            expected_base_contribution
+            + expected_affinity_contribution
+            + expected_collaborative_contribution
+        )
+        played_adjusted = "played_adjustment" in self.adjustment_reasons
+        expected_played_factor = config.played_factor_units if played_adjusted else SCORE_SCALE
+        expected_final = contribution(expected_pre_played, expected_played_factor)
+        if (
+            self.base_contribution_units != expected_base_contribution
+            or self.affinity_contribution_units != expected_affinity_contribution
+            or self.collaborative_contribution_units != expected_collaborative_contribution
+            or self.pre_played_score_units != expected_pre_played
+            or self.played_factor_units != expected_played_factor
+            or self.final_score_units != expected_final
+            or self.played_delta_units != expected_final - expected_pre_played
+        ):
+            _contract_error(
+                "hybrid_result_invalid",
+                "Ranked hybrid candidate score is not reconstructible",
+            )
+        expected_reasons: tuple[HybridAdjustmentReason, ...] = ()
+        if affinity_profile_active:
+            expected_reasons += ("feedback_affinity",)
+        if self.candidate.collaborative_candidate is not None:
+            expected_reasons += ("collaborative_similarity",)
+        if played_adjusted:
+            expected_reasons += ("played_adjustment",)
+        if self.adjustment_reasons != expected_reasons:
+            _contract_error(
+                "hybrid_result_invalid",
+                "Ranked hybrid candidate adjustment reasons are invalid",
+            )
+
+
+def _ranked_hybrid_candidate_key(
+    candidate: RankedHybridCandidate,
+) -> tuple[int, int, int, int, int, int, int, str]:
+    return _hybrid_tie_break_key(
+        final_score_units=candidate.final_score_units,
+        pre_played_score_units=candidate.pre_played_score_units,
+        base_contribution_units=candidate.base_contribution_units,
+        collaborative_contribution_units=candidate.collaborative_contribution_units,
+        affinity_contribution_units=candidate.affinity_contribution_units,
+        content_score_units=candidate.candidate.base.content_score_units,
+        popularity_score_units=candidate.candidate.base.popularity_score_units,
+        slug=candidate.candidate.slug,
+    )
+
+
+@dataclass(frozen=True)
+class HybridCandidateRanking:
+    """Deterministic top-K hybrid scores without fallback or prose."""
+
+    policy: HybridPolicyIdentity
+    affinity_profile_active: bool
+    items: tuple[RankedHybridCandidate, ...]
+
+    def validate(self, config: HybridPolicyConfig = HYBRID_POLICY_CONFIG) -> None:
+        config.validate()
+        if type(self.policy) is not HybridPolicyIdentity or self.policy != config.identity:
+            _contract_error("hybrid_result_invalid", "Hybrid candidate ranking policy is invalid")
+        if type(self.affinity_profile_active) is not bool:
+            _contract_error(
+                "hybrid_result_invalid",
+                "Hybrid candidate ranking affinity state is invalid",
+            )
+        if (
+            type(self.items) is not tuple
+            or not self.items
+            or len(self.items) > 20
+            or any(type(item) is not RankedHybridCandidate for item in self.items)
+        ):
+            _contract_error("hybrid_result_invalid", "Hybrid candidate ranking items are invalid")
+        for item in self.items:
+            item.validate(config)
+            expected_affinity_weight = (
+                config.affinity_weight_units if self.affinity_profile_active else 0
+            )
+            if item.affinity_weight_units != expected_affinity_weight:
+                _contract_error(
+                    "hybrid_result_invalid",
+                    "Hybrid candidate ranking affinity weights are inconsistent",
+                )
+        if tuple(item.rank for item in self.items) != tuple(range(1, len(self.items) + 1)):
+            _contract_error("hybrid_result_invalid", "Hybrid candidate ranks are not contiguous")
+        slugs = tuple(item.candidate.slug for item in self.items)
+        if len(slugs) != len(set(slugs)):
+            _contract_error(
+                "hybrid_result_invalid",
+                "Hybrid candidate ranking slugs are not distinct",
+            )
+        if self.items != tuple(sorted(self.items, key=_ranked_hybrid_candidate_key)):
+            _contract_error("hybrid_result_invalid", "Hybrid candidate ranking order is invalid")
+
+
+def rank_hybrid_candidate_union(
+    candidate_union: HybridCandidateUnion,
+    prepared_context: PreparedFeedbackRankingContext,
+    config: HybridPolicyConfig = HYBRID_POLICY_CONFIG,
+) -> HybridCandidateRanking:
+    """Apply request-wide hybrid weights, played adjustment, order, and top-K.
+
+    Collaborative weight remains active for every candidate in a supported
+    request. Missing candidate edges contribute zero and are never reassigned
+    to base. This function performs no fallback, evidence materialization,
+    explanation prose, I/O, or mutation.
+    """
+
+    if type(config) is not HybridPolicyConfig:
+        _contract_error("hybrid_config_invalid", "Hybrid policy configuration is invalid")
+    config.validate()
+    if type(candidate_union) is not HybridCandidateUnion:
+        _contract_error("hybrid_input_invalid", "Hybrid candidate union is invalid")
+    try:
+        candidate_union.validate()
+    except HybridContractError as error:
+        raise HybridContractError(
+            "hybrid_input_invalid",
+            "Hybrid candidate union is invalid",
+        ) from error
+    if type(prepared_context) is not PreparedFeedbackRankingContext:
+        _contract_error("hybrid_input_invalid", "Prepared hybrid ranking context is invalid")
+    try:
+        prepared_context.validate()
+    except ValueError as error:
+        raise HybridContractError(
+            "hybrid_input_invalid",
+            "Prepared hybrid ranking context is invalid",
+        ) from error
+    if candidate_union.affinity_profile_active != bool(prepared_context.positive_sources):
+        _contract_error(
+            "hybrid_input_invalid",
+            "Hybrid affinity state does not match the prepared ranking context",
+        )
+    if candidate_union.collaborative_candidate_count <= 0:
+        _contract_error(
+            "hybrid_input_invalid",
+            "Hybrid ranking requires an eligible collaborative candidate",
+        )
+    if {candidate.slug for candidate in candidate_union.candidates} & set(
+        prepared_context.candidate_exclusion_slugs
+    ):
+        _contract_error(
+            "hybrid_input_invalid",
+            "Hybrid candidate union bypasses a prepared hard exclusion",
+        )
+
+    affinity_profile_active = candidate_union.affinity_profile_active
+    base_weight_units = (
+        config.base_weight_units_with_affinity
+        if affinity_profile_active
+        else config.base_weight_units_without_affinity
+    )
+    affinity_weight_units = config.affinity_weight_units if affinity_profile_active else 0
+    played_slugs = set(prepared_context.played_slugs)
+    scored: list[RankedHybridCandidate] = []
+    for candidate in candidate_union.candidates:
+        collaborative_score_units = (
+            candidate.collaborative_candidate.collaborative_score_units
+            if candidate.collaborative_candidate is not None
+            else 0
+        )
+        base_contribution_units = contribution(candidate.base.base_score_units, base_weight_units)
+        affinity_contribution_units = contribution(
+            candidate.affinity_score_units,
+            affinity_weight_units,
+        )
+        collaborative_contribution_units = contribution(
+            collaborative_score_units,
+            config.collaborative_weight_units,
+        )
+        pre_played_score_units = (
+            base_contribution_units + affinity_contribution_units + collaborative_contribution_units
+        )
+        is_played = candidate.slug in played_slugs
+        played_factor_units = config.played_factor_units if is_played else SCORE_SCALE
+        final_score_units = contribution(pre_played_score_units, played_factor_units)
+        adjustment_reasons: tuple[HybridAdjustmentReason, ...] = ()
+        if affinity_profile_active:
+            adjustment_reasons += ("feedback_affinity",)
+        if candidate.collaborative_candidate is not None:
+            adjustment_reasons += ("collaborative_similarity",)
+        if is_played:
+            adjustment_reasons += ("played_adjustment",)
+        scored.append(
+            RankedHybridCandidate(
+                rank=1,
+                candidate=candidate,
+                base_weight_units=base_weight_units,
+                base_contribution_units=base_contribution_units,
+                affinity_weight_units=affinity_weight_units,
+                affinity_contribution_units=affinity_contribution_units,
+                collaborative_weight_units=config.collaborative_weight_units,
+                collaborative_contribution_units=collaborative_contribution_units,
+                pre_played_score_units=pre_played_score_units,
+                played_factor_units=played_factor_units,
+                played_delta_units=final_score_units - pre_played_score_units,
+                final_score_units=final_score_units,
+                adjustment_reasons=adjustment_reasons,
+            )
+        )
+
+    scored.sort(key=_ranked_hybrid_candidate_key)
+    selected = scored[: prepared_context.effective_context.top_k]
+    result = HybridCandidateRanking(
+        policy=config.identity,
+        affinity_profile_active=affinity_profile_active,
+        items=tuple(replace(candidate, rank=rank) for rank, candidate in enumerate(selected, 1)),
+    )
+    result.validate(config)
+    return result
+
+
+@dataclass(frozen=True)
 class HybridRecommendation:
     slug: str
     rank: int
@@ -559,7 +890,8 @@ class HybridRecommendation:
     explanation_reasons: tuple[str, ...]
     adjustment_reasons: tuple[HybridAdjustmentReason, ...]
 
-    def validate_structure(self) -> None:
+    def validate_structure(self, config: HybridPolicyConfig = HYBRID_POLICY_CONFIG) -> None:
+        config.validate()
         if type(self.slug) is not str or SLUG_PATTERN.fullmatch(self.slug) is None:
             _contract_error("hybrid_result_invalid", "Hybrid recommendation slug is invalid")
         if type(self.rank) is not int or self.rank <= 0:
@@ -587,12 +919,50 @@ class HybridRecommendation:
             or not -SCORE_SCALE <= self.played_delta_units <= 0
         ):
             _contract_error("hybrid_result_invalid", "Hybrid played delta is invalid")
-        if type(self.base_components) is not tuple or any(
-            type(component) is not ScoreComponent for component in self.base_components
+        if (
+            type(self.base_components) is not tuple
+            or any(type(component) is not ScoreComponent for component in self.base_components)
+            or tuple(component.name for component in self.base_components)
+            != ("content", "platform", "popularity")
         ):
             _contract_error("hybrid_result_invalid", "Hybrid base components are invalid")
+        expected_base_component_weights = (
+            RANKING_CONFIG.content_weight_units,
+            RANKING_CONFIG.platform_weight_units,
+            RANKING_CONFIG.popularity_weight_units,
+        )
+        for component, expected_weight in zip(
+            self.base_components,
+            expected_base_component_weights,
+            strict=True,
+        ):
+            if (
+                type(component.raw_units) is not int
+                or not 0 <= component.raw_units <= SCORE_SCALE
+                or type(component.weight_units) is not int
+                or type(component.contribution_units) is not int
+                or component.weight_units != expected_weight
+                or component.contribution_units
+                != contribution(component.raw_units, component.weight_units)
+            ):
+                _contract_error(
+                    "hybrid_result_invalid",
+                    "Hybrid base component is not reconstructible",
+                )
+        if self.base_score_units != sum(
+            component.contribution_units for component in self.base_components
+        ):
+            _contract_error(
+                "hybrid_result_invalid",
+                "Hybrid base score is not reconstructible",
+            )
         if type(self.base_evidence) is not RecommendationEvidence:
             _contract_error("hybrid_result_invalid", "Hybrid base evidence is invalid")
+        if self.base_evidence.popularity_percentile_units != self.base_components[2].raw_units:
+            _contract_error(
+                "hybrid_result_invalid",
+                "Hybrid base evidence is inconsistent",
+            )
         if type(self.collaborative_supported) is not bool:
             _contract_error("hybrid_result_invalid", "Hybrid collaborative support is invalid")
         if type(self.collaborative_source_edges) is not tuple or any(
@@ -612,17 +982,32 @@ class HybridRecommendation:
                 "hybrid_result_invalid",
                 "Hybrid collaborative edge is invalid",
             ) from error
+        content_supported = self.base_components[0].raw_units > 0
         if self.collaborative_supported:
-            if (
-                self.candidate_origin == "content"
-                or self.collaborative_score_units <= 0
-                or type(self.collaborative_item_support) is not int
-                or self.collaborative_item_support <= 0
-                or not self.collaborative_source_edges
-            ):
+            if self.candidate_origin == "content" or not self.collaborative_source_edges:
                 _contract_error(
                     "hybrid_result_invalid",
                     "Supported collaborative evidence is incomplete",
+                )
+            try:
+                CollaborativeCandidateScore(
+                    slug=self.slug,
+                    collaborative_score_units=self.collaborative_score_units,
+                    item_support=self.collaborative_item_support,  # type: ignore[arg-type]
+                    source_edges=self.collaborative_source_edges,
+                ).validate()
+            except CollaborativeScoringError as error:
+                raise HybridContractError(
+                    "hybrid_result_invalid",
+                    "Supported collaborative evidence is invalid",
+                ) from error
+            expected_origin: HybridCandidateOrigin = (
+                "both" if content_supported else "collaborative"
+            )
+            if self.candidate_origin != expected_origin:
+                _contract_error(
+                    "hybrid_result_invalid",
+                    "Supported collaborative candidate origin is inconsistent",
                 )
         elif (
             self.candidate_origin != "content"
@@ -634,6 +1019,11 @@ class HybridRecommendation:
             _contract_error(
                 "hybrid_result_invalid",
                 "Unsupported collaborative evidence must remain empty",
+            )
+        elif not content_supported:
+            _contract_error(
+                "hybrid_result_invalid",
+                "Content-only hybrid candidate has no content support",
             )
         if type(self.explanation_summary) is not str or not self.explanation_summary:
             _contract_error("hybrid_result_invalid", "Hybrid explanation summary is invalid")
@@ -649,6 +1039,72 @@ class HybridRecommendation:
             for reason in self.adjustment_reasons
         ):
             _contract_error("hybrid_result_invalid", "Hybrid adjustment reasons are invalid")
+
+        if self.affinity_weight_units == config.affinity_weight_units:
+            affinity_profile_active = True
+            expected_base_weight = config.base_weight_units_with_affinity
+        elif self.affinity_weight_units == 0 and self.affinity_score_units == 0:
+            affinity_profile_active = False
+            expected_base_weight = config.base_weight_units_without_affinity
+        else:
+            _contract_error("hybrid_result_invalid", "Hybrid affinity state is invalid")
+        expected_base_contribution = contribution(self.base_score_units, self.base_weight_units)
+        expected_affinity_contribution = contribution(
+            self.affinity_score_units,
+            self.affinity_weight_units,
+        )
+        expected_collaborative_contribution = contribution(
+            self.collaborative_score_units,
+            self.collaborative_weight_units,
+        )
+        expected_pre_played = (
+            expected_base_contribution
+            + expected_affinity_contribution
+            + expected_collaborative_contribution
+        )
+        played_adjusted = "played_adjustment" in self.adjustment_reasons
+        expected_played_factor = config.played_factor_units if played_adjusted else SCORE_SCALE
+        expected_final = contribution(expected_pre_played, expected_played_factor)
+        if (
+            self.base_weight_units != expected_base_weight
+            or self.collaborative_weight_units != config.collaborative_weight_units
+            or self.base_contribution_units != expected_base_contribution
+            or self.affinity_contribution_units != expected_affinity_contribution
+            or self.collaborative_contribution_units != expected_collaborative_contribution
+            or self.pre_played_score_units != expected_pre_played
+            or self.played_factor_units != expected_played_factor
+            or self.played_delta_units != expected_final - expected_pre_played
+            or self.final_score_units != expected_final
+        ):
+            _contract_error(
+                "hybrid_result_invalid",
+                "Hybrid recommendation score is not reconstructible",
+            )
+        expected_reasons: tuple[HybridAdjustmentReason, ...] = ()
+        if affinity_profile_active:
+            expected_reasons += ("feedback_affinity",)
+        if self.collaborative_supported:
+            expected_reasons += ("collaborative_similarity",)
+        if played_adjusted:
+            expected_reasons += ("played_adjustment",)
+        if self.adjustment_reasons != expected_reasons:
+            _contract_error("hybrid_result_invalid", "Hybrid adjustment reasons are inconsistent")
+
+
+def _hybrid_recommendation_key(
+    recommendation: HybridRecommendation,
+) -> tuple[int, int, int, int, int, int, int, str]:
+    components = {component.name: component for component in recommendation.base_components}
+    return _hybrid_tie_break_key(
+        final_score_units=recommendation.final_score_units,
+        pre_played_score_units=recommendation.pre_played_score_units,
+        base_contribution_units=recommendation.base_contribution_units,
+        collaborative_contribution_units=recommendation.collaborative_contribution_units,
+        affinity_contribution_units=recommendation.affinity_contribution_units,
+        content_score_units=components["content"].raw_units,
+        popularity_score_units=components["popularity"].raw_units,
+        slug=recommendation.slug,
+    )
 
 
 @dataclass(frozen=True)
@@ -693,28 +1149,40 @@ class HybridRecommendationsResult:
                 "hybrid_result_invalid",
                 "Hybrid collaborative diagnostics are invalid",
             ) from error
-        if (
-            type(self.items) is not tuple
-            or not self.items
-            or any(type(item) is not HybridRecommendation for item in self.items)
-        ):
-            _contract_error("hybrid_result_invalid", "Hybrid result items are invalid")
-        for item in self.items:
-            item.validate_structure()
-        if (
-            self.collaborative_diagnostics.returned_candidate_count <= 0
-            or len(self.items) > self.collaborative_diagnostics.returned_candidate_count
-        ):
-            _contract_error(
-                "hybrid_result_invalid",
-                "Hybrid items exceed collaborative candidate support",
-            )
-        if tuple(item.rank for item in self.items) != tuple(range(1, len(self.items) + 1)):
-            _contract_error("hybrid_result_invalid", "Hybrid result ranks are not contiguous")
         if type(self.positive_sources) is not tuple or any(
             type(source) is not PositiveFeedbackSource for source in self.positive_sources
         ):
             _contract_error("hybrid_result_invalid", "Hybrid positive sources are invalid")
+        if (
+            type(self.items) is not tuple
+            or not self.items
+            or len(self.items) > 20
+            or any(type(item) is not HybridRecommendation for item in self.items)
+        ):
+            _contract_error("hybrid_result_invalid", "Hybrid result items are invalid")
+        affinity_profile_active = bool(self.positive_sources)
+        for item in self.items:
+            item.validate_structure(config)
+            expected_affinity_weight = (
+                config.affinity_weight_units if affinity_profile_active else 0
+            )
+            if item.affinity_weight_units != expected_affinity_weight:
+                _contract_error(
+                    "hybrid_result_invalid",
+                    "Hybrid result affinity state is inconsistent",
+                )
+        if self.collaborative_diagnostics.returned_candidate_count <= 0:
+            _contract_error(
+                "hybrid_result_invalid",
+                "Hybrid result has no collaborative candidate support",
+            )
+        if tuple(item.rank for item in self.items) != tuple(range(1, len(self.items) + 1)):
+            _contract_error("hybrid_result_invalid", "Hybrid result ranks are not contiguous")
+        slugs = tuple(item.slug for item in self.items)
+        if len(slugs) != len(set(slugs)):
+            _contract_error("hybrid_result_invalid", "Hybrid result item slugs are not distinct")
+        if self.items != tuple(sorted(self.items, key=_hybrid_recommendation_key)):
+            _contract_error("hybrid_result_invalid", "Hybrid result order is invalid")
 
 
 @dataclass(frozen=True)
