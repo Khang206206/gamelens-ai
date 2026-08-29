@@ -68,6 +68,8 @@ def test_migration_created_expected_schema_and_indexes(postgres_engine: Engine) 
         "user_preferences",
         "interactions",
         "recommendation_events",
+        "collaborative_artifact_builds",
+        "collaborative_artifact_contributors",
     }
     game_indexes = {item["name"] for item in inspector.get_indexes("games")}
     assert {
@@ -91,6 +93,16 @@ def test_migration_created_expected_schema_and_indexes(postgres_engine: Engine) 
         interaction_foreign_keys["fk_interactions_user_id_users"]["options"]["ondelete"]
         == "CASCADE"
     )
+    contributor_indexes = {
+        item["name"] for item in inspector.get_indexes("collaborative_artifact_contributors")
+    }
+    assert "ix_collaborative_artifact_contributors_user_id_build_id" in contributor_indexes
+    contributor_foreign_keys = {
+        tuple(foreign_key["constrained_columns"]): foreign_key
+        for foreign_key in inspector.get_foreign_keys("collaborative_artifact_contributors")
+    }
+    assert contributor_foreign_keys[("build_id",)]["options"]["ondelete"] == "CASCADE"
+    assert contributor_foreign_keys[("user_id",)]["options"]["ondelete"] == "CASCADE"
 
 
 def test_seed_is_idempotent(postgres_session: Session) -> None:

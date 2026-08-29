@@ -8,6 +8,8 @@ from app.db.models.catalog import (
     game_tags,
 )
 from app.db.models.collaborative import (
+    CollaborativeArtifactBuild,
+    CollaborativeArtifactContributor,
     CollaborativeContributionConsent,
     CollaborativeDataRevision,
 )
@@ -21,6 +23,8 @@ from app.db.models.users import (
 )
 
 __all__ = [
+    "CollaborativeArtifactBuild",
+    "CollaborativeArtifactContributor",
     "CollaborativeContributionConsent",
     "CollaborativeDataRevision",
     "Game",
