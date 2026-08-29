@@ -224,8 +224,10 @@ remain required before a live-derived bundle can activate.
 Phase 3 is entirely inside the ML package. Canonical source selection, sparse
 candidate scoring, and exact-row base/affinity materialization add no table,
 migration, repository query, contributor row, serving reference, or new data-
-retention obligation. Phase 4 hybrid math will consume stable-slug component
-records; Phase 5 remains responsible for lifecycle-aware database readiness.
+retention obligation. Phase 4 likewise remains ML-only: it consumes stable-slug
+component records, returns either versioned hybrid evidence or an exact Stage 4
+fallback wrapper, and adds no persistence or serving reference. Phase 5 remains
+responsible for lifecycle-aware database readiness and API orchestration.
 
 ## Index and constraint plan
 

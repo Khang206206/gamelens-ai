@@ -6,8 +6,9 @@
   preflight verified on 2026-08-23; Phase 0–1 first-party audit foundation
   verified on 2026-08-24; Phase 2 offline collaborative artifact foundation
   verified on 2026-08-25; Phase 3 pure collaborative scoring and exact-row
-  handoff verified on 2026-08-28. Phase 4 hybrid policy and runtime activation
-  have not started.
+  handoff verified on 2026-08-28; Phase 4 versioned hybrid policy and exact
+  Stage 4 fallback verified on 2026-08-29. Phase 5 lifecycle/readiness and API
+  runtime activation have not started.
 - **Stage 4 prerequisite:** Complete and verified on 2026-08-13.
 - **Planning and target implementation branch:**
   `feat/stage-5-collaborative-and-hybrid-ranking`
@@ -17,11 +18,11 @@
   independently observable.
 
 Sections 1–20 remain the forward-looking engineering plan except where the
-Phase 0–3 slices are explicitly marked verified. Section 21 records only
+Phase 0–4 slices are explicitly marked verified. Section 21 records only
 measured implementation decisions. Section 22 is a provisional Stage 6
 handoff, and Section 23 remains pending until every acceptance gate passes.
-The Phase 3 scorer is an ML-only pure component. It does not make a Stage 5
-hybrid API/runtime capability available.
+The Phase 3 scorer and Phase 4 hybrid policy are ML-only pure components. They
+do not make a Stage 5 hybrid API/runtime capability available.
 
 ## 1. Context
 
@@ -38,8 +39,8 @@ The currently served recommender is not collaborative. Model
 `gamelens-feedback-adjustment/1.0.0` applies a deterministic per-request
 content affinity plus dislike and played rules. Neither component learns
 cross-user interaction patterns. The ML package now also exposes a pure
-artifact-backed collaborative candidate scorer, but no API orchestration or
-hybrid policy consumes it yet.
+artifact-backed collaborative candidate scorer and a versioned hybrid ranker,
+but no API orchestration consumes them yet.
 
 Stage 4 also leaves four constraints that control Stage 5:
 
@@ -670,7 +671,7 @@ interaction signal.
 
 ## 6. Target Repository Structure
 
-Phase 0–3 names marked `(+ implemented)` are as built. Later-phase illustrative
+Phase 0–4 names marked `(+ implemented)` are as built. Later-phase illustrative
 entries remain `(+ planned)`; generated snapshots and artifacts remain ignored.
 
 ```text
@@ -713,9 +714,11 @@ entries remain `(+ planned)`; generated snapshots and artifacts remain ignored.
 |   |   |-- collaborative_artifacts.py                  (+ implemented)
 |   |   |-- collaborative_training.py                   (+ implemented)
 |   |   |-- collaborative.py                            (+ implemented)
-|   |   `-- hybrid.py                                   (+ planned)
+|   |   `-- hybrid.py                                   (+ implemented)
 |   `-- tests/
-|       `-- test_phase3_handoff.py                      (+ implemented)
+|       |-- test_phase3_handoff.py                      (+ implemented)
+|       |-- test_hybrid_*.py                            (+ implemented)
+|       `-- test_phase4_handoff.py                      (+ implemented)
 |-- .env.example                                        (* changed)
 |-- docker-compose.yml                                  (* changed)
 `-- Makefile                                            (* changed)
@@ -965,8 +968,9 @@ without introducing identity or opaque executable serialization.
 ## 10. Implementation Phase 3: Pure Collaborative Candidate Scoring
 
 **Implementation status:** Complete for the ML-only scorer/materialization
-boundary and verified 2026-08-28. Hybrid policy, API orchestration, lifecycle
-readiness, response/event fields, and UI activation remain later phases.
+boundary and verified 2026-08-28. Phase 4 now consumes this boundary; API
+orchestration, lifecycle readiness, response/event fields, and UI activation
+remain later phases.
 
 ### Objective
 
@@ -995,9 +999,9 @@ The implementation is split along the following dependency graph:
                          3D + 3F -> 3G ML-only handoff and hardening
 ```
 
-After 3A, the scoring branch (3B–3D) and materialization branch (3E–3F) may be
-implemented in parallel. Work within each branch remains sequential. Phase 4
-may not start until 3G passes, and no slice may hide a failing earlier-slice
+After 3A, the scoring branch (3B–3D) and materialization branch (3E–3F) could be
+implemented in parallel while work within each branch remained sequential.
+Phase 4 started only after 3G passed, and no slice hid a failing earlier-slice
 test behind orchestration fallback.
 
 ### Completed Slice Record
@@ -1330,8 +1334,21 @@ diagnosing a failure.
 
 ## 11. Implementation Phase 4: Versioned Hybrid Ranking Policy
 
-**Implementation status:** Not started. Phase 3 now supplies the stable scorer,
-exact-row base, and exact-row affinity inputs required by this phase.
+**Implementation status:** Complete and verified on 2026-08-29 through slices
+4A–4G. The implementation remains inside the ML package; Phase 5 must provide
+lifecycle-backed readiness and API orchestration before it can serve traffic.
+
+### Completed Slice Record
+
+| Slice | Commit | Verified outcome |
+| --- | --- | --- |
+| 4A | `23132a0` | Frozen hybrid identities, modes, origins, weights, tie-breaks, fallback taxonomy, and typed contracts |
+| 4B | `2447e26` | Reusable immutable Stage 4 ranking context with unchanged public Stage 4 behavior |
+| 4C | `d547e3f` | Stable-slug content/collaborative candidate union before final top-K |
+| 4D | `6e3e181` | Fixed-point hybrid contributions, played adjustment, exclusions, and deterministic ordering |
+| 4E | `18e6ad4` | Reconstructible recommendation evidence and deterministic cautious prose |
+| 4F | `8556744` | Public `HybridRanker` orchestration and exact Stage 4 fallback matrix |
+| 4G | `10a5c79` | Production-loaded fixture handoff, frozen functional golden, determinism, immutability, and privacy hardening |
 
 ### Objective
 
@@ -1950,9 +1967,9 @@ infrastructure docs explicit until Section 23 is populated from passing gates.
 
 ## 21. Implementation-Time Decisions
 
-Phase 0–3 source preflight, first-party snapshot, consent/revision, fixture,
-aggregate audit, sparse trainer, offline artifact, and pure scoring decisions
-are implemented. They do not activate a hybrid policy, API readiness,
+Phase 0–4 source preflight, first-party snapshot, consent/revision, fixture,
+aggregate audit, sparse trainer, offline artifact, pure scoring, and hybrid
+policy decisions are implemented. They do not activate API readiness,
 response/event changes, live build, or a product contribution flow.
 
 ### As-Built Phase 0–1 First-Party Decisions
@@ -2111,6 +2128,59 @@ response/event changes, live build, or a product contribution flow.
     API/event schemas, UI evidence, and ranking-quality claims remain outside
     Phase 3 and are not implied by these fixture results.
 
+### As-Built Phase 4 Hybrid Policy Decisions
+
+1. The frozen policy is `gamelens-hybrid-ranking/1.0.0`. Immutable contracts
+   define `hybrid` and `stage_4_fallback` modes; `content`, `collaborative`, and
+   `both` candidate origins; the complete unavailable/no-support fallback
+   taxonomy; policy identities; bounded component records; and typed
+   configuration, input, and result failures.
+2. `FeedbackRanker.prepare_ranking_context()` exposes one reusable immutable
+   Stage 4 calculation containing the exact baseline, affinity profile, played
+   state, and collaborative query context. Existing `FeedbackRanker.rank()`
+   delegates through that seam without changing its public result, identity,
+   evidence, score, or order.
+3. The hybrid candidate union joins exact content/base, affinity, and retained
+   collaborative candidates by stable slug before final top-K. It assigns one
+   explicit origin, preserves zero-content collaborative candidates, retains
+   exact source-edge evidence, and cannot reintroduce selected positive sources
+   or dislikes.
+4. Policy weights use the 1,000,000 fixed-point scale. A request with an active
+   affinity profile assigns base/affinity/collaborative weights
+   `800000/100000/100000`; an inactive profile assigns `900000/0/100000`.
+   Contributions use the existing round-half-up integer operation, then the
+   existing `500000` played factor applies once after blending.
+5. Final ordering is frozen by final score, pre-played score, base contribution,
+   collaborative contribution, affinity contribution, raw content score,
+   popularity score, and slug. Exact contribution-sum, played-delta, top-K,
+   duplicate, tie, exclusion, and permutation tests reconstruct every output.
+6. Materialized hybrid recommendations expose raw Stage 3 components, base and
+   policy weights/contributions, affinity and collaborative evidence, played
+   adjustment, candidate origin, policy identities, diagnostics, and positive
+   sources. Deterministic cautious prose is derived only from those structured
+   facts and does not claim that similar users prefer an item.
+7. Public `HybridRanker` accepts a typed ready or unavailable collaborative
+   outcome. Every unavailable reason and every scorer no-support reason returns
+   `Stage4FallbackResult` containing the exact unchanged Stage 4 result. Query-
+   source or dislike-context mismatches fail as typed invalid input instead of
+   silently falling back.
+8. Stable Phase 4 policy/result/orchestrator contracts are exported from the
+   package root. Candidate-union, scoring, and recommendation-materialization
+   stage records/functions remain internal so callers cannot assemble partial
+   policy results.
+9. The production-built and production-loaded Phase 2 fixture reaches the
+   public hybrid policy deterministically. Its collaborative-only
+   `starbound-couriers` row has base/affinity/collaborative units
+   `159912/0/428571`, weighted contributions `127930/0/42857`, and final units
+   `170787`. Repeated runs preserve output and artifact bytes; privacy-string
+   checks find no fixture profile key or user/credential field. This is a
+   functional diagnostic, not recommendation-quality evidence.
+10. Slice commits are `23132a0`, `2447e26`, `d547e3f`, `6e3e181`, `18e6ad4`,
+    `8556744`, and `10a5c79`. The focused Phase 3/4 handoff and hybrid suite
+    passes 68 tests; the full ML suite passes 331 with one Windows symbolic-link
+    capability skip. Ruff lint/format and diff checks pass with no new
+    dependency.
+
 ### As-Built External-Source Decisions
 
 1. Source kind is `external_snapshot`; report schema is 1; manifest schema is
@@ -2222,9 +2292,9 @@ to verified facts only.
 
 ## 23. Verified Completion Record
 
-Pending complete Stage 5 implementation. The verified Phase 0–3 source/audit,
-offline-artifact, and pure-scoring slices are recorded in Section 21; they are
-not a Stage 5 completion claim.
+Pending complete Stage 5 implementation. The verified Phase 0–4 source/audit,
+offline-artifact, pure-scoring, and hybrid-policy slices are recorded in
+Section 21; they are not a Stage 5 completion claim.
 
 When every Section 19 gate passes, this section must record the implementation
 commit/PR, runtime and lock versions, migration head, consent/lifecycle

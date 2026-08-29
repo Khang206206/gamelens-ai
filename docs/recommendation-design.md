@@ -168,14 +168,15 @@ result identity. The event is audit/correlation data for server generation,
 not a standalone replay snapshot, impression, click, conversion, or positive
 label.
 
-## Implemented Stage 5 collaborative foundation and planned hybrid layer
+## Implemented Stage 5 collaborative and hybrid ML policy; serving planned
 
 The detailed
 [Stage 5 engineering plan](stage-5-collaborative-hybrid-ranking-plan.md) is
-being implemented in phases. Phase 0–3 source governance, offline artifact, and
-pure collaborative scoring/materialization boundaries are complete. Current
-API runtime ranking remains the Stage 3 content model plus the Stage 4 feedback
-policy described above; Phase 4 hybrid composition has not started.
+being implemented in phases. Phase 0–4 source governance, offline artifact,
+pure collaborative scoring/materialization, and versioned hybrid-policy
+boundaries are complete. Current API runtime ranking remains the Stage 3
+content model plus the Stage 4 feedback policy described above; lifecycle-
+aware collaborative readiness and hybrid serving have not started.
 
 Stage 5 first audits whether an interaction source is authorized, sufficiently
 supported, catalog-aligned, and retention-aware. Existing Stage 4 storage
@@ -200,13 +201,16 @@ evidence plus typed no-support outcomes. Exact-row content/base and affinity
 materializers preserve zero-content collaborative candidates for the next
 phase without changing existing Stage 3/4 eligibility or ranking wrappers.
 
-The planned saved-personalization path unions content-supported candidates
-with supported collaborative neighbors before exclusions and top-K. A
-versioned hybrid policy then applies separately observable base,
-feedback-affinity, collaborative, and played contributions. When the
-collaborative component is absent, insufficient, unsupported, corrupt, stale,
-expired, retired, or privacy-invalid, output must match Stage 4 exactly and
-report the reason. The stateless Stage 3 endpoint remains unchanged.
+The implemented ML-only saved-personalization policy unions content-supported
+candidates with supported collaborative neighbors before final top-K. It
+preserves selected-source and dislike exclusions, then applies separately
+observable fixed-point base, feedback-affinity, collaborative, and played
+contributions under `gamelens-hybrid-ranking/1.0.0`. When its caller reports
+the collaborative component absent, insufficient, unsupported, corrupt, stale,
+expired, retired, privacy-invalid, or otherwise without candidate support, the
+public ranker wraps the exact unchanged Stage 4 result with an explicit reason.
+Phase 5 must supply those lifecycle/readiness outcomes and connect the policy to
+the saved endpoint. The stateless Stage 3 endpoint remains unchanged.
 
 The collaborative score is an aggregate ranking signal, not a probability or
 proof that “users like you” prefer an item. Initial thresholds and weights are
@@ -298,8 +302,8 @@ recommendation-event logging are implemented on the Stage 4 branch. The
 PostgreSQL, fast, static/build, OpenAPI, dependency-audit, Compose, and image
 gates and the 38/38 exact-host Docker browser matrix pass; Stage 4 is verified
 complete.
-The identity-free collaborative artifact and pure candidate scorer are
-implemented through Stage 5 Phase 3. Hybrid ranking, lifecycle-aware serving,
+The identity-free collaborative artifact, pure candidate scorer, and versioned
+hybrid policy are implemented through Stage 5 Phase 4. Lifecycle-aware serving,
 response/event changes, and conditional browser evidence remain unimplemented.
-Formal ranking evaluation is Stage 6 work. Semantic embeddings, exploration, LLM
-explanations, and diversity reranking remain outside the first MVP model.
+Formal ranking evaluation is Stage 6 work. Semantic embeddings, exploration,
+LLM explanations, and diversity reranking remain outside the first MVP model.

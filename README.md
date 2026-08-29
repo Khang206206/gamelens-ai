@@ -10,9 +10,10 @@ game metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 4 complete and verified 2026-08-13; Stage 5 Phase 0–3 audit,
-ingestion-preparation, collaborative-artifact, and pure-scoring foundations
-verified through 2026-08-28; Phase 4 hybrid policy not started**
+**Stage 4 complete and verified 2026-08-13; Stage 5 Phase 0–4 audit,
+ingestion-preparation, collaborative-artifact, pure-scoring, and ML-only hybrid
+policy foundations verified through 2026-08-29; Phase 5 lifecycle/readiness and
+API orchestration not started**
 
 The detailed
 [Stage 5 collaborative-and-hybrid engineering plan](docs/stage-5-collaborative-hybrid-ranking-plan.md)
@@ -26,8 +27,11 @@ adds the bounded sparse item-item cosine trainer, transparent identity-free
 artifact, hardened validator/immutable loader, aggregate inspector, and a
 guarded fixture build command. Phase 3 adds canonical query-source selection,
 bounded CSR lookup, a pure collaborative scorer, exact-row base and affinity
-materializers, and an ML-only Phase 4 handoff. No hybrid policy, product
-contribution-consent flow, approved live build, or serving path exists.
+materializers, and an ML-only Phase 4 handoff. Phase 4 adds the versioned hybrid
+candidate union, fixed-point policy, structured evidence, cautious prose, and
+public exact-Stage-4 fallback boundary. No product contribution-consent flow,
+approved live build, collaborative readiness orchestration, or serving path
+exists.
 
 The repository now provides:
 
@@ -62,7 +66,11 @@ The repository now provides:
   privacy-safe aggregate inspection.
 - A deterministic, identity-free collaborative candidate scorer with bounded
   query sources/edges, reconstructible source evidence, typed no-support
-  outcomes, and exact-row content/affinity materialization for Phase 4.
+  outcomes, and exact-row content/affinity materialization.
+- A public ML-only `gamelens-hybrid-ranking/1.0.0` policy with pre-top-K
+  candidate union, fixed-point base/affinity/collaborative contributions,
+  played adjustment, reconstructible evidence, deterministic ordering, and an
+  exact Stage 4 fallback result for every typed unavailable/no-support reason.
 - A bounded, typed `POST /api/v1/recommendations` contract with observable
   content, platform, and popularity components plus structured evidence.
 - Accessible anonymous onboarding and explained results at `/recommendations`;
@@ -154,11 +162,12 @@ The web application, backend, persistent data, and offline ML workflow
 remain separate. Training never runs inside an API request. See
 [Architecture](docs/architecture.md) for detailed boundaries.
 
-Stage 5 Phase 0–3 prepares a separate consent-aware interaction extractor,
+Stage 5 Phase 0–4 implements a separate consent-aware interaction extractor,
 aggregate audit, revision contract, test fixture, offline collaborative
-artifact, and pure ML-only candidate scorer/materialization boundary. The
-artifact and scorer are not loaded by the API ranking runtime yet; hybrid and
-serving nodes remain inactive.
+artifact, pure candidate scorer/materializers, and versioned hybrid policy in
+the ML package. The collaborative artifact, scorer, and hybrid ranker are not
+loaded by the API ranking runtime yet; lifecycle, readiness, response/event,
+and serving nodes remain inactive.
 
 ## Technology
 
@@ -473,11 +482,11 @@ service-level claims.
   including feedback lifecycle behavior, not recommendation-quality
   evaluation. The UCSD Steam source-preflight commands and aggregate audit do
   not integrate that external source or authorize its use. The collaborative
-  trainer, hardened artifact contract, guarded fixture build, and pure scorer
-  are functional infrastructure only. No approved live cohort, product
-  contribution-consent flow, hybrid serving path, API activation, or approved
-  external interaction dataset is implemented. Formal comparative evaluation
-  remains Stage 6.
+  trainer, hardened artifact contract, guarded fixture build, pure scorer, and
+  ML-only hybrid policy are functional infrastructure only. No approved live
+  cohort, product contribution-consent flow, hybrid serving path, API
+  activation, or approved external interaction dataset is implemented. Formal
+  comparative evaluation remains Stage 6.
 - No external metadata service or approved remote cover-image source.
 - Seed ratings and popularity values are synthetic development signals.
 - Social metadata currently uses a localhost development base. A validated

@@ -125,7 +125,7 @@ the application boundaries, and 49 disposable-PostgreSQL integration tests
 verify the Stage 4 schema, populated legacy upgrade, transaction/concurrency,
 event/delete correlation, cascades, and retention behavior.
 
-### Stage 5 Phase 0–3 offline artifact and pure scoring implemented; activation not implemented
+### Stage 5 Phase 0–4 offline artifact, scoring, and hybrid policy implemented; activation not implemented
 
 The
 [Stage 5 collaborative-and-hybrid plan](stage-5-collaborative-hybrid-ranking-plan.md)
@@ -133,8 +133,10 @@ defines a second offline-to-online path. Phase 0–1 implements the default-off
 contribution-consent/revision contract, ephemeral extractor, and aggregate
 audit. Phase 2 implements the fixture-guarded sparse builder and separate
 identity-free artifact. Phase 3 implements the pure bounded scorer plus exact-
-row base and affinity materializers. Dashed nodes below remain future behavior;
-the application runtime still ends at the verified Stage 4 feedback policy.
+row base and affinity materializers. Phase 4 implements the versioned hybrid
+candidate union, fixed-point ranking, evidence, and exact Stage 4 fallback in
+the ML package. Dashed nodes below remain future behavior; the application
+runtime still ends at the verified Stage 4 feedback policy.
 
 The implemented read-only UCSD Steam preflight is a separate offline source
 identity, preparation, and aggregate-support check. It is not connected to the
@@ -149,13 +151,13 @@ flowchart LR
     Builder["Sparse item-item cosine builder"]
     CF["Identity-free collaborative artifact"]
     Scorer["Pure collaborative candidate scorer"]
-    Lineage[("Build and contributor lineage")]:::future
+    Lineage[("Collaborative build and contributor lineage")]:::future
     Content["Existing content artifact"]
     Feedback["Existing feedback components"]
     Materializers["Exact-row base and affinity materializers"]
-    Hybrid["Versioned hybrid policy"]:::future
-    API["Saved recommendation use case"]
-    Event[("Versioned generation event")]
+    Hybrid["Versioned hybrid policy"]
+    API["Stage 5 saved recommendation orchestration"]:::future
+    Event[("Stage 5 versioned generation event")]:::future
 
     State --> Audit
     Audit --> Snapshot
@@ -289,7 +291,7 @@ artifact vectors, and exposes its own identity and contribution. User identity
 and mutable state never enter an artifact or the application-lifecycle ranker
 singleton. The Stage 3 model and artifact identity remain unchanged.
 
-Stage 5 Phase 0–3 adds canonical sorted-profile serialization, fixed
+Stage 5 Phase 0–4 adds canonical sorted-profile serialization, fixed
 fingerprinting, bounded support/pair aggregates, a strict synthetic fixture
 loader, and a separate sparse item-item cosine artifact. The trainer receives
 only canonical ephemeral profiles and stable-slug catalog identity. The bundle
@@ -304,9 +306,16 @@ exact bounded CSR row traversal, fixed-point aggregation, typed support reasons,
 and reconstructible source-edge evidence. Exact-row base and affinity seams
 permit a zero-content collaborative candidate to reach the Phase 4 boundary
 without changing the existing Stage 3/4 wrappers. The scorer has no database,
-HTTP, lifecycle, fallback, or hybrid dependency. Component readiness and hybrid
-math remain Phase 4–5 work; formal ranking evaluation stays in Stage 6. Fixture
-readiness is functional evidence only and does not approve a live cohort.
+HTTP, lifecycle, fallback, or hybrid dependency.
+
+Phase 4 joins content and collaborative candidates by stable slug before final
+top-K, applies versioned fixed-point base, feedback-affinity, collaborative, and
+played contributions, and materializes reconstructible structured evidence.
+The public ML orchestrator returns the unchanged Stage 4 result under an
+explicit fallback wrapper for every typed unavailable or no-support outcome.
+Lifecycle-backed readiness and API activation remain Phase 5 work; formal
+ranking evaluation stays in Stage 6. Fixture readiness is functional evidence
+only and does not approve a live cohort.
 
 ### External data
 
@@ -372,9 +381,10 @@ slice. The offline builder, checksum-validated artifact, immutable ranker,
 generated browser contract, and anonymous explained-result experience are
 active. Account authentication, served collaborative/hybrid ranking, formal
 evaluation, and production deployment remain later components. Stage 5 now has
-the Phase 0–3 interaction audit, offline collaborative artifact, and pure ML
-scoring/materialization foundation; its hybrid policy, protected live lifecycle
-lineage, API fields, runtime activation, and UI evidence are not implemented.
+the Phase 0–4 interaction audit, offline collaborative artifact, pure ML
+scoring/materialization foundation, versioned hybrid policy, and exact Stage 4
+fallback boundary. Protected live lifecycle lineage, component readiness, API
+fields, runtime activation, and UI evidence are not implemented.
 
 Stage 4 is complete and verified. Its consented identity, durable
 preferences, temporal feedback writes, deterministic feedback adjustment,
