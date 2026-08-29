@@ -16,7 +16,12 @@ from app.db.session import (
     create_session_factory,
     database_is_ready,
 )
-from app.services.recommendation import RecommendationService, create_recommendation_service
+from app.services.recommendation import (
+    CollaborativeArtifactComponent,
+    RecommendationService,
+    create_collaborative_component,
+    create_recommendation_service,
+)
 
 ANONYMOUS_SESSION_SECURITY_SCHEME = "AnonymousSessionCookie"
 PROTECTED_API_PREFIX = "/api/v1/me"
@@ -131,6 +136,7 @@ def create_app(
     database_engine: Engine | None = None,
     database_health_check: Callable[[Engine], bool] = database_is_ready,
     recommendation_service: RecommendationService | None = None,
+    collaborative_component: CollaborativeArtifactComponent | None = None,
 ) -> FastAPI:
     runtime_settings = settings or get_settings()
     configure_logging(runtime_settings.log_level)
@@ -156,6 +162,15 @@ def create_app(
     app.state.database_health_check = database_health_check
     app.state.recommendation_service = recommendation_service or create_recommendation_service(
         runtime_settings.model_artifact_path
+    )
+    app.state.collaborative_component = (
+        collaborative_component
+        if collaborative_component is not None
+        else create_collaborative_component(
+            runtime_settings.collaborative_artifact_path,
+            environment=runtime_settings.environment,
+            allow_test_fixture=runtime_settings.collaborative_allow_test_fixture,
+        )
     )
     app.add_middleware(UnhandledExceptionMiddleware)
     app.add_middleware(
