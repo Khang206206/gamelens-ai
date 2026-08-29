@@ -22,6 +22,7 @@ from gamelens_recommender.ranking import (
     MAX_EXACT_BASE_CANDIDATES,
     BaseCandidateMaterializationError,
     contribution,
+    explain_recommendation_evidence,
 )
 from gamelens_recommender.schemas import (
     SLUG_PATTERN,
@@ -30,6 +31,7 @@ from gamelens_recommender.schemas import (
     PersonalizedRankingReason,
     PersonalizedRankingResult,
     PositiveFeedbackSource,
+    RankedRecommendation,
     RecommendationEvidence,
     ScoreComponent,
 )
@@ -863,6 +865,38 @@ def rank_hybrid_candidate_union(
     return result
 
 
+AFFINITY_EXPLANATION = "Your positive feedback profile contributes a content-affinity signal."
+COLLABORATIVE_EXPLANATION = "Aggregate interaction similarity contributes to this recommendation."
+PLAYED_EXPLANATION = "Because this game is marked as played, its final score is reduced."
+ELIGIBLE_CANDIDATE_EXPLANATION = (
+    "It is an eligible candidate in the current hybrid ranking context."
+)
+
+
+def _hybrid_explanation(
+    *,
+    base_evidence: RecommendationEvidence,
+    content_score_units: int,
+    affinity_contribution_units: int,
+    collaborative_contribution_units: int,
+    played_delta_units: int,
+) -> tuple[str, tuple[str, ...]]:
+    _, base_reasons = explain_recommendation_evidence(
+        base_evidence,
+        include_generic_content_fallback=content_score_units > 0,
+    )
+    reasons = list(base_reasons)
+    if affinity_contribution_units > 0:
+        reasons.append(AFFINITY_EXPLANATION)
+    if collaborative_contribution_units > 0:
+        reasons.append(COLLABORATIVE_EXPLANATION)
+    if played_delta_units < 0:
+        reasons.append(PLAYED_EXPLANATION)
+    if not reasons:
+        reasons.append(ELIGIBLE_CANDIDATE_EXPLANATION)
+    return reasons[0], tuple(reasons)
+
+
 @dataclass(frozen=True)
 class HybridRecommendation:
     slug: str
@@ -1033,6 +1067,21 @@ class HybridRecommendation:
             or any(type(reason) is not str or not reason for reason in self.explanation_reasons)
         ):
             _contract_error("hybrid_result_invalid", "Hybrid explanation reasons are invalid")
+        expected_summary, expected_explanation_reasons = _hybrid_explanation(
+            base_evidence=self.base_evidence,
+            content_score_units=self.base_components[0].raw_units,
+            affinity_contribution_units=self.affinity_contribution_units,
+            collaborative_contribution_units=self.collaborative_contribution_units,
+            played_delta_units=self.played_delta_units,
+        )
+        if (
+            self.explanation_summary != expected_summary
+            or self.explanation_reasons != expected_explanation_reasons
+        ):
+            _contract_error(
+                "hybrid_result_invalid",
+                "Hybrid explanation is not reconstructible from structured evidence",
+            )
         if type(self.adjustment_reasons) is not tuple or any(
             type(reason) is not str
             or reason not in {"feedback_affinity", "collaborative_similarity", "played_adjustment"}
@@ -1183,6 +1232,156 @@ class HybridRecommendationsResult:
             _contract_error("hybrid_result_invalid", "Hybrid result item slugs are not distinct")
         if self.items != tuple(sorted(self.items, key=_hybrid_recommendation_key)):
             _contract_error("hybrid_result_invalid", "Hybrid result order is invalid")
+
+
+def materialize_hybrid_recommendations(
+    feedback_ranker: FeedbackRanker,
+    prepared_context: PreparedFeedbackRankingContext,
+    collaborative_result: CollaborativeScoringResult,
+    candidate_ranking: HybridCandidateRanking,
+    config: HybridPolicyConfig = HYBRID_POLICY_CONFIG,
+) -> HybridRecommendationsResult:
+    """Materialize exact evidence and cautious prose for a successful hybrid ranking.
+
+    The candidate order and score math are owned by ``rank_hybrid_candidate_union``.
+    This seam materializes only its selected top-K rows and performs no fallback,
+    collaborative scoring, candidate union, policy math, I/O, or mutation.
+    """
+
+    if type(config) is not HybridPolicyConfig:
+        _contract_error("hybrid_config_invalid", "Hybrid policy configuration is invalid")
+    config.validate()
+    _validate_candidate_union_inputs(feedback_ranker, prepared_context, collaborative_result)
+    if type(candidate_ranking) is not HybridCandidateRanking:
+        _contract_error("hybrid_input_invalid", "Hybrid candidate ranking is invalid")
+    try:
+        candidate_ranking.validate(config)
+    except HybridContractError as error:
+        raise HybridContractError(
+            "hybrid_input_invalid",
+            "Hybrid candidate ranking is invalid",
+        ) from error
+    if candidate_ranking.affinity_profile_active != bool(prepared_context.positive_sources):
+        _contract_error(
+            "hybrid_input_invalid",
+            "Hybrid ranking affinity state does not match the prepared context",
+        )
+    if len(candidate_ranking.items) > prepared_context.effective_context.top_k:
+        _contract_error(
+            "hybrid_input_invalid",
+            "Hybrid candidate ranking exceeds the prepared top-K bound",
+        )
+
+    collaborative_by_slug = {
+        candidate.slug: candidate for candidate in collaborative_result.candidates
+    }
+    artifact_slugs = set(feedback_ranker.artifact.slug_to_row)
+    excluded_slugs = set(prepared_context.candidate_exclusion_slugs)
+    if any(
+        item.candidate.slug not in artifact_slugs
+        or item.candidate.slug in excluded_slugs
+        or item.candidate.collaborative_candidate != collaborative_by_slug.get(item.candidate.slug)
+        for item in candidate_ranking.items
+    ):
+        _contract_error(
+            "hybrid_input_invalid",
+            "Hybrid candidate ranking does not match its materialization inputs",
+        )
+
+    items: list[HybridRecommendation] = []
+    for ranked in candidate_ranking.items:
+        candidate = ranked.candidate
+        base = feedback_ranker.content_ranker.materialize_candidate(
+            candidate.base,
+            prepared_context.effective_context,
+            rank=ranked.rank,
+        )
+        if type(base) is not RankedRecommendation:
+            _contract_error(
+                "hybrid_input_invalid",
+                "Stage 4 evidence materialization is invalid",
+            )
+        if (
+            base.slug != candidate.slug
+            or base.rank != ranked.rank
+            or base.final_score_units != candidate.base.base_score_units
+            or type(base.components) is not tuple
+            or any(type(component) is not ScoreComponent for component in base.components)
+            or tuple(component.name for component in base.components)
+            != ("content", "platform", "popularity")
+            or tuple(component.raw_units for component in base.components)
+            != (
+                candidate.base.content_score_units,
+                candidate.base.platform_score_units,
+                candidate.base.popularity_score_units,
+            )
+            or type(base.evidence) is not RecommendationEvidence
+        ):
+            _contract_error(
+                "hybrid_input_invalid",
+                "Stage 4 evidence materialization does not match the hybrid ranking",
+            )
+        summary, reasons = _hybrid_explanation(
+            base_evidence=base.evidence,
+            content_score_units=candidate.base.content_score_units,
+            affinity_contribution_units=ranked.affinity_contribution_units,
+            collaborative_contribution_units=ranked.collaborative_contribution_units,
+            played_delta_units=ranked.played_delta_units,
+        )
+        collaborative_candidate = candidate.collaborative_candidate
+        items.append(
+            HybridRecommendation(
+                slug=candidate.slug,
+                rank=ranked.rank,
+                candidate_origin=candidate.candidate_origin,
+                base_score_units=candidate.base.base_score_units,
+                base_components=base.components,
+                base_evidence=base.evidence,
+                base_weight_units=ranked.base_weight_units,
+                base_contribution_units=ranked.base_contribution_units,
+                affinity_score_units=candidate.affinity_score_units,
+                affinity_weight_units=ranked.affinity_weight_units,
+                affinity_contribution_units=ranked.affinity_contribution_units,
+                collaborative_supported=collaborative_candidate is not None,
+                collaborative_score_units=(
+                    collaborative_candidate.collaborative_score_units
+                    if collaborative_candidate is not None
+                    else 0
+                ),
+                collaborative_weight_units=ranked.collaborative_weight_units,
+                collaborative_contribution_units=ranked.collaborative_contribution_units,
+                collaborative_item_support=(
+                    collaborative_candidate.item_support
+                    if collaborative_candidate is not None
+                    else None
+                ),
+                collaborative_source_edges=(
+                    collaborative_candidate.source_edges
+                    if collaborative_candidate is not None
+                    else ()
+                ),
+                pre_played_score_units=ranked.pre_played_score_units,
+                played_factor_units=ranked.played_factor_units,
+                played_delta_units=ranked.played_delta_units,
+                final_score_units=ranked.final_score_units,
+                explanation_summary=summary,
+                explanation_reasons=reasons,
+                adjustment_reasons=ranked.adjustment_reasons,
+            )
+        )
+
+    result = HybridRecommendationsResult(
+        mode="hybrid",
+        items=tuple(items),
+        reason="recommendations",
+        policy=candidate_ranking.policy,
+        feedback_policy=feedback_ranker.identity,
+        collaborative_policy=collaborative_result.identity,
+        collaborative_diagnostics=collaborative_result.diagnostics,
+        positive_sources=prepared_context.positive_sources,
+    )
+    result.validate(config)
+    return result
 
 
 @dataclass(frozen=True)

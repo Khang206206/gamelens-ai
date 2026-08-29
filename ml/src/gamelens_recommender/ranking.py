@@ -298,7 +298,13 @@ def _names(values: tuple[TaxonomyValue, ...]) -> str:
     return ", ".join(value.name for value in values[:3])
 
 
-def _explain(evidence: RecommendationEvidence) -> tuple[str, tuple[str, ...]]:
+def explain_recommendation_evidence(
+    evidence: RecommendationEvidence,
+    *,
+    include_generic_content_fallback: bool = True,
+) -> tuple[str, tuple[str, ...]]:
+    """Build deterministic prose from exact Stage 3 evidence."""
+
     reasons: list[str] = []
     if evidence.similar_selected_games:
         names = ", ".join(value.title for value in evidence.similar_selected_games[:2])
@@ -313,6 +319,10 @@ def _explain(evidence: RecommendationEvidence) -> tuple[str, tuple[str, ...]]:
         )
     if evidence.popularity_percentile_units >= 700_000:
         reasons.append("Its catalog rating and popularity signals provide supporting evidence.")
-    if not reasons:
+    if not reasons and include_generic_content_fallback:
         reasons.append("Its catalog content is related to the context you selected.")
-    return reasons[0], tuple(reasons)
+    return (reasons[0] if reasons else ""), tuple(reasons)
+
+
+def _explain(evidence: RecommendationEvidence) -> tuple[str, tuple[str, ...]]:
+    return explain_recommendation_evidence(evidence)

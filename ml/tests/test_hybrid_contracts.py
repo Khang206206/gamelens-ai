@@ -18,6 +18,8 @@ from gamelens_recommender import (
 )
 from gamelens_recommender.collaborative import COLLABORATIVE_SCORING_CONFIG
 from gamelens_recommender.hybrid import (
+    AFFINITY_EXPLANATION,
+    COLLABORATIVE_EXPLANATION,
     COLLABORATIVE_NO_SUPPORT_REASONS,
     COLLABORATIVE_UNAVAILABLE_REASONS,
     HYBRID_CANDIDATE_ORIGINS,
@@ -287,8 +289,14 @@ def test_phase4_hybrid_result_contract_is_additive_and_immutable() -> None:
         played_factor_units=1_000_000,
         played_delta_units=0,
         final_score_units=460_000,
-        explanation_summary="Structured evidence supports this candidate.",
-        explanation_reasons=("Structured evidence supports this candidate.",),
+        explanation_summary=(
+            "Its catalog rating and popularity signals provide supporting evidence."
+        ),
+        explanation_reasons=(
+            "Its catalog rating and popularity signals provide supporting evidence.",
+            AFFINITY_EXPLANATION,
+            COLLABORATIVE_EXPLANATION,
+        ),
         adjustment_reasons=("feedback_affinity", "collaborative_similarity"),
     )
     diagnostics = CollaborativeScoringDiagnostics(1, 1, 0, 0, 1, 1, 0, 0, 1)
@@ -319,6 +327,10 @@ def test_phase4_hybrid_result_contract_is_additive_and_immutable() -> None:
         collaborative_source_edges=(),
         pre_played_score_units=420_000,
         final_score_units=420_000,
+        explanation_reasons=(
+            "Its catalog rating and popularity signals provide supporting evidence.",
+            AFFINITY_EXPLANATION,
+        ),
         adjustment_reasons=("feedback_affinity",),
     )
     expanded = replace(result, items=(item, content_only))
