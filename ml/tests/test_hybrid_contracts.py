@@ -122,16 +122,19 @@ def test_phase4_hybrid_policy_contract_is_frozen() -> None:
     )
 
 
-def test_phase4_contracts_remain_internal_until_the_public_ranker_exists() -> None:
+def test_phase4_public_ranker_contracts_are_exported() -> None:
     assert {
         "CollaborativeComponentOutcome",
+        "CollaborativeComponentReady",
+        "CollaborativeComponentUnavailable",
+        "HybridRanker",
         "HybridPolicyConfig",
         "HybridPolicyIdentity",
         "HybridRankingResult",
         "HybridRecommendation",
         "HybridRecommendationsResult",
         "Stage4FallbackResult",
-    }.isdisjoint(gamelens_recommender.__all__)
+    } <= set(gamelens_recommender.__all__)
 
 
 def test_phase4_fallback_taxonomy_is_bounded_and_disjoint() -> None:

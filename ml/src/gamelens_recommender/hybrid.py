@@ -26,6 +26,7 @@ from gamelens_recommender.ranking import (
 )
 from gamelens_recommender.schemas import (
     SLUG_PATTERN,
+    ActiveGameFeedback,
     BaseCandidateScore,
     FeedbackPolicyIdentity,
     PersonalizedRankingReason,
@@ -34,6 +35,7 @@ from gamelens_recommender.schemas import (
     RankedRecommendation,
     RecommendationEvidence,
     ScoreComponent,
+    UserContext,
 )
 
 HYBRID_POLICY_NAME = "gamelens-hybrid-ranking"
@@ -1403,6 +1405,96 @@ class Stage4FallbackResult:
 
 
 HybridRankingResult = HybridRecommendationsResult | Stage4FallbackResult
+
+
+class HybridRanker:
+    """Public ML policy orchestrator with an exact Stage 4 fallback boundary."""
+
+    def __init__(
+        self,
+        feedback_ranker: FeedbackRanker,
+        config: HybridPolicyConfig = HYBRID_POLICY_CONFIG,
+    ) -> None:
+        if type(config) is not HybridPolicyConfig:
+            _contract_error("hybrid_config_invalid", "Hybrid policy configuration is invalid")
+        config.validate()
+        if type(feedback_ranker) is not FeedbackRanker:
+            _contract_error("hybrid_input_invalid", "Hybrid feedback ranker is invalid")
+        self.feedback_ranker = feedback_ranker
+        self.config = config
+
+    @property
+    def identity(self) -> HybridPolicyIdentity:
+        return self.config.identity
+
+    def _stage4_fallback(
+        self,
+        context: UserContext,
+        feedback: tuple[ActiveGameFeedback, ...],
+        reason: HybridFallbackReason,
+    ) -> Stage4FallbackResult:
+        result = Stage4FallbackResult(
+            mode="stage_4_fallback",
+            fallback_reason=reason,
+            stage_4_result=self.feedback_ranker.rank(context, feedback),
+        )
+        result.validate()
+        return result
+
+    def rank(
+        self,
+        context: UserContext,
+        feedback: tuple[ActiveGameFeedback, ...],
+        collaborative_outcome: CollaborativeComponentOutcome,
+    ) -> HybridRankingResult:
+        """Apply hybrid policy when supported, otherwise return exact Stage 4 output."""
+
+        validate_collaborative_component_outcome(collaborative_outcome)
+        if type(collaborative_outcome) is CollaborativeComponentUnavailable:
+            return self._stage4_fallback(
+                context,
+                feedback,
+                collaborative_outcome.reason,
+            )
+
+        scoring_result = collaborative_outcome.scoring_result
+        prepared_context = self.feedback_ranker.prepare_ranking_context(context, feedback)
+        if scoring_result.query_sources != prepared_context.collaborative_query_context.sources:
+            _contract_error(
+                "hybrid_input_invalid",
+                "Collaborative query sources do not match the hybrid ranking context",
+            )
+        if {candidate.slug for candidate in scoring_result.candidates} & set(
+            prepared_context.collaborative_query_context.disliked_slugs
+        ):
+            _contract_error(
+                "hybrid_input_invalid",
+                "Collaborative candidates bypass a prepared dislike exclusion",
+            )
+        if scoring_result.reason != "recommendations":
+            return self._stage4_fallback(
+                context,
+                feedback,
+                scoring_result.reason,
+            )
+
+        candidate_union = materialize_hybrid_candidate_union(
+            self.feedback_ranker,
+            prepared_context,
+            scoring_result,
+        )
+        candidate_ranking = rank_hybrid_candidate_union(
+            candidate_union,
+            prepared_context,
+            self.config,
+        )
+        return materialize_hybrid_recommendations(
+            self.feedback_ranker,
+            prepared_context,
+            scoring_result,
+            candidate_ranking,
+            self.config,
+        )
 
 
 def validate_collaborative_component_outcome(outcome: CollaborativeComponentOutcome) -> None:

@@ -379,5 +379,5 @@ def test_hybrid_materialization_rejects_stage4_evidence_drift(
     assert captured.value.code == "hybrid_input_invalid"
 
 
-def test_hybrid_materializer_remains_internal_until_public_orchestration_exists() -> None:
+def test_hybrid_materializer_remains_internal_behind_public_orchestration() -> None:
     assert not hasattr(gamelens_recommender, "materialize_hybrid_recommendations")
