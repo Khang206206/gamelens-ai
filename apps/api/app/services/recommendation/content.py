@@ -32,6 +32,13 @@ class ContentRecommendationService:
     def ensure_intrinsic_ready(self) -> None:
         """The artifact was fully validated when this service was constructed."""
 
+    def ensure_catalog_snapshot(self, snapshot: CatalogSnapshot) -> None:
+        if snapshot.fingerprint != self.artifact.data_fingerprint:
+            raise RecommendationUnavailableError(
+                "The recommendation artifact no longer matches the catalog",
+                code="catalog_stale",
+            )
+
     def status(
         self,
         snapshot: CatalogSnapshot | None = None,
@@ -55,11 +62,7 @@ class ContentRecommendationService:
         )
 
     def recommend(self, *, snapshot: CatalogSnapshot, context: UserContext) -> RankingResult:
-        if snapshot.fingerprint != self.artifact.data_fingerprint:
-            raise RecommendationUnavailableError(
-                "The recommendation artifact no longer matches the catalog",
-                code="catalog_stale",
-            )
+        self.ensure_catalog_snapshot(snapshot)
         return self.ranker.rank(context)
 
     def recommend_personalized(
@@ -69,11 +72,7 @@ class ContentRecommendationService:
         context: UserContext,
         feedback: tuple[ActiveGameFeedback, ...],
     ) -> PersonalizedRankingResult:
-        if snapshot.fingerprint != self.artifact.data_fingerprint:
-            raise RecommendationUnavailableError(
-                "The recommendation artifact no longer matches the catalog",
-                code="catalog_stale",
-            )
+        self.ensure_catalog_snapshot(snapshot)
         return self.feedback_ranker.rank(context, feedback)
 
     def _identity(self) -> ActiveModel:
