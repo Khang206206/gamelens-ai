@@ -10,10 +10,9 @@ game metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 4 complete and verified 2026-08-13; Stage 5 Phase 0–4 audit,
-ingestion-preparation, collaborative-artifact, pure-scoring, and ML-only hybrid
-policy foundations verified through 2026-08-29; Phase 5 lifecycle/readiness and
-API orchestration not started**
+**Stage 4 complete and verified 2026-08-13; Stage 5 implementation Phases 0–5
+verified through 2026-08-30; Phase 6 response, event, OpenAPI, and product
+integration is next**
 
 The detailed
 [Stage 5 collaborative-and-hybrid engineering plan](docs/stage-5-collaborative-hybrid-ranking-plan.md)
@@ -22,16 +21,21 @@ ingestion-preparation profiler, and aggregate suitability audit inspect only
 ignored local bytes and keep the source explicitly not integrated. The
 first-party path adds separate contribution-consent storage, monotonic source
 revision, a default-off repeatable-read/read-only extractor, canonical
-aggregate audit, and a strictly test-only project-authored fixture. Phase 2
-adds the bounded sparse item-item cosine trainer, transparent identity-free
-artifact, hardened validator/immutable loader, aggregate inspector, and a
-guarded fixture build command. Phase 3 adds canonical query-source selection,
-bounded CSR lookup, a pure collaborative scorer, exact-row base and affinity
-materializers, and an ML-only Phase 4 handoff. Phase 4 adds the versioned hybrid
-candidate union, fixed-point policy, structured evidence, cautious prose, and
-public exact-Stage-4 fallback boundary. No product contribution-consent flow,
-approved live build, collaborative readiness orchestration, or serving path
-exists.
+aggregate audit, and a strictly test-only project-authored fixture. Phases 2–4
+add the bounded sparse item-item cosine artifact, immutable loader, pure scorer,
+exact-row materializers, versioned hybrid candidate union, fixed-point policy,
+structured evidence, and exact Stage 4 fallback. Phase 5 now adds the optional
+application loader, one-row lifecycle readiness, protected live build and
+contributor registry, transactional authority/label invalidation, additive
+component status, and saved-request orchestration over the hybrid ranker.
+
+The Phase 5 handoff deliberately keeps the public saved response and committed
+event on the verified Stage 4 contract. A hybrid or fallback decision is made
+internally in the same request transaction, but only the retained exact Stage 4
+result is exposed and recorded until Phase 6 introduces the additive response
+and `stage-5-v1` event contract. No product contribution-consent flow, approved
+live build/promotion command, public hybrid response, or hybrid browser evidence
+exists yet.
 
 The repository now provides:
 
@@ -71,6 +75,16 @@ The repository now provides:
   candidate union, fixed-point base/affinity/collaborative contributions,
   played adjustment, reconstructible evidence, deterministic ordering, and an
   exact Stage 4 fallback result for every typed unavailable/no-support reason.
+- An optional immutable collaborative component loaded once by the API, with a
+  guarded fixture boundary and bounded lifecycle states: `not_configured`,
+  `fixture_only`, `insufficient_data`, `unavailable`, `stale`, and `ready`.
+- PostgreSQL collaborative build/contributor lineage with transactional
+  invalidation on contribution-authority loss or removal/change of an included
+  positive label; request readiness reads one bounded build row rather than
+  scanning contributors.
+- Additive content/collaborative status from `GET /api/v1/models/status` and a
+  lifecycle-aware internal saved-ranking decision that preserves the current
+  Stage 4 response/event boundary until Phase 6.
 - A bounded, typed `POST /api/v1/recommendations` contract with observable
   content, platform, and popularity components plus structured evidence.
 - Accessible anonymous onboarding and explained results at `/recommendations`;
@@ -147,12 +161,19 @@ flowchart LR
     U["Anonymous user"] --> W["Next.js web app"]
     W -->|"JSON over HTTP"| A["FastAPI application"]
     A --> P[("PostgreSQL")]
-    A --> R["Immutable recommendation service"]
-    R --> M["Versioned JSON/NPY artifact"]
-    A --> F["Feedback policy 1.0.0"]
-    P --> F
-    R --> F
-    T["Explicit offline model build"] --> M
+    A --> O["Saved ranking orchestration"]
+    O --> R["Immutable content service"]
+    R --> M["Content JSON/NPY artifact"]
+    O --> F["Feedback policy 1.0.0"]
+    O --> H["Hybrid policy 1.0.0"]
+    H --> C["Optional collaborative component"]
+    C --> CM["Collaborative JSON/NPY artifact"]
+    P --> O
+    P --> L["Collaborative lifecycle lineage"]
+    L --> O
+    T["Explicit offline model builds"] --> M
+    T --> CM
+    O -. "Phase 6 public mapping pending" .-> E5["Stage 5 response + event"]
     T -. "Formal evaluation in Stage 6" .-> E["Evaluation reports"]
     D["Seed or imported datasets"] --> T
     D --> P
@@ -162,12 +183,13 @@ The web application, backend, persistent data, and offline ML workflow
 remain separate. Training never runs inside an API request. See
 [Architecture](docs/architecture.md) for detailed boundaries.
 
-Stage 5 Phase 0–4 implements a separate consent-aware interaction extractor,
-aggregate audit, revision contract, test fixture, offline collaborative
-artifact, pure candidate scorer/materializers, and versioned hybrid policy in
-the ML package. The collaborative artifact, scorer, and hybrid ranker are not
-loaded by the API ranking runtime yet; lifecycle, readiness, response/event,
-and serving nodes remain inactive.
+Stage 5 Phase 0–5 implements the consent-aware interaction extractor, aggregate
+audit, revision contract, test fixture, offline collaborative artifact, pure
+scorer/materializers, versioned hybrid policy, optional application loader,
+lifecycle registry/readiness, component status, and internal saved-request
+orchestration. The public saved response and recommendation event remain
+`stage-4-v1`; Phase 6 owns their synchronized Stage 5 mapping and browser
+presentation. The stateless endpoint remains unchanged.
 
 ## Technology
 
@@ -270,10 +292,12 @@ non-canonical CSR indices; operators upgrading an existing Stage 3 artifact
 must rotate the path and rebuild and validate the bundle before restarting the
 API.
 
-The Phase 2 collaborative bundle follows the same immutable-path rule but has a
+The collaborative bundle follows the same immutable-path rule but has a
 separate `COLLABORATIVE_ARTIFACT_PATH` and lifecycle. `make collaborative-build`
-and `make collaborative-validate` operate only on the guarded synthetic fixture;
-selecting this path does not activate API scoring yet.
+and `make collaborative-validate` operate only on the guarded synthetic fixture.
+The API can load that fixture only with the explicit test-only gate; development
+and production reject it. Live artifacts additionally require a matching active
+registry row before they can participate in the internal saved-request decision.
 
 Stop services without deleting development data:
 
@@ -344,7 +368,7 @@ Every optional Make target has a direct equivalent in the
 | `COLLABORATIVE_ARTIFACT_PATH`                         | Separate immutable collaborative bundle path; blank leaves it unconfigured    |
 | `COLLABORATIVE_LIVE_DATA_ENABLED`                     | Default-off live collaborative extraction gate                               |
 | `COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION`          | Explicit contribution-policy version required before live audit               |
-| `COLLABORATIVE_ALLOW_TEST_FIXTURE`                    | Test-only fixture read/build gate; never enable for production                 |
+| `COLLABORATIVE_ALLOW_TEST_FIXTURE`                    | Test-only fixture read/build/load gate; never enable for production            |
 | `ANONYMOUS_SESSION_SECRET`                            | Server-only HMAC key; replace the development default outside local use       |
 | `ANONYMOUS_SESSION_COOKIE_NAME` / `_PATH`             | Host-only cookie name and API path scope                                      |
 | `ANONYMOUS_SESSION_COOKIE_SECURE` / `_SAMESITE`       | Cookie transport policy; production requires `Secure=true`                    |
@@ -451,6 +475,30 @@ re-consent mutation are verified in the API/PostgreSQL suites. These are
 functional and safety results on synthetic fixtures, not quality or
 service-level claims.
 
+## Stage 5 Phase 5 verification
+
+Phase 5 was delivered as eight independently tested slices on 2026-08-30:
+
+| Slice | Commit | Complete boundary |
+| --- | --- | --- |
+| 5A | `0eab24f` | Immutable optional collaborative component loader |
+| 5B | `189ce4c` | Pure bounded lifecycle-readiness policy |
+| 5C | `a6d7a34` | Artifact build registry and contributor lineage |
+| 5D | `fb7251f` | Transactional invalidation on authority loss |
+| 5E | `4f52547` | Transactional invalidation on included-label change |
+| 5F | `7e10882` | Additive content/collaborative model status and generated type |
+| 5G | `aefb425` | Lifecycle-aware hybrid orchestrator |
+| 5H | `66af706` | Same-snapshot saved-request orchestration handoff |
+
+The handoff gate passes 311 API unit tests, 98 disposable-PostgreSQL integration
+tests, and the full ML regression suite with 331 passes and one Windows
+symbolic-link capability skip. Ruff lint and format checks pass across 165
+Python files, generated OpenAPI types have no drift, and the Docker test stack
+was removed after the run. Integration coverage proves same-snapshot readiness,
+next-request authority/retirement invalidation, fail-closed readiness errors,
+and continued exact `stage-4-v1` event commits. These are lifecycle and
+functional results, not Stage 5 completion or recommendation-quality evidence.
+
 ## Project documentation
 
 - [Architecture](docs/architecture.md)
@@ -462,6 +510,8 @@ service-level claims.
 - [Stage 3 plan and completion record](docs/stage-3-content-recommendation-mvp-plan.md)
 - [Stage 4 feedback-and-persistence engineering plan](docs/stage-4-feedback-persistence-plan.md)
 - [Stage 5 collaborative-and-hybrid engineering plan](docs/stage-5-collaborative-hybrid-ranking-plan.md)
+- [Data and fixture policy](data/README.md)
+- [Machine-learning artifacts and ranking contracts](ml/README.md)
 - [Web application commands and contracts](apps/web/README.md)
 - [API setup and contracts](apps/api/README.md)
 - [Infrastructure workflows](infra/README.md)
@@ -479,14 +529,15 @@ service-level claims.
   Expiry prevents access immediately, while eligible rows are removed by a later
   confirmed cleanup run.
 - The 30-game synthetic seed supports functional and reproducibility checks,
-  including feedback lifecycle behavior, not recommendation-quality
-  evaluation. The UCSD Steam source-preflight commands and aggregate audit do
-  not integrate that external source or authorize its use. The collaborative
-  trainer, hardened artifact contract, guarded fixture build, pure scorer, and
-  ML-only hybrid policy are functional infrastructure only. No approved live
-  cohort, product contribution-consent flow, hybrid serving path, API
-  activation, or approved external interaction dataset is implemented. Formal
-  comparative evaluation remains Stage 6.
+  including feedback and collaborative lifecycle behavior, not recommendation-
+  quality evaluation. The UCSD Steam source-preflight commands and aggregate
+  audit do not integrate that external source or authorize its use. The
+  collaborative loader, registry, readiness, scorer, hybrid policy, and internal
+  saved-request orchestration are functional infrastructure only. No approved
+  live cohort/build promotion, product contribution-consent flow, public hybrid
+  response/event/browser contract, or approved external interaction dataset is
+  implemented. Those product contracts are Phase 6; formal comparative
+  evaluation remains roadmap Stage 6.
 - No external metadata service or approved remote cover-image source.
 - Seed ratings and popularity values are synthetic development signals.
 - Social metadata currently uses a localhost development base. A validated

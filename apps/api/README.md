@@ -2,9 +2,10 @@
 
 The GameLens AI API is a Python 3.12 FastAPI application backed by PostgreSQL
 16. It exposes the deterministic catalog, Stage 3 artifact-backed content
-recommendations, and the verified Stage 4 consented persistence slice. It
-never trains during startup or a request and never fabricates recommendations
-when the configured model is unavailable.
+recommendations, the verified Stage 4 consented persistence slice, and Stage 5
+Phase 5 component readiness/internal saved-ranking orchestration. It never
+trains during startup or a request and never fabricates recommendations when a
+configured component is unavailable.
 
 The web application in `apps/web` consumes this API through generated
 OpenAPI types and a project-owned browser client. Use the repository
@@ -19,26 +20,25 @@ The detailed
 [Stage 4 feedback-and-persistence plan](../../docs/stage-4-feedback-persistence-plan.md)
 is complete and verified. Anonymous identity, preference, temporal feedback,
 personalized-event, retention, and revocation contracts are present on the
-implementation branch. Current Stage 5 evidence is 200 passing API unit tests
-from Phase 2 and 256 passing ML tests through Phase 3, with one Windows
-symlink-capability skip. Ruff passes across the API/ML Python tree. The most
-recent inherited cross-stack evidence remains 76 web tests, 54 disposable-
-PostgreSQL tests, generated OpenAPI drift, the web static/build gates, and all
-three Compose definitions. The exact-host Docker browser matrix passes 38/38
-without retry: 28 Chromium, 5 Firefox, and 5 WebKit.
+implementation branch. The Stage 5 Phase 5 handoff passes 311 API unit tests,
+98 disposable-PostgreSQL tests, and 331 ML tests with one Windows symlink-
+capability skip. Ruff lint/format passes across 165 Python files, generated
+OpenAPI types have no drift, and the Docker test stack is removed after the
+run. The most recent web/browser acceptance remains the verified Stage 4 run:
+76 web tests and 38/38 exact-host browser cases.
 The endpoint and command tables below describe the current worktree.
 
 The detailed
 [Stage 5 collaborative-and-hybrid plan](../../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-now has a Phase 0–3 offline/ML foundation: separate optional contribution consent,
-monotonic source revision, a PostgreSQL repeatable-read/read-only extractor,
-reusable eligible-user joins with streamed bounded source reads, canonical
-aggregate audit, test-only authored fixture command, and a guarded offline
-collaborative artifact builder/validator/inspector. The ML package now also has
-the pure collaborative scorer and exact-row base/affinity handoff. No HTTP route
-grants contribution consent, and no API collaborative loader/readiness, hybrid
-orchestration, response/event extension, live build, or serving path is
-implemented. Current HTTP behavior remains Stage 3/4.
+has completed implementation Phases 0–5. In addition to the governed snapshot,
+fixture artifact, pure scorer/materializers, and hybrid policy, the API now owns
+an optional immutable collaborative component, protected live build/contributor
+lineage, transactional invalidation, one-row readiness, additive component
+status, and internal saved-request orchestration. No HTTP route grants
+contribution consent and no approved live build/promotion command exists.
+Current personalized HTTP responses and events deliberately remain Stage 4;
+Phase 6 will expose the internal hybrid decision as one synchronized response,
+`stage-5-v1` event, generated client contract, and browser presentation.
 
 ## Responsibilities
 
@@ -152,7 +152,7 @@ overwriting the active bundle.
 | GET    | `/api/v1/metadata/genres`                 | Sorted genres                                                  |
 | GET    | `/api/v1/metadata/tags`                   | Sorted tags                                                    |
 | GET    | `/api/v1/metadata/platforms`              | Sorted platforms                                               |
-| GET    | `/api/v1/models/status`                   | Honest `ready`, `not_configured`, or `unavailable` model state |
+| GET    | `/api/v1/models/status`                   | Required content state plus additive collaborative component state |
 | POST   | `/api/v1/recommendations`                 | Bounded request-scoped recommendations and evidence            |
 | POST   | `/api/v1/anonymous-sessions`              | Create or explicitly renew a consented anonymous session       |
 | GET    | `/api/v1/me`                              | Read session lifecycle metadata and CSRF token                 |
@@ -215,6 +215,16 @@ and exposes base, affinity, played, policy, model, and data-fingerprint
 evidence. The PostgreSQL transaction/event-correlation gate and the 38/38
 Docker browser gate pass.
 
+Phase 5 now resolves the optional collaborative component and invokes
+`gamelens-hybrid-ranking/1.0.0` inside that same saved-request transaction.
+Lifecycle readiness uses database time and at most one live build row from the
+same repeatable-read snapshot. The resulting `hybrid` or `stage_4_fallback`
+decision is internal: the route still maps an exact Stage 4 result to the
+response and `stage-4-v1` event. This intentional handoff prevents a hybrid
+HTTP 200 or mislabeled event before Phase 6 changes both contracts together.
+The stateless endpoint remains unchanged and never queries collaborative
+lineage.
+
 `MODEL_ARTIFACT_PATH` is optional at the settings boundary. Compose passes the
 same configured path to the offline builder and API, and mounts `ml/artifacts`
 read-only in the API. Without configuration, status is `not_configured`; with a failed load it is
@@ -230,6 +240,15 @@ hardened loader also rejects non-canonical CSR indices, so operators upgrading
 an existing Stage 3 bundle must rotate the configured path and rebuild and
 validate the artifact rather than modify it in place.
 
+`COLLABORATIVE_ARTIFACT_PATH` is an independent optional path. The API loads
+and freezes that artifact once during application construction. A fixture
+bundle is accepted only with `ENVIRONMENT=test` and
+`COLLABORATIVE_ALLOW_TEST_FIXTURE=true`; development and production reject it.
+A structurally valid live artifact is not `ready` without one matching active
+registry row and exact build/revision/cutoff/count/consent/fingerprint/validity
+facts. Collaborative failure changes only the optional component and falls back
+to Stage 4; it does not make required content capability unavailable.
+
 The implemented migration chain is:
 
 ```text
@@ -239,9 +258,12 @@ The implemented migration chain is:
   -> 0004_stage_4_interaction_state
   -> 0005_stage_4_event_contract
   -> 0006_stage_5_collab_contract
+  -> 0007_stage_5_artifact_registry
+  -> 0008_stage_5_authority_loss
+  -> 0009_stage_5_label_changes
 ```
 
-Readiness expects head `0006_stage_5_collab_contract`. The Stage 4 revisions
+Readiness expects head `0009_stage_5_label_changes`. The Stage 4 revisions
 preserve legacy rows, revoke inaccessible plaintext-key identities without
 fabricating consent, add temporal current-state indexes, and version
 recommendation events. The legacy replacement is exactly
@@ -252,7 +274,11 @@ downgrade/re-upgrade pass in PostgreSQL.
 The Stage 5 migration grants no contribution consent to existing users. It adds
 `collaborative_contribution_consents` and a singleton
 `collaborative_data_revision`. Statement triggers advance the revision for
-source/catalog mutations but exclude recommendation events.
+source/catalog mutations but exclude recommendation events. Revisions
+`0007`–`0009` add live artifact build/contributor lineage, enforce contributor
+authority, maintain aggregate contributor count, record cutoff, and invalidate
+affected active builds transactionally when authority or an included positive
+label is lost.
 
 ## Stage 5 Phase 0–2 offline commands
 
@@ -297,6 +323,38 @@ which fails closed with `unapproved_live_source` before database access.
 resource, semantic, catalog/lifecycle, and expiry contracts and emit only
 aggregate metadata. They bind the artifact to the catalog read from `--catalog`,
 which defaults to the canonical seed file.
+
+## Stage 5 Phase 5 lifecycle and orchestration
+
+`GET /api/v1/models/status` preserves the top-level content capability contract
+and adds `components.content` plus `components.collaborative`. Collaborative
+status is one of `not_configured`, `fixture_only`, `insufficient_data`,
+`unavailable`, `stale`, or `ready`; `source_kind` is `fixture`, `live`, or null.
+The bounded reason set is `not_configured`, `fixture_not_allowed`,
+`insufficient_data`, `artifact_missing`, `artifact_corrupt`,
+`artifact_incompatible`, `artifact_stale`, `privacy_invalid`,
+`artifact_expired`, `catalog_stale`, and `artifact_retired`.
+
+For a loaded live artifact, readiness performs one indexed registry lookup by
+build ID. It verifies active status, zero invalidation epoch, registered
+revision, contributor count, consent version, catalog and interaction
+fingerprints, cutoff, and validity horizon. A nested savepoint turns a database
+readiness failure into fail-closed `artifact_incompatible` fallback without
+poisoning the required Stage 4 event transaction.
+
+Migrations `0008` and `0009` make privacy invalidation transactional with the
+source change. Authority loss includes contribution withdrawal/version change,
+session expiry/revocation, and user deletion. Included-label invalidation
+covers removal/change of a positive saved-game preference, like, or qualifying
+rating under `gamelens-collaborative-labels/1.0.0`. A new positive after the
+artifact cutoff does not invalidate the current artifact; it belongs to a
+future build.
+
+The internal hybrid orchestrator additionally maps `no_query_sources`,
+`no_supported_sources`, `no_candidate_edges`, and `no_eligible_candidates` to
+exact Stage 4 fallback. Phase 6 must expose the decision and same fixed-point
+values through both the personalized response and `stage-5-v1` event before any
+public hybrid result is allowed.
 
 Errors use one envelope:
 
@@ -380,12 +438,14 @@ The test service explicitly selects the `integration` marker, requires the
 `GAMELENS_ALLOW_TEST_DATABASE_RESET=true`. The test guard rejects non-test
 database identities before Alembic can reset a schema.
 
-The Stage 4 unit suites pass 184 tests with 89% diagnostic coverage in the
-implementation worktree. All 49 disposable PostgreSQL integration tests also
-pass in 4.53 seconds, covering
-the populated legacy upgrade, partial indexes and constraints, concurrent
-feedback serialization, HTTP event correlation, deletion cascades, retention,
-and revocation. The consolidated regression and release review pass.
+The current Phase 5 handoff passes 311 API unit tests and 98 disposable-
+PostgreSQL integration tests. The database suite covers the current migration
+head, artifact registry/count constraints, authority and included-label
+invalidation, additive model status, same-snapshot orchestration, next-request
+privacy/retirement fallback, fail-closed readiness errors, and all inherited
+Stage 4 persistence behavior. The full ML regression suite passes 331 tests
+with one Windows symbolic-link capability skip. No new diagnostic coverage
+percentage was recorded for this phase.
 
 Lint, format, and coverage:
 
@@ -401,7 +461,9 @@ The `quality` service bind-mounts `apps/api`, so checks always read the current
 working tree and formatting writes changes back to the host.
 
 Coverage remains diagnostic; failure-path coverage matters more than an
-arbitrary percentage threshold.
+arbitrary percentage threshold. Ruff lint and format pass across 165 Python
+files, generated OpenAPI types have no drift, and the disposable Docker test
+stack is removed after the run.
 
 The Stage 3 gate on 2026-08-07 passed 104 fast API tests and 29 disposable
 PostgreSQL integration tests; diagnostic API coverage was 92%. The integration
@@ -442,11 +504,13 @@ It emits structured inserted, updated, and unchanged counters.
 - The ephemeral collaborative extractor and aggregate audit are implemented,
   but live access is default-off and no public contribution-consent route is
   present.
-- The fixture-only collaborative trainer, artifact, hardened loader, operator
-  CLI, and ML-only pure scorer/materializers are implemented. No API
-  loader/readiness, hybrid serving policy, Stage 5 event schema, protected live
-  build, or approved real interaction dataset is implemented. Current requests
-  therefore preserve exact Stage 4 behavior.
+- The collaborative trainer, hardened artifact/loader, pure scorer, hybrid
+  policy, live registry/invalidation, bounded readiness, component status, and
+  internal saved-request orchestration are implemented. No approved live build
+  registration/promotion, product contribution-consent route, Stage 5 public
+  personalized response/event schema, lifecycle operator command set, or
+  approved real interaction dataset is implemented. Current HTTP responses and
+  events therefore preserve exact Stage 4 behavior.
 - No formal recommendation-quality evaluation on the synthetic seed; that is
   Stage 6 work.
 - No external metadata source is integrated.

@@ -34,10 +34,13 @@ make collaborative-validate
 ```
 
 That bundle contains item-level support and neighborhoods, never profiles or
-profile keys, and is accepted only under the same test-only gate. Phase 3 uses
-the production-loaded temporary bundle to verify canonical source selection,
-exact CSR traversal, collaborative scoring, and exact-row content/affinity
-handoff without adding identity or making the fixture serveable.
+profile keys, and is accepted only under the same test-only gate. Phases 3–4 use
+the production loader to verify canonical source selection, exact CSR traversal,
+collaborative scoring, exact-row materialization, hybrid union, and fallback.
+Phase 5 may load it only in the guarded test application to exercise component
+readiness and internal saved-request orchestration. It cannot receive live
+registry status or authorize development/production serving, and the public
+response/event remains Stage 4 until Phase 6.
 
 Fixture results demonstrate functional behavior and reproducibility only. They
 are not evidence of recommendation quality or representative user behavior.

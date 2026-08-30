@@ -14,9 +14,13 @@ responsive run plus release review pass.
 
 The detailed
 [Stage 5 collaborative-and-hybrid plan](../../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-has completed its Phase 3 ML-only scorer boundary, but no hybrid response field,
-contribution-consent copy, evidence component, or fallback UI from that plan exists yet.
-The current browser renders Stage 4 server order and evidence.
+has completed implementation Phases 0–5. The API now exposes additive model-
+component status and internally computes lifecycle-aware hybrid/fallback
+decisions for saved requests, so the generated client includes the new status
+shape. No public personalized hybrid response field, `stage-5-v1` event,
+contribution-consent copy, conditional evidence component, or fallback UI exists
+yet. The current browser still renders the verified Stage 4 server order and
+evidence; those product changes belong to Phase 6.
 
 ## Responsibilities
 
@@ -203,6 +207,12 @@ packages; its only-fixed scan reports no actionable fixed advisory. Runtime impo
 `pip check`, and all 49 PostgreSQL integration tests remain green. Final release
 diff/privacy review is clean.
 
+Stage 5 Phase 5 changes only the generated model-status shape on the web side;
+the OpenAPI drift check passes. No Phase 5 browser feature or new web-test count
+is claimed. The 76-test web suite and 38/38 browser matrix above remain the
+latest product acceptance until Phase 6 adds and verifies the public hybrid
+contract and presentation.
+
 ## Current limitations
 
 - Saved preferences, feedback, dislike/played adjustment, and recommendation-event logging
@@ -212,9 +222,10 @@ diff/privacy review is clean.
   cross-device recovery, or background retention guarantees.
 - The synthetic 30-game fixture verifies functionality and reproducibility, not
   recommendation quality; formal evaluation remains Stage 6.
-- The Stage 5 pure collaborative scorer is implemented only in the ML package;
-  hybrid ranking and conditional evidence are not served, and the browser currently
-  exposes only Stage 3/4 fields.
+- Stage 5 Phase 5 loader/readiness/lifecycle/internal orchestration is complete,
+  but public personalized hybrid response/event fields and conditional browser
+  evidence are Phase 6 work. The browser currently exposes only Stage 3/4
+  personalized ranking fields and does not sort or recompute server results.
 - The deterministic catalog has no cover binaries or approved remote image source, so
   every game uses a project-owned generated placeholder.
 - Ratings and popularity are synthetic development signals, not market data or

@@ -83,19 +83,18 @@ stability across re-consent, and catalog preservation. Fixed session expiry
 makes owned state purge-eligible rather than pretending an unscheduled command
 deletes it at an exact instant.
 
-The PostgreSQL integration Compose file now supplies the Stage 4 test-only
-session secret and runs the migration/persistence suites against its guarded
+The PostgreSQL integration Compose file supplies the test-only session and
+fixture settings and runs migration/persistence suites against its guarded
 `tmpfs` database. Readiness expects Alembic head
-`0005_stage_4_event_contract`. All three Compose definitions validate, and all 49
-PostgreSQL integration tests pass. They cover the populated legacy upgrade,
-partial indexes and constraints, concurrent feedback serialization,
-personalized HTTP event correlation, deletion cascades, and bounded retention.
-The companion fast gates pass 184 API, 52 ML, and 76 web tests. Ruff passes
-across 112 Python files; TypeScript, ESLint, Prettier, production build,
-generated OpenAPI drift, production/full npm audits, and all three Compose
-definitions are green. The exact-host browser gate is 38/38; teardown removes
-the E2E containers, network, and volume and leaves `compose ps` empty. Final
-release diff/privacy review is clean.
+`0009_stage_5_label_changes`. The Phase 5 handoff passes 98 PostgreSQL
+integration tests, including registry/count constraints, transactional
+authority and label invalidation, component status, and same-snapshot saved-
+request orchestration. Companion gates pass 311 API unit and 331 ML tests with
+one Windows symbolic-link capability skip. Ruff lint/format passes across 165
+Python files and generated OpenAPI types have no drift. The disposable test
+containers and network are removed after the run. The latest full web/browser,
+dependency, and three-Compose acceptance remains the verified Stage 4 matrix:
+76 web tests and 38/38 exact-host browser cases.
 
 The API image is a non-root Python 3.12 development image built from a
 transitive dependency lock. The `quality` Compose service bind-mounts the
@@ -123,36 +122,43 @@ metadata, caches, test output, and untracked data from generic root-context
 builds. The API Dockerfile has a stricter Dockerfile-specific deny-all
 allowlist; the web images use `apps/web/.dockerignore` at their context root.
 
-## Stage 5 offline foundation and planned activation topology
+## Stage 5 Phase 0–5 artifact and internal activation topology
 
 The
 [Stage 5 collaborative-and-hybrid plan](../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-has completed Phase 0–3. Phase 0–2 adds the contribution/revision migration,
-default-off audit commands, guarded fixture artifact build/validate/inspect
-workflow, and separate collaborative artifact configuration. Phase 3 is ML-only
-and adds no Compose, mount, service, database, or browser topology. API
-activation and hybrid E2E topology remain unimplemented.
+has completed implementation Phases 0–5. Phases 0–4 add the contribution/
+revision contract, default-off audit commands, guarded fixture artifact
+workflow, pure scorer/materializers, and hybrid policy. Phase 5 adds the API
+load-once optional component, PostgreSQL live build/contributor lineage,
+transactional invalidation, one-row readiness, additive status, and internal
+saved-request orchestration. The public hybrid response/event and hybrid E2E
+topology remain unimplemented.
 
 The implemented guarded workflow audits the project-authored fixture, builds a
 separate immutable collaborative bundle, validates it with the production
-loader, and promotes only to an unused path. Live audit is default-off, live
-build is explicitly unapproved, and the API does not load or serve this bundle.
-A future activation phase will mount an approved validated result read-only
-alongside the existing content artifact. A collaborative bundle will never be
-trained or mutated by API/web startup, a request, migration, seed, broad test,
-or ordinary teardown.
+loader, and promotes only to an unused path. Live audit/build remains default-
+off and unapproved. The normal API already receives
+`COLLABORATIVE_ARTIFACT_PATH` and mounts the common artifact root read-only; it
+loads a configured bundle only at construction. Fixture loading is accepted
+only in the explicit test environment/gate, while a live artifact also requires
+matching active database lineage. A collaborative bundle is never trained or
+mutated by API/web startup, a request, migration, seed, broad test, or ordinary
+teardown.
 
-The disposable PostgreSQL and E2E projects would receive an isolated
-project-authored multi-user fixture, build both artifacts, exercise hybrid and
-exact Stage 4 fallback paths, invalidate collaborative serving through consent
-or deletion lifecycle changes, and remove only their tmpfs database and
-disposable volumes. Development data and content artifacts would remain
-untouched. Fixture artifacts must require both the test environment and an
-explicit test-only flag; ordinary development and production must reject them.
+The disposable PostgreSQL project already proves fixture/live readiness,
+authority and included-label invalidation, exact Stage 4 fallback, internal
+hybrid decision, and event truth against tmpfs PostgreSQL. Phase 8 must extend
+the E2E project to build both artifacts, exercise public Phase 6 hybrid/fallback
+and lifecycle browser paths, and remove only its tmpfs database and disposable
+volumes. Development data and artifacts must remain untouched. Fixture
+artifacts require both the test environment and explicit test-only flag;
+ordinary development and production reject them.
 
 Audit, fixture build, validation, aggregate inspection, and immutable promotion
-have direct commands. Protected live build, rollback, invalidation, retirement,
-and physical deletion remain future lifecycle work. Cleanup remains preview-
+have direct commands. Database invalidation is implemented transactionally,
+but protected live build registration/promotion, operator invalidation,
+rollback, retirement, and physical deletion remain future lifecycle work.
+Cleanup remains preview-
 first with exact confirmation and cannot target an active artifact or a broad
 directory. A production scheduler, registry service, or hot reload remains
 Stage 7 work.

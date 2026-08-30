@@ -168,15 +168,17 @@ result identity. The event is audit/correlation data for server generation,
 not a standalone replay snapshot, impression, click, conversion, or positive
 label.
 
-## Implemented Stage 5 collaborative and hybrid ML policy; serving planned
+## Implemented Stage 5 Phase 0–5 collaborative lifecycle and orchestration
 
 The detailed
 [Stage 5 engineering plan](stage-5-collaborative-hybrid-ranking-plan.md) is
 being implemented in phases. Phase 0–4 source governance, offline artifact,
 pure collaborative scoring/materialization, and versioned hybrid-policy
-boundaries are complete. Current API runtime ranking remains the Stage 3
-content model plus the Stage 4 feedback policy described above; lifecycle-
-aware collaborative readiness and hybrid serving have not started.
+boundaries are complete. Phase 5 adds optional artifact loading, protected live
+lineage, lifecycle readiness, additive component status, and internal saved-
+request orchestration. The public saved response and event remain the Stage 4
+contract until Phase 6 maps the same hybrid decision to synchronized API,
+event, generated-client, and browser fields.
 
 Stage 5 first audits whether an interaction source is authorized, sufficiently
 supported, catalog-aligned, and retention-aware. Existing Stage 4 storage
@@ -201,7 +203,7 @@ evidence plus typed no-support outcomes. Exact-row content/base and affinity
 materializers preserve zero-content collaborative candidates for the next
 phase without changing existing Stage 3/4 eligibility or ranking wrappers.
 
-The implemented ML-only saved-personalization policy unions content-supported
+The implemented saved-personalization policy unions content-supported
 candidates with supported collaborative neighbors before final top-K. It
 preserves selected-source and dislike exclusions, then applies separately
 observable fixed-point base, feedback-affinity, collaborative, and played
@@ -209,8 +211,29 @@ contributions under `gamelens-hybrid-ranking/1.0.0`. When its caller reports
 the collaborative component absent, insufficient, unsupported, corrupt, stale,
 expired, retired, privacy-invalid, or otherwise without candidate support, the
 public ranker wraps the exact unchanged Stage 4 result with an explicit reason.
-Phase 5 must supply those lifecycle/readiness outcomes and connect the policy to
-the saved endpoint. The stateless Stage 3 endpoint remains unchanged.
+
+Phase 5 supplies those outcomes from one immutable application component and,
+for live artifacts, one bounded registry row read in the saved request's
+repeatable-read transaction. The component states are `not_configured`,
+`fixture_only`, `insufficient_data`, `unavailable`, `stale`, and `ready`.
+Lifecycle reasons cover fixture rejection, missing/corrupt/incompatible/stale/
+expired/retired artifacts, insufficient support, privacy invalidation, and
+catalog mismatch. Scoring additionally distinguishes no query sources, no
+supported sources, no retained candidate edges, and all candidates excluded.
+Every unavailable/no-support reason enters the exact Stage 4 fallback policy.
+
+The saved application service now computes one typed `hybrid` or
+`stage_4_fallback` decision in the same transaction as event insertion. During
+the Phase 5 handoff, a real hybrid result remains internal and a separately
+retained exact Stage 4 result is used for the public response and `stage-4-v1`
+event. This prevents a hybrid HTTP 200 or mislabeled event before Phase 6 owns
+the complete contract. The stateless Stage 3 endpoint remains unchanged and
+never reads collaborative lineage.
+
+The Phase 5 handoff passes 311 API unit tests, 98 disposable-PostgreSQL tests,
+and 331 ML tests with one Windows symbolic-link capability skip. It also passes
+Ruff lint/format across 165 Python files and generated OpenAPI drift. These
+tests establish lifecycle, determinism, fallback, and event truth only.
 
 The collaborative score is an aggregate ranking signal, not a probability or
 proof that “users like you” prefer an item. Initial thresholds and weights are
@@ -273,10 +296,12 @@ Stage 5 implements a second immutable artifact because interaction data has a
 different consent, freshness, invalidation, and rebuild lifecycle from catalog
 content. The implemented guarded fixture path audits, builds, validates,
 promotes to an unused path, and inspects catalog/interaction fingerprints,
-policy, support, checksums, and validity metadata. Protected live lineage,
-invalidation/retirement, API readiness, and rollback remain later phases. A
-collaborative failure must disable only that optional component and preserve
-the content/feedback path once serving orchestration exists.
+policy, support, checksums, and validity metadata. Phase 5 adds the protected
+live build/contributor registry, authority and included-label invalidation,
+optional load-once API component, and bounded request readiness. Approved live
+build registration/promotion, operator invalidation/retirement/rollback and
+physical cleanup remain later phases. Any collaborative failure disables only
+that optional component and preserves the content/feedback path.
 
 ## Evaluation
 
@@ -302,8 +327,11 @@ recommendation-event logging are implemented on the Stage 4 branch. The
 PostgreSQL, fast, static/build, OpenAPI, dependency-audit, Compose, and image
 gates and the 38/38 exact-host Docker browser matrix pass; Stage 4 is verified
 complete.
-The identity-free collaborative artifact, pure candidate scorer, and versioned
-hybrid policy are implemented through Stage 5 Phase 4. Lifecycle-aware serving,
-response/event changes, and conditional browser evidence remain unimplemented.
+The identity-free collaborative artifact, pure candidate scorer, versioned
+hybrid policy, protected lineage/invalidation, bounded readiness, additive
+model status, and internal saved-request orchestration are implemented through
+Stage 5 Phase 5. Public personalized hybrid response/event mapping, generated
+contract changes for those fields, and conditional browser evidence remain
+Phase 6 work.
 Formal ranking evaluation is Stage 6 work. Semantic embeddings, exploration,
 LLM explanations, and diversity reranking remain outside the first MVP model.

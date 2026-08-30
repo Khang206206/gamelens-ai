@@ -221,12 +221,9 @@ is published as commit `c96b6c2` in draft PR
 
 ## Stage 5 — Collaborative and hybrid ranking
 
-**Status:** External-source preflight verified 2026-08-23; Phase 0–1
-first-party snapshot/audit foundation verified 2026-08-24; Phase 2 offline
-collaborative artifact foundation verified 2026-08-25; Phase 3 pure
-collaborative scorer and exact-row handoff verified 2026-08-28; Phase 4 ML-only
-hybrid policy and exact Stage 4 fallback verified 2026-08-29; Phase 5
-lifecycle/readiness and API ranking runtime not started
+**Status:** External-source preflight and implementation Phases 0–5 verified
+through 2026-08-30; Phase 6 response, event, OpenAPI, and product integration is
+next; Stage 5 as a whole remains in progress
 
 Detailed execution plan:
 [`stage-5-collaborative-hybrid-ranking-plan.md`](stage-5-collaborative-hybrid-ranking-plan.md)
@@ -238,15 +235,15 @@ closed. The first-party path adds separate contribution-consent storage,
 monotonic source revision, one PostgreSQL repeatable-read/read-only extractor,
 versioned label/canonical audit policy, and a strict project-authored fixture.
 Phase 2 consumes only that identity-free fixture contract to build and validate
-a separate sparse item-item artifact. Phase 3 adds canonical query-source
-selection, bounded CSR traversal, reconstructible collaborative scoring, and
-exact-row base/affinity materialization in the ML package. Phase 4 adds the
-versioned candidate union, fixed-point hybrid ranking, structured evidence, and
-public exact-Stage-4 fallback boundary. Phases 0–4 neither approve a source for
-live build nor serve the collaborative artifact or hybrid policy through the
-API.
+a separate sparse item-item artifact. Phases 3–4 add canonical query-source
+selection, bounded CSR traversal, exact-row materialization, the versioned
+candidate union, fixed-point hybrid ranking, structured evidence, and exact
+Stage 4 fallback. Phase 5 adds the optional immutable API component, protected
+live build/contributor lineage, transactional invalidation, bounded readiness,
+additive model status, and internal saved-request orchestration. It still does
+not approve a source for live build or expose a public hybrid response/event.
 
-Completed Phase 0–4 evidence:
+Completed Phase 0–5 evidence:
 
 1. Default-off live configuration and a supported `integration_blocked` state
    that performs no database access.
@@ -296,23 +293,48 @@ Completed Phase 0–4 evidence:
     hybrid set passes 68 tests, and the full ML suite passes 331 with one
     Windows-symlink capability skip. Ruff lint/format and diff checks pass with
     no new dependency.
+17. The optional collaborative bundle is loaded and frozen once at application
+    construction. Fixture activation requires both test environment and the
+    explicit fixture gate; every other intrinsic loader failure maps to a
+    bounded lifecycle reason without disabling content serving.
+18. Migrations `0007_stage_5_artifact_registry` through
+    `0009_stage_5_label_changes` add live build/contributor lineage, aggregate
+    count defense, authority enforcement, cutoff identity, and transactional
+    invalidation for authority or included-label loss. Expected head is
+    `0009_stage_5_label_changes`.
+19. Request readiness exposes `not_configured`, `fixture_only`,
+    `insufficient_data`, `unavailable`, `stale`, or `ready`, using database time
+    and at most one registry row in the caller's repeatable-read snapshot.
+    `GET /api/v1/models/status` now reports content and collaborative components
+    additively without changing required content capability semantics.
+20. Saved personalization now resolves lifecycle state and invokes the public
+    hybrid ranker inside its existing transaction. Every lifecycle/no-support
+    path preserves exact Stage 4 output. A real hybrid decision remains internal
+    while the public response and committed event remain `stage-4-v1`, preventing
+    a premature or mislabeled public contract.
+21. Slice commits `0eab24f`, `189ce4c`, `a6d7a34`, `fb7251f`, `4f52547`,
+    `7e10882`, `aefb425`, and `66af706` complete 5A–5H. The handoff passes 311
+    API unit, 98 disposable-PostgreSQL, and 331 ML tests with one Windows
+    symbolic-link capability skip; Ruff lint/format passes across 165 Python
+    files, generated OpenAPI types have no drift, and Docker test resources are
+    removed.
 
-Build the remaining stages one reviewable slice at a time:
+Build the remaining implementation phases one reviewable slice at a time:
 
-1. Approve product contribution-consent copy/routes and decide whether any live
+1. Phase 6: map one internal decision to an additive personalized response and
+   one matching bounded `stage-5-v1` event from the same fixed-point values;
+   regenerate OpenAPI/browser types and add conditional server-order UI.
+2. Approve product contribution-consent copy/routes and decide whether any live
    cohort may be audited; saved personalization remains a separate purpose.
-2. Add protected live build/contributor lifecycle lineage, explicit
-   invalidation/retirement/rollback, and approved revision-safe activation. The
-   current operator path remains fixture-only.
-3. Implement Phase 5 lifecycle-aware optional-component readiness and saved
-   personalization orchestration over the completed `HybridRanker`, while the
-   stateless endpoint remains unchanged.
-4. Add explicit live invalidate/retire commands, rollback, and disposable
-   lifecycle integration tests.
-5. Extend only the saved personalized response/event/OpenAPI/browser path after
-   the component is valid; leave the stateless endpoint unchanged.
-6. Synchronize passing artifact, scorer, hybrid, privacy, web, browser, and
-   regression evidence before claiming Stage 5 completion.
+3. Add deliberate live build registration/promotion plus explicit invalidate,
+   retire, rollback, and confirmed physical-cleanup commands. The current
+   operator build path remains fixture-only.
+4. Extend the disposable E2E topology to build/load the guarded fixture and
+   prove hybrid, fallback, invalidation, re-consent, and clear-data browser
+   paths without touching development data.
+5. Run the complete privacy, dependency, artifact, API, PostgreSQL, web,
+   browser, accessibility, Docker, and Stage 1–4 regression matrix before
+   claiming Stage 5 completion or finalizing the roadmap Stage 6 handoff.
 
 Stage 5 is complete only when the data source and permission are explicit;
 recommendation events are provably excluded as labels; deleted, withdrawn,
@@ -328,7 +350,8 @@ claim that one ranker is better remain Stage 6 work.
 
 ## Stage 6 — Evaluation and reporting
 
-**Status:** Planned
+**Status:** Planned; begins only after all remaining Stage 5 implementation
+phases and acceptance gates complete
 
 Run reproducible ranking evaluation with saved configuration, machine-readable
 metrics, and an evidence-based Markdown experiment report.

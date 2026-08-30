@@ -1,9 +1,8 @@
 # Machine-learning workspace
 
 **Status:** Stage 4 feedback policy complete and verified 2026-08-13; Stage 5
-external-source preflight verified 2026-08-23; Stage 5 Phase 0–2 interaction
-audit and collaborative-artifact foundation verified 2026-08-25; Phase 3 pure
-collaborative scoring and exact-row handoff verified 2026-08-28.
+external-source preflight and implementation Phases 0–5 verified through
+2026-08-30; Phase 6 public response/event/product integration is next.
 
 This directory owns deterministic catalog normalization, the popularity
 baseline, TF-IDF feature construction, sparse artifact serialization, pure
@@ -25,8 +24,11 @@ interaction-profile serialization, fingerprinting, bounded aggregate auditing,
 a strict project-authored fixture loader, the sparse item-item trainer, and the
 separate collaborative artifact builder/validator/loader. It also exposes the
 Phase 3 canonical source selector, bounded CSR lookup/scorer, and exact-row base
-and affinity materializers. No hybrid policy, approved live builder, API
-activation, or serveable Stage 5 component exists.
+and affinity materializers plus the Phase 4
+`gamelens-hybrid-ranking/1.0.0` policy. Phase 5 consumes these pure contracts
+from the API through optional lifecycle readiness and internal saved-request
+orchestration. No approved live builder/promotion or public hybrid response and
+event contract exists.
 
 ## Stage 5 Phase 0–1 interaction audit
 
@@ -125,11 +127,28 @@ set without changing Stage 3/4 eligibility or final ranking wrappers. The
 fixture handoff proves `starbound-couriers` can arrive with zero content units
 and exact collaborative/content/platform/popularity/base/affinity units
 `428571/0/1000000/599117/159912/0`. Candidate union, weights, played adjustment
-after hybrid blending, final rank, and fallback belong to Phase 4.
+after hybrid blending, final rank, and fallback are implemented by Phase 4.
 
-The remaining Stage 5 work is the versioned hybrid policy, serving lifecycle,
-and product contribution-consent flow. Unsupported or invalid collaborative
-state must preserve exact Stage 4 ranking through an explicit fallback. Matrix
+## Stage 5 Phase 4 hybrid policy
+
+`HybridRanker` unions exact content/base, affinity, and collaborative candidates
+by stable slug before final top-K. With an active affinity profile it applies
+base/affinity/collaborative weights `800000/100000/100000`; without one it uses
+`900000/0/100000`. Contributions use the shared round-half-up 1,000,000 scale,
+then the `500000` played factor applies once. Complete structured evidence,
+candidate origin, component identities, and deterministic cautious prose make
+every score reconstructible.
+
+Every typed unavailable or no-support collaborative outcome returns a
+`Stage4FallbackResult` containing the exact unchanged Stage 4 result. Query-
+source/dislike context mismatches fail as invalid input rather than silently
+fall back. The production-loaded fixture proves a collaborative-only candidate
+can enter the union, but it remains functional evidence rather than a quality
+comparison.
+
+Phase 5 now supplies the loader, lifecycle readiness, and saved-request
+orchestration around this package. The public response and recommendation event
+remain Stage 4 until Phase 6 maps the complete hybrid decision. Matrix
 factorization, neural models, online fitting, shrinkage tuning, and formal
 quality evaluation remain outside this phase.
 
@@ -285,13 +304,13 @@ docker compose run --build --rm --no-deps quality `
 ```
 
 The Stage 3 gate passed 25 ML tests with 81% diagnostic branch-aware package
-coverage. The current Stage 4 worktree passes 52 ML tests with 83% diagnostic
-coverage plus Ruff lint and format checks across 112 Python files. Cross-stack
-evidence also passes 184 fast API, 76 web, and 49 disposable-PostgreSQL tests.
-The Phase 3 worktree passes 256 ML tests; one symbolic-link rejection case is
-capability-skipped on this Windows host and remains runnable on systems that
-permit symlink creation. The focused Phase 3 set passes 154 tests. Ruff lint
-and format checks remain green.
+coverage. The current Phase 5 handoff passes the complete 331-test ML suite with
+one symbolic-link rejection case capability-skipped on this Windows host; that
+case remains runnable on systems that permit symlink creation. Cross-stack
+evidence also passes 311 API unit and 98 disposable-PostgreSQL tests. Ruff lint
+and format checks pass across 165 Python files, and generated OpenAPI types have
+no drift. No new dependency or diagnostic coverage percentage was introduced
+for Phase 5.
 The 38-case exact-host Docker browser matrix passes in 1.3 minutes without
 retry. The rebuilt
 no-cache `gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e`
@@ -308,9 +327,10 @@ database in 0.43 seconds. Ten complete validation loads from the Docker Desktop
 bind mount had min/median/max latency of 89.64/95.54/274.79 ms. These are local
 diagnostics, not performance guarantees or recommendation-quality evidence.
 
-Persistent preferences live in the API/database rather than this package.
-The collaborative artifact and pure candidate-scoring/materialization
-foundation are implemented offline, but hybrid ranking and API serving are not.
-Formal offline ranking evaluation remains Stage 6 work. The synthetic catalog
-and authored interaction fixture validate deterministic behavior only, not
-recommendation quality.
+Persistent preferences and lifecycle lineage live in the API/database rather
+than this package. The collaborative artifact, pure scorer/materializers, and
+hybrid ranking policy are implemented and consumed by Phase 5 internal API
+orchestration. Public personalized hybrid response/event fields remain Phase 6
+work. Formal offline ranking evaluation remains roadmap Stage 6 work. The
+synthetic catalog and authored interaction fixture validate deterministic
+behavior only, not recommendation quality.

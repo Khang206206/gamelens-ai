@@ -28,9 +28,11 @@ It is strict test-only input with 12 synthetic profiles, 36 positive edges,
 6 supported items, explicit exclusions, and cold-start cases. It is not seeded
 into PostgreSQL, is not representative data, cannot establish recommendation
 quality, and does not approve live training or serving. It may drive the
-explicitly guarded Phase 2 fixture artifact build and the Phase 3 pure-scoring
-handoff tests; that generated bundle remains ignored and contains aggregate
-item neighborhoods rather than profile rows.
+explicitly guarded Phase 2 fixture artifact build, Phase 3 pure-scoring handoff,
+Phase 4 hybrid-policy tests, and Phase 5 guarded internal orchestration; that
+generated bundle remains ignored and contains aggregate item neighborhoods
+rather than profile rows. It is never registrable as a live build and cannot
+authorize development or production serving.
 
 ## External-source policy
 

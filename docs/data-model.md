@@ -11,25 +11,27 @@
 - JSON is reserved for genuinely flexible recommendation-event context.
 
 The Alembic migration chain is the executable source of truth for this model.
-Stage 5 Phase 1 extends the Stage 1–4 chain through expected head
-`0006_stage_5_collab_contract` without embedding seed, fixture, audit, build,
-or retention behavior in migrations.
+Stage 5 Phase 5 extends the Stage 1–4 chain through expected head
+`0009_stage_5_label_changes` without embedding seed, fixture, audit, model
+fitting, promotion, or retention commands in migrations.
 
 The
 [Stage 4 feedback-and-persistence plan](stage-4-feedback-persistence-plan.md)
 defines the activation and migration policy for the existing future-facing
 user tables. Revisions `0003_stage_4_anonymous_identity` through
 `0005_stage_4_event_contract` implement token-digest, consent, temporal-state,
-and event-identity schema. Revision `0006_stage_5_collab_contract` adds
-separate contribution consent and monotonic collaborative source revision.
-The 54-test disposable-PostgreSQL suite passes, including populated legacy
-upgrade, no fabricated contribution consent, and concurrent snapshot tests.
+and event-identity schema. Revision `0006_stage_5_collab_contract` adds separate
+contribution consent and monotonic collaborative source revision. Revisions
+`0007`–`0009` add protected live build/contributor lineage and transactional
+invalidation for authority loss and removal/change of included positive labels.
+The 98-test disposable-PostgreSQL suite passes through the current head.
 
-The latest Stage 5 Phase 3 ML gate passes 256 tests with one Windows symlink-
-capability skip. The most recent applicable cross-stack evidence remains 200
-fast API, 54 PostgreSQL, and 76 web tests. The 38-case exact-host Docker browser
-matrix passes in 59.6 seconds without retry: 28 Chromium, 5 Firefox, and 5
-WebKit. The rebuilt no-cache
+The Stage 5 Phase 5 handoff passes 311 API unit tests, 98 disposable-
+PostgreSQL tests, and 331 ML tests with one Windows symlink-capability skip.
+Ruff lint and format pass across 165 Python files, and generated OpenAPI types
+have no drift. The most recent web/browser acceptance remains the verified
+Stage 4 run: 76 web tests and a 38-case exact-host Docker matrix. The rebuilt
+no-cache
 `gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e`
 removes unused Debian `perl-base` after all install steps, resolving its earlier
 two critical and two high findings. Runtime imports, `pip check`, and all 49
@@ -47,6 +49,8 @@ erDiagram
     USER ||--o{ INTERACTION : creates
     USER ||--o{ RECOMMENDATION_EVENT : receives
     USER ||--o| COLLABORATIVE_CONTRIBUTION_CONSENT : optionally_grants
+    USER ||--o{ COLLABORATIVE_ARTIFACT_CONTRIBUTOR : contributed_to
+    COLLABORATIVE_ARTIFACT_BUILD ||--o{ COLLABORATIVE_ARTIFACT_CONTRIBUTOR : records
     COLLABORATIVE_DATA_REVISION {
         bigint revision
     }
@@ -155,7 +159,7 @@ replay snapshot or proof of browser receipt, view, click, conversion, or
 positive feedback. Pre-Stage-4 events are marked `legacy-v1` and retain
 nullable data/policy identity.
 
-## Implemented Stage 5 Phase 0–1 Data Boundary
+## Implemented Stage 5 Phase 0–5 Data Boundary
 
 ### CollaborativeContributionConsent
 
@@ -217,17 +221,52 @@ No collaborative artifact or serving path exists in Phase 0–1.
 
 Phase 2 adds a fixture-only offline artifact under the ignored `ml/artifacts/`
 boundary. It contains item-level aggregate support and neighborhoods, not a
-user matrix or contributor lineage. No database table or serving reference was
-added: protected live build/contributor lineage, invalidation, and retirement
-remain required before a live-derived bundle can activate.
+user matrix or contributor lineage. Phase 2 itself added no database table or
+serving reference; Phase 5 subsequently adds protected live build/contributor
+lineage and transactional invalidation. Approved live promotion and operator
+retirement still remain required before a live-derived bundle can activate.
 
 Phase 3 is entirely inside the ML package. Canonical source selection, sparse
 candidate scoring, and exact-row base/affinity materialization add no table,
 migration, repository query, contributor row, serving reference, or new data-
 retention obligation. Phase 4 likewise remains ML-only: it consumes stable-slug
 component records, returns either versioned hybrid evidence or an exact Stage 4
-fallback wrapper, and adds no persistence or serving reference. Phase 5 remains
-responsible for lifecycle-aware database readiness and API orchestration.
+fallback wrapper, and adds no persistence or serving reference.
+
+### CollaborativeArtifactBuild and CollaborativeArtifactContributor
+
+Revision `0007_stage_5_artifact_registry` adds database-only lineage for a live
+collaborative artifact. `collaborative_artifact_builds` stores a bounded build
+ID, active/invalidated/retired lifecycle, registered revision, invalidation
+epoch, expected/current contributor counts, consent version, catalog and
+interaction fingerprints, cutoff, validity horizon, and lifecycle timestamps.
+Only `source_kind=live` is registrable. A fixture artifact never receives a
+registry row.
+
+`collaborative_artifact_contributors` records only `(build_id, user_id)`
+membership so a change can invalidate affected builds. The artifact itself
+still contains no identity. Build deletion cascades membership; user deletion
+cascades membership and also triggers invalidation before the row disappears.
+A database trigger maintains `current_contributor_count`, while request
+readiness reads one aggregate build row and never scans this membership table.
+
+Revision `0008_stage_5_authority_loss` rejects contributor membership without
+matching current user/session and contribution-consent authority. Withdrawal,
+consent-version change, expiry, revocation, or user deletion transactionally
+moves every affected active build to `invalidated`, advances its invalidation
+epoch, and records database time. Revision `0009_stage_5_label_changes` adds the
+artifact cutoff and constraint triggers that invalidate only when an included
+saved-game/like/rating positive is removed or changes under the frozen label
+policy. A new post-cutoff positive remains input for a future build and does not
+invalidate the loaded artifact.
+
+Phase 5 model readiness combines immutable artifact facts with database time,
+current catalog fingerprint, current consent-policy version, and at most one
+matching build row. Bounded states are `not_configured`, `fixture_only`,
+`insufficient_data`, `unavailable`, `stale`, and `ready`. This data boundary is
+already used by internal saved-request orchestration, but Phase 6 still owns
+the public `stage-5-v1` response/event schema. Current events remain
+`stage-4-v1` and remain excluded from labels and revision changes.
 
 ## Index and constraint plan
 
@@ -235,6 +274,12 @@ responsible for lifecycle-aware database readiness and API orchestration.
   grant/withdrawal ordering, and singleton/non-negative revision checks.
 - PostgreSQL statement triggers own monotonic revision changes for every
   eligible source/catalog table while excluding recommendation events.
+- Live artifact builds have a stable primary key, status/validity lookup index,
+  lifecycle and fingerprint checks, and exact expected/current contributor
+  count bounds.
+- Contributor membership has a composite primary key plus a user/build lookup
+  index; database triggers enforce current authority, maintain the aggregate
+  count, and invalidate affected builds on authority or included-label loss.
 - Unique indexes on game, genre, tag, and platform slugs.
 - Indexes on game title and common catalog filters.
 - Composite indexes on interaction user/time and game/type.
@@ -261,8 +306,11 @@ Stage 4 migrations remain verified for empty, `0001`, `0002`, and populated
 legacy starting points. `0006_stage_5_collab_contract` upgrades and downgrades
 without assuming empty user tables, grants no contribution consent, seeds only
 the non-authority revision singleton, and installs/removes bounded source
-triggers. The 54-test PostgreSQL suite covers populated downgrade/re-upgrade,
+triggers. Revisions `0007`–`0009` preserve existing application rows while
+adding registry, authority, count, cutoff, and label-invalidation constraints.
+The 98-test PostgreSQL suite covers migration head, populated upgrade paths,
 constraints, cascades, source versus event revision changes, label/temporal
-exclusions, repeatable-read concurrency, and typed revision races. Retention,
-user deletion, audits, fixture loading, and model builds remain application or
-operator actions rather than migration side effects.
+exclusions, repeatable-read concurrency, exact request-snapshot readiness, and
+transactional invalidation. Retention, audits, fixture loading, model fitting,
+live build registration/promotion, retirement, and physical cleanup remain
+application or operator actions rather than migration side effects.
