@@ -259,6 +259,15 @@ def _artifact_facts(
         return None
 
 
+def collaborative_readiness_build_id(
+    component: CollaborativeArtifactComponent,
+) -> str | None:
+    """Return the validated live build identity needed for one registry lookup."""
+
+    facts = _artifact_facts(component)
+    return facts.build_id if facts is not None and facts.source_kind == "live" else None
+
+
 def _unusable(
     state: CollaborativeReadinessState,
     reason: CollaborativeReadinessReason,

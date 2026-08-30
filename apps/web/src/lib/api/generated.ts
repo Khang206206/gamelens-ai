@@ -300,6 +300,28 @@ export interface components {
          * @enum {string}
          */
         CatalogSort: "popularity" | "rating" | "release_date" | "title";
+        /** CollaborativeComponentStatus */
+        CollaborativeComponentStatus: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "not_configured" | "fixture_only" | "insufficient_data" | "unavailable" | "stale" | "ready";
+            /** Reason */
+            reason: ("not_configured" | "fixture_not_allowed" | "insufficient_data" | "artifact_missing" | "artifact_corrupt" | "artifact_incompatible" | "artifact_stale" | "privacy_invalid" | "artifact_expired" | "catalog_stale" | "artifact_retired") | null;
+            /** Source Kind */
+            source_kind: ("fixture" | "live") | null;
+        };
+        /** ContentComponentStatus */
+        ContentComponentStatus: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_configured" | "unavailable";
+            /** Reason */
+            reason: string | null;
+        };
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -471,6 +493,11 @@ export interface components {
             /** Explanations */
             explanations: boolean;
         };
+        /** ModelComponentsStatus */
+        ModelComponentsStatus: {
+            content: components["schemas"]["ContentComponentStatus"];
+            collaborative: components["schemas"]["CollaborativeComponentStatus"];
+        };
         /** ModelStatusResponse */
         ModelStatusResponse: {
             /**
@@ -484,6 +511,7 @@ export interface components {
             unavailable_reason?: string | null;
             /** Feature Families */
             feature_families?: string[] | null;
+            components?: components["schemas"]["ModelComponentsStatus"] | null;
         };
         /** PersonalizationPolicyIdentity */
         PersonalizationPolicyIdentity: {

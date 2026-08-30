@@ -141,7 +141,16 @@ def test_insecure_cookie_is_limited_to_loopback_or_test_origins() -> None:
         )
 
 
-def test_collaborative_live_data_is_default_off_and_requires_contribution_version() -> None:
+def test_collaborative_live_data_is_default_off_and_requires_contribution_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for variable in (
+        "COLLABORATIVE_LIVE_DATA_ENABLED",
+        "COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION",
+        "COLLABORATIVE_ALLOW_TEST_FIXTURE",
+        "COLLABORATIVE_ARTIFACT_PATH",
+    ):
+        monkeypatch.delenv(variable, raising=False)
     settings = Settings(_env_file=None)
 
     assert settings.collaborative_live_data_enabled is False

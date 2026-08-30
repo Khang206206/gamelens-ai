@@ -135,6 +135,11 @@ def test_settings() -> Settings:
         database_url="postgresql+psycopg://test:test@localhost:5433/gamelens_test",
         cors_origins=["http://testserver"],
         log_level="WARNING",
+        model_artifact_path=None,
+        collaborative_artifact_path=None,
+        collaborative_live_data_enabled=False,
+        collaborative_contribution_consent_version=None,
+        collaborative_allow_test_fixture=False,
     )
 
 

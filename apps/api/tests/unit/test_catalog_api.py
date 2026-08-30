@@ -259,6 +259,14 @@ def test_model_status_is_honest(catalog_client: TestClient) -> None:
             "recommend": False,
             "explanations": False,
         },
+        "components": {
+            "content": {"status": "not_configured", "reason": None},
+            "collaborative": {
+                "status": "not_configured",
+                "reason": "not_configured",
+                "source_kind": None,
+            },
+        },
     }
 
 

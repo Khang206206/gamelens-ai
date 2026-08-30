@@ -2,9 +2,8 @@ from fastapi import APIRouter, Request
 
 from app.api.dependencies import DatabaseSession
 from app.core.exceptions import DATABASE_ERROR_RESPONSES
-from app.db.session import begin_repeatable_read
-from app.repositories.recommendation_catalog import RecommendationCatalogRepository
 from app.schemas.model_status import ModelStatusResponse
+from app.services.recommendation.status import RecommendationStatusService
 
 router = APIRouter(prefix="/models", tags=["models"])
 
@@ -17,12 +16,11 @@ router = APIRouter(prefix="/models", tags=["models"])
     response_model_exclude_unset=True,
 )
 def model_status(request: Request, session: DatabaseSession) -> ModelStatusResponse:
-    service = request.app.state.recommendation_service
-    if not service.needs_catalog:
-        return service.status()
-    begin_repeatable_read(session, read_only=True)
-    catalog = RecommendationCatalogRepository(session).load()
-    return service.status(
-        catalog.model_snapshot,
-        catalog_error=catalog.model_unavailable_reason,
-    )
+    return RecommendationStatusService(
+        session,
+        request.app.state.recommendation_service,
+        request.app.state.collaborative_component,
+        current_consent_version=(
+            request.app.state.settings.collaborative_contribution_consent_version
+        ),
+    ).resolve()

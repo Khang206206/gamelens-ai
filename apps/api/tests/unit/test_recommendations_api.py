@@ -174,6 +174,14 @@ def test_catalog_change_makes_loaded_artifact_stale(
     )
     assert status.json()["status"] == "unavailable"
     assert status.json()["unavailable_reason"] == "catalog_stale"
+    assert status.json()["components"] == {
+        "content": {"status": "unavailable", "reason": "catalog_stale"},
+        "collaborative": {
+            "status": "not_configured",
+            "reason": "not_configured",
+            "source_kind": None,
+        },
+    }
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "catalog_stale"
 
