@@ -21,6 +21,7 @@ from gamelens_recommender import (
 )
 
 NOW = datetime(2026, 8, 29, 12, tzinfo=UTC)
+CUTOFF = datetime(2026, 8, 29, 11, tzinfo=UTC)
 VALID_UNTIL = datetime(2026, 9, 29, 12, tzinfo=UTC)
 CATALOG_FINGERPRINT = "a" * 64
 INTERACTION_FINGERPRINT = "b" * 64
@@ -40,6 +41,7 @@ def _fake_artifact(
     consent_version: object = CONSENT_VERSION,
     catalog_fingerprint: object = CATALOG_FINGERPRINT,
     interaction_fingerprint: object = INTERACTION_FINGERPRINT,
+    cutoff: object = "2026-08-29T11:00:00.000000Z",
     valid_until: object = "2026-09-29T12:00:00.000000Z",
     contributor_count: object = 12,
     retained_positive_edges: object = 36,
@@ -48,12 +50,14 @@ def _fake_artifact(
     if source_kind == "fixture":
         data_revision = None
         consent_version = None
+        cutoff = None
     manifest = {
         "source": {"kind": source_kind},
         "build": {"id": build_id},
         "lifecycle": {
             "data_revision": data_revision,
             "consent_version": consent_version,
+            "cutoff": cutoff,
             "valid_until": valid_until,
         },
         "catalog_fingerprint": catalog_fingerprint,
@@ -94,6 +98,7 @@ def _lineage(**changes: object) -> CollaborativeReadinessRow:
         consent_version=CONSENT_VERSION,
         catalog_fingerprint=CATALOG_FINGERPRINT,
         interaction_fingerprint=INTERACTION_FINGERPRINT,
+        cutoff=CUTOFF,
         valid_until=VALID_UNTIL,
     )
     return replace(row, **changes)
@@ -248,6 +253,8 @@ def test_catalog_and_time_are_rechecked_at_the_request_boundary() -> None:
     [
         {"build_id": ""},
         {"data_revision": True},
+        {"cutoff": None},
+        {"cutoff": "not-a-timestamp"},
         {"valid_until": "not-a-timestamp"},
         {"catalog_fingerprint": "not-a-fingerprint"},
         {"contributor_count": "12"},
@@ -295,6 +302,8 @@ def test_matching_live_artifact_and_lineage_are_ready() -> None:
         ({"invalidation_epoch": 1}, "privacy_invalid"),
         ({"build_id": "different-live-build"}, "artifact_stale"),
         ({"registered_revision": 8}, "artifact_stale"),
+        ({"cutoff": CUTOFF - timedelta(seconds=1)}, "artifact_stale"),
+        ({"cutoff": None}, "privacy_invalid"),
         ({"contributor_count": 11}, "privacy_invalid"),
         ({"interaction_fingerprint": "c" * 64}, "privacy_invalid"),
         ({"consent_version": "stage-5-contribution-v2"}, "privacy_invalid"),

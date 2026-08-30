@@ -29,6 +29,7 @@ def collaborative_readiness_query(build_id: str) -> Select[tuple[object, ...]]:
             CollaborativeArtifactBuild.consent_version,
             CollaborativeArtifactBuild.catalog_fingerprint,
             CollaborativeArtifactBuild.interaction_fingerprint,
+            CollaborativeArtifactBuild.cutoff,
             CollaborativeArtifactBuild.valid_until,
         )
         .where(CollaborativeArtifactBuild.build_id == build_id)
@@ -58,5 +59,6 @@ class CollaborativeArtifactRegistryRepository:
             consent_version=cast(str, record["consent_version"]),
             catalog_fingerprint=cast(str, record["catalog_fingerprint"]),
             interaction_fingerprint=cast(str, record["interaction_fingerprint"]),
+            cutoff=cast(datetime | None, record["cutoff"]),
             valid_until=cast(datetime, record["valid_until"]),
         )

@@ -105,6 +105,10 @@ class CollaborativeArtifactBuild(TimestampMixin, Base):
             "interaction_fingerprint ~ '^[0-9a-f]{64}$'",
             name="interaction_fingerprint_format",
         ).ddl_if(dialect="postgresql"),
+        CheckConstraint(
+            "cutoff IS NULL OR (cutoff <= created_at AND cutoff < valid_until)",
+            name="cutoff_valid",
+        ),
         CheckConstraint("valid_until > created_at", name="validity_horizon_future"),
         CheckConstraint(
             "(status = 'active' AND invalidation_epoch = 0 "
@@ -143,6 +147,7 @@ class CollaborativeArtifactBuild(TimestampMixin, Base):
     consent_version: Mapped[str] = mapped_column(String(100), nullable=False)
     catalog_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     interaction_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    cutoff: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     valid_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

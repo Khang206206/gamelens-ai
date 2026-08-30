@@ -72,6 +72,7 @@ class CollaborativeReadinessRow:
     consent_version: str
     catalog_fingerprint: str
     interaction_fingerprint: str
+    cutoff: datetime | None
     valid_until: datetime
 
 
@@ -137,6 +138,7 @@ class _ArtifactReadinessFacts:
     consent_version: str | None
     catalog_fingerprint: str
     interaction_fingerprint: str
+    cutoff: datetime | None
     valid_until: datetime
     activation_minimum_users: int
     activation_minimum_edges: int
@@ -197,6 +199,7 @@ def _artifact_facts(
         build_id = build.get("id")
         data_revision = lifecycle.get("data_revision")
         consent_version = lifecycle.get("consent_version")
+        cutoff = _parse_timestamp(lifecycle.get("cutoff"))
         valid_until = _parse_timestamp(lifecycle.get("valid_until"))
         contributor_count = matrix.get("retained_contributors")
         retained_positive_edges = matrix.get("retained_positive_edges")
@@ -224,7 +227,7 @@ def _artifact_facts(
         ):
             return None
         if raw_source_kind == "fixture":
-            if data_revision is not None or consent_version is not None:
+            if data_revision is not None or consent_version is not None or cutoff is not None:
                 return None
         elif (
             not _is_plain_int(data_revision)
@@ -232,6 +235,7 @@ def _artifact_facts(
             or not consent_version
             or consent_version != consent_version.strip()
             or len(consent_version) > _MAX_CONSENT_VERSION_LENGTH
+            or cutoff is None
         ):
             return None
 
@@ -243,6 +247,7 @@ def _artifact_facts(
             consent_version=consent_version,
             catalog_fingerprint=catalog_fingerprint,
             interaction_fingerprint=interaction_fingerprint,
+            cutoff=cutoff,
             valid_until=valid_until,
             activation_minimum_users=activation_minimum_users,
             activation_minimum_edges=activation_minimum_edges,
@@ -298,6 +303,9 @@ def _lineage_is_well_formed(row: CollaborativeReadinessRow) -> bool:
         and len(row.consent_version) <= _MAX_CONSENT_VERSION_LENGTH
         and _is_sha256(row.catalog_fingerprint)
         and _is_sha256(row.interaction_fingerprint)
+        and isinstance(row.cutoff, datetime)
+        and row.cutoff.tzinfo is not None
+        and row.cutoff.utcoffset() is not None
         and isinstance(row.valid_until, datetime)
         and row.valid_until.tzinfo is not None
         and row.valid_until.utcoffset() is not None
@@ -367,6 +375,10 @@ def evaluate_collaborative_readiness(
     if lineage.status != "active" or lineage.invalidation_epoch != 0:
         return _unusable("stale", "privacy_invalid", source_kind="live")
     if lineage.build_id != facts.build_id or lineage.registered_revision != facts.data_revision:
+        return _unusable("stale", "artifact_stale", source_kind="live")
+    if facts.cutoff is None or lineage.cutoff is None:
+        return _unusable("stale", "privacy_invalid", source_kind="live")
+    if lineage.cutoff.astimezone(UTC) != facts.cutoff:
         return _unusable("stale", "artifact_stale", source_kind="live")
     if (
         lineage.contributor_count != facts.contributor_count

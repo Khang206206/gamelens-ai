@@ -46,6 +46,7 @@ def _build(
         "consent_version": CONSENT_VERSION,
         "catalog_fingerprint": CATALOG_FINGERPRINT,
         "interaction_fingerprint": INTERACTION_FINGERPRINT,
+        "cutoff": now - timedelta(hours=1),
         "valid_until": now + timedelta(days=30),
         "invalidated_at": None,
         "retired_at": None,
@@ -61,6 +62,9 @@ def _artifact(*, valid_until: datetime) -> LoadedCollaborativeArtifact:
         "lifecycle": {
             "data_revision": 7,
             "consent_version": CONSENT_VERSION,
+            "cutoff": (valid_until - timedelta(days=30, hours=1))
+            .isoformat(timespec="microseconds")
+            .replace("+00:00", "Z"),
             "valid_until": valid_until.isoformat(timespec="microseconds").replace("+00:00", "Z"),
         },
         "catalog_fingerprint": CATALOG_FINGERPRINT,

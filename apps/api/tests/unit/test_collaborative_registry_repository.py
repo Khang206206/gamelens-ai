@@ -10,6 +10,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
 VALID_UNTIL = datetime(2026, 9, 29, tzinfo=UTC)
+CUTOFF = datetime(2026, 8, 29, tzinfo=UTC)
 
 
 class _FakeResult:
@@ -44,6 +45,7 @@ def _record() -> dict[str, object]:
         "consent_version": "stage-5-contribution-v1",
         "catalog_fingerprint": "a" * 64,
         "interaction_fingerprint": "b" * 64,
+        "cutoff": CUTOFF,
         "valid_until": VALID_UNTIL,
     }
 
@@ -79,6 +81,7 @@ def test_repository_maps_exactly_one_registry_row_to_the_readiness_contract() ->
     assert readiness.consent_version == "stage-5-contribution-v1"
     assert readiness.catalog_fingerprint == "a" * 64
     assert readiness.interaction_fingerprint == "b" * 64
+    assert readiness.cutoff == CUTOFF
     assert readiness.valid_until == VALID_UNTIL
     assert session.executions == 1
 

@@ -70,6 +70,7 @@ def _register_build(
         consent_version=CONTRIBUTION_VERSION,
         catalog_fingerprint=CATALOG_FINGERPRINT,
         interaction_fingerprint=INTERACTION_FINGERPRINT,
+        cutoff=now - timedelta(hours=1),
         valid_until=now + timedelta(days=30),
     )
     session.add_all([consent, build])
@@ -90,6 +91,9 @@ def _artifact(*, valid_until: datetime) -> LoadedCollaborativeArtifact:
         "lifecycle": {
             "data_revision": 7,
             "consent_version": CONTRIBUTION_VERSION,
+            "cutoff": (valid_until - timedelta(days=30, hours=1))
+            .isoformat(timespec="microseconds")
+            .replace("+00:00", "Z"),
             "valid_until": valid_until.isoformat(timespec="microseconds").replace("+00:00", "Z"),
         },
         "catalog_fingerprint": CATALOG_FINGERPRINT,
@@ -268,6 +272,7 @@ def test_registration_rejects_missing_mismatched_or_short_lived_authority(
             consent_version=CONTRIBUTION_VERSION,
             catalog_fingerprint=CATALOG_FINGERPRINT,
             interaction_fingerprint=INTERACTION_FINGERPRINT,
+            cutoff=now - timedelta(hours=1),
             valid_until=now + timedelta(days=30),
         )
     )

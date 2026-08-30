@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 logger = logging.getLogger(__name__)
 
 DATABASE_CONNECT_TIMEOUT_SECONDS = 1
-EXPECTED_SCHEMA_REVISION = "0008_stage_5_authority_loss"
+EXPECTED_SCHEMA_REVISION = "0009_stage_5_label_changes"
 REQUIRED_SCHEMA_TABLES = (
     "games",
     "genres",
