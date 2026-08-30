@@ -6,6 +6,7 @@ import pytest
 from app.db.models import (
     CollaborativeArtifactBuild,
     CollaborativeArtifactContributor,
+    CollaborativeContributionConsent,
     User,
 )
 from app.repositories.collaborative_registry import CollaborativeArtifactRegistryRepository
@@ -82,9 +83,24 @@ def test_registry_count_is_constant_time_and_user_delete_invalidates_before_serv
     postgres_session: Session,
 ) -> None:
     now = datetime.now(UTC)
-    users = [make_consented_user(f"registry-contributor-{index}") for index in range(12)]
+    users = [
+        make_consented_user(
+            f"registry-contributor-{index}",
+            consented_at=now - timedelta(days=30),
+            expires_at=now + timedelta(days=60),
+        )
+        for index in range(12)
+    ]
     postgres_session.add_all(users)
     postgres_session.flush()
+    postgres_session.add_all(
+        CollaborativeContributionConsent(
+            user_id=user.id,
+            consent_version=CONSENT_VERSION,
+            granted_at=now - timedelta(days=30),
+        )
+        for user in users
+    )
     build = _build(now=now)
     postgres_session.add(build)
     postgres_session.flush()
