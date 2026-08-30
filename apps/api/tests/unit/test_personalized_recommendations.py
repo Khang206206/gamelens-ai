@@ -5,9 +5,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from app.core.config import Settings
+from app.commands.collaborative_artifact import build_fixture_artifact
+from app.core.config import PROJECT_ROOT, Settings
 from app.db.base import Base
-from app.db.models import Interaction, RecommendationEvent, User, UserPreference
+from app.db.models import Game, Interaction, RecommendationEvent, User, UserPreference
 from app.db.seed import load_seed_file, seed_database
 from app.main import create_app
 from app.repositories.recommendation_catalog import RecommendationCatalogRepository
@@ -16,9 +17,20 @@ from app.services import feedback as feedback_services
 from app.services import personalized_recommendation as personalized_services
 from app.services import preferences as preference_services
 from app.services.anonymous_identity import AnonymousIdentityService
-from app.services.recommendation import create_recommendation_service
+from app.services.recommendation import (
+    CollaborativeReadiness,
+    create_recommendation_service,
+)
 from fastapi.testclient import TestClient
-from gamelens_recommender import build_artifact
+from gamelens_recommender import (
+    HYBRID_FALLBACK_REASONS,
+    ActiveGameFeedback,
+    CatalogSnapshot,
+    HybridRecommendationsResult,
+    Stage4FallbackResult,
+    UserContext,
+    build_artifact,
+)
 from pydantic import ValidationError
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.exc import DBAPIError
@@ -27,6 +39,75 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 ALLOWED_ORIGIN = "http://testserver"
+CATALOG_PATH = PROJECT_ROOT / "data" / "catalog" / "games.json"
+COLLABORATIVE_FIXTURE_PATH = (
+    PROJECT_ROOT / "data" / "fixtures" / "interactions" / "collaborative-interactions.json"
+)
+
+
+class _FallbackOrchestrator:
+    def __init__(self, content, reason: str) -> None:  # type: ignore[no-untyped-def]
+        self.content = content
+        self.reason = reason
+        self.readiness: list[CollaborativeReadiness] = []
+        self.result: Stage4FallbackResult | None = None
+
+    def rank(
+        self,
+        *,
+        snapshot: CatalogSnapshot,
+        context: UserContext,
+        feedback: tuple[ActiveGameFeedback, ...],
+        collaborative_readiness: CollaborativeReadiness,
+    ) -> Stage4FallbackResult:
+        self.readiness.append(collaborative_readiness)
+        stage_4_result = self.content.recommend_personalized(
+            snapshot=snapshot,
+            context=context,
+            feedback=feedback,
+        )
+        result = Stage4FallbackResult(
+            mode="stage_4_fallback",
+            fallback_reason=self.reason,  # type: ignore[arg-type]
+            stage_4_result=stage_4_result,
+        )
+        result.validate()
+        self.result = result
+        return result
+
+
+class _RecordingOrchestrator:
+    def __init__(self, content, delegate) -> None:  # type: ignore[no-untyped-def]
+        self.content = content
+        self.delegate = delegate
+        self.result = None
+        self.legacy_result = None
+
+    def rank(
+        self,
+        *,
+        snapshot: CatalogSnapshot,
+        context: UserContext,
+        feedback: tuple[ActiveGameFeedback, ...],
+        collaborative_readiness: CollaborativeReadiness,
+    ):
+        self.legacy_result = self.content.recommend_personalized(
+            snapshot=snapshot,
+            context=context,
+            feedback=feedback,
+        )
+        self.result = self.delegate.rank(
+            snapshot=snapshot,
+            context=context,
+            feedback=feedback,
+            collaborative_readiness=collaborative_readiness,
+        )
+        return self.result
+
+
+class _FailingOrchestrator:
+    def rank(self, **_kwargs):  # type: ignore[no-untyped-def]
+        raise RuntimeError("phase 5 ranking decision failed")
 
 
 class SqliteAnonymousIdentityService(AnonymousIdentityService):
@@ -528,6 +609,201 @@ def test_stateless_recommendation_ignores_valid_cookie_and_never_writes(
     assert response.json()["items"]
     assert "set-cookie" not in response.headers
     assert _table_counts(factory) == before
+
+
+@pytest.mark.parametrize("reason", HYBRID_FALLBACK_REASONS)
+def test_every_phase5_fallback_maps_the_exact_stage4_decision_and_event(
+    personalized_client: tuple[TestClient, sessionmaker],
+    test_settings: Settings,
+    reason: str,
+) -> None:
+    client, factory = personalized_client
+    csrf = _consent(client, test_settings)
+    _save_context(client, test_settings, csrf, genres=["strategy"])
+    orchestrator = _FallbackOrchestrator(
+        client.app.state.recommendation_service,
+        reason,
+    )
+    client.app.state.hybrid_orchestrator = orchestrator
+
+    response = client.post(
+        "/api/v1/me/recommendations",
+        headers=_headers(test_settings, csrf),
+        json={"top_k": 5},
+    )
+
+    assert response.status_code == 200
+    assert orchestrator.result is not None
+    assert len(orchestrator.readiness) == 1
+    expected = orchestrator.result.stage_4_result
+    body = response.json()
+    assert body["policy"] == {
+        "name": expected.policy.name,
+        "version": expected.policy.version,
+    }
+    assert body["response_reason"] == expected.reason
+    assert [item["game"]["slug"] for item in body["items"]] == [
+        item.slug for item in expected.items
+    ]
+    assert [item["rank"] for item in body["items"]] == [item.rank for item in expected.items]
+    assert [round(item["ranking_score"] * 1_000_000) for item in body["items"]] == [
+        item.final_score_units for item in expected.items
+    ]
+    with factory() as session:
+        event = session.scalar(select(RecommendationEvent))
+    assert event is not None
+    assert event.event_schema_version == "stage-4-v1"
+    assert event.ranking_policy_name == expected.policy.name
+    assert event.ranking_policy_version == expected.policy.version
+    assert [item["slug"] for item in event.result_summary or []] == [
+        item.slug for item in expected.items
+    ]
+
+
+def test_ready_hybrid_decision_stays_internal_until_phase6_mapping(
+    test_settings: Settings,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        personalized_services,
+        "AnonymousIdentityService",
+        SqliteAnonymousIdentityService,
+    )
+    monkeypatch.setattr(
+        preference_services,
+        "AnonymousIdentityService",
+        SqliteAnonymousIdentityService,
+    )
+    monkeypatch.setattr(
+        feedback_services,
+        "AnonymousIdentityService",
+        SqliteAnonymousIdentityService,
+    )
+    collaborative_root = tmp_path / "collaborative"
+    settings = test_settings.model_copy(
+        update={
+            "collaborative_artifact_path": collaborative_root,
+            "collaborative_allow_test_fixture": True,
+        }
+    )
+    build_fixture_artifact(
+        settings,
+        collaborative_root,
+        fixture_path=COLLABORATIVE_FIXTURE_PATH,
+        catalog_path=CATALOG_PATH,
+        built_at=datetime.now(UTC),
+    )
+
+    with ready_personalized_client(settings, tmp_path / "hybrid-content") as value:
+        client, factory = value
+        csrf = _consent(client, settings)
+        games = client.get("/api/v1/games?page_size=30").json()["items"]
+        source = next(game for game in games if game["slug"] == "emberfall-tactics")
+        _save_context(
+            client,
+            settings,
+            csrf,
+            game_ids=[source["id"]],
+            genres=["strategy"],
+        )
+        feedback_response = client.put(
+            f"/api/v1/me/games/{source['id']}/feedback",
+            headers=_headers(settings, csrf),
+            json={
+                "reaction": "liked",
+                "played": False,
+                "wishlisted": False,
+                "rating": None,
+            },
+        )
+        assert feedback_response.status_code == 200
+        loaded_component = client.app.state.collaborative_component
+        loaded_orchestrator = client.app.state.hybrid_orchestrator
+        orchestrator = _RecordingOrchestrator(
+            client.app.state.recommendation_service,
+            loaded_orchestrator,
+        )
+        client.app.state.hybrid_orchestrator = orchestrator
+
+        response = client.post(
+            "/api/v1/me/recommendations",
+            headers=_headers(settings, csrf),
+            json={"top_k": 20},
+        )
+
+        assert response.status_code == 200
+        assert type(orchestrator.result) is HybridRecommendationsResult
+        assert orchestrator.legacy_result is not None
+        assert client.app.state.collaborative_component is loaded_component
+        body = response.json()
+        assert body["policy"] == {
+            "name": orchestrator.legacy_result.policy.name,
+            "version": orchestrator.legacy_result.policy.version,
+        }
+        assert [item["game"]["slug"] for item in body["items"]] == [
+            item.slug for item in orchestrator.legacy_result.items
+        ]
+        assert [item["game"]["slug"] for item in body["items"]] != [
+            item.slug for item in orchestrator.result.items
+        ]
+        with factory() as session:
+            event = session.scalar(select(RecommendationEvent))
+        assert event is not None
+        assert event.event_schema_version == "stage-4-v1"
+        assert event.ranking_policy_name == orchestrator.legacy_result.policy.name
+        assert "gamelens-hybrid-ranking" not in json.dumps(
+            {
+                "context": event.request_context,
+                "result": event.result_summary,
+                "policy": event.ranking_policy_name,
+            },
+            sort_keys=True,
+        )
+
+
+def test_ranking_decision_failure_commits_no_partial_event(
+    personalized_client: tuple[TestClient, sessionmaker],
+    test_settings: Settings,
+) -> None:
+    client, factory = personalized_client
+    csrf = _consent(client, test_settings)
+    _save_context(client, test_settings, csrf, genres=["strategy"])
+    client.app.state.hybrid_orchestrator = _FailingOrchestrator()
+
+    response = client.post(
+        "/api/v1/me/recommendations",
+        headers=_headers(test_settings, csrf),
+        json={"top_k": 5},
+    )
+
+    assert response.status_code == 500
+    with factory() as session:
+        assert session.scalar(select(func.count()).select_from(RecommendationEvent)) == 0
+
+
+def test_personalized_catalog_stale_keeps_content_error_and_commits_zero_event(
+    personalized_client: tuple[TestClient, sessionmaker],
+    test_settings: Settings,
+) -> None:
+    client, factory = personalized_client
+    csrf = _consent(client, test_settings)
+    _save_context(client, test_settings, csrf, genres=["strategy"])
+    with factory.begin() as session:
+        game = session.scalar(select(Game).order_by(Game.id))
+        assert game is not None
+        game.description = f"{game.description} changed"
+
+    response = client.post(
+        "/api/v1/me/recommendations",
+        headers=_headers(test_settings, csrf),
+        json={"top_k": 5},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "catalog_stale"
+    with factory() as session:
+        assert session.scalar(select(func.count()).select_from(RecommendationEvent)) == 0
 
 
 def test_personalized_openapi_contract_is_exact(

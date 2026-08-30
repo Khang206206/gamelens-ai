@@ -18,6 +18,9 @@ from app.db.session import (
 )
 from app.services.recommendation import (
     CollaborativeArtifactComponent,
+    HybridContentComponent,
+    HybridRankingOrchestrator,
+    LifecycleAwareHybridOrchestrator,
     RecommendationService,
     create_collaborative_component,
     create_recommendation_service,
@@ -137,6 +140,7 @@ def create_app(
     database_health_check: Callable[[Engine], bool] = database_is_ready,
     recommendation_service: RecommendationService | None = None,
     collaborative_component: CollaborativeArtifactComponent | None = None,
+    hybrid_orchestrator: HybridRankingOrchestrator | None = None,
 ) -> FastAPI:
     runtime_settings = settings or get_settings()
     configure_logging(runtime_settings.log_level)
@@ -160,9 +164,10 @@ def create_app(
     app.state.database_engine = engine
     app.state.session_factory = session_factory
     app.state.database_health_check = database_health_check
-    app.state.recommendation_service = recommendation_service or create_recommendation_service(
+    resolved_recommendation_service = recommendation_service or create_recommendation_service(
         runtime_settings.model_artifact_path
     )
+    app.state.recommendation_service = resolved_recommendation_service
     app.state.collaborative_component = (
         collaborative_component
         if collaborative_component is not None
@@ -172,6 +177,13 @@ def create_app(
             allow_test_fixture=runtime_settings.collaborative_allow_test_fixture,
         )
     )
+    app.state.hybrid_orchestrator = hybrid_orchestrator
+    if app.state.hybrid_orchestrator is None and isinstance(
+        resolved_recommendation_service, HybridContentComponent
+    ):
+        app.state.hybrid_orchestrator = LifecycleAwareHybridOrchestrator(
+            resolved_recommendation_service
+        )
     app.add_middleware(UnhandledExceptionMiddleware)
     app.add_middleware(
         CORSMiddleware,

@@ -1,5 +1,5 @@
 import logging
-from typing import Protocol, cast
+from typing import Protocol, cast, runtime_checkable
 
 from gamelens_recommender import (
     ActiveGameFeedback,
@@ -23,6 +23,7 @@ from app.services.recommendation.readiness import CollaborativeReadiness
 logger = logging.getLogger(__name__)
 
 
+@runtime_checkable
 class HybridContentComponent(Protocol):
     """Required content boundary used by lifecycle-aware hybrid ranking."""
 
@@ -43,6 +44,17 @@ class CollaborativeScorerFactory(Protocol):
         self,
         artifact: LoadedCollaborativeArtifact,
     ) -> CollaborativeScoringComponent: ...
+
+
+class HybridRankingOrchestrator(Protocol):
+    def rank(
+        self,
+        *,
+        snapshot: CatalogSnapshot,
+        context: UserContext,
+        feedback: tuple[ActiveGameFeedback, ...],
+        collaborative_readiness: CollaborativeReadiness,
+    ) -> HybridRankingResult: ...
 
 
 class LifecycleAwareHybridOrchestrator:

@@ -35,4 +35,6 @@ def create_personalized_recommendations(
         session,
         _settings(request),
         request.app.state.recommendation_service,
+        request.app.state.collaborative_component,
+        request.app.state.hybrid_orchestrator,
     ).recommend(credential, top_k=payload.top_k)

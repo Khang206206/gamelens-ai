@@ -1,12 +1,6 @@
-import logging
-from datetime import UTC, datetime
-
-from sqlalchemy import DateTime, func, select
 from sqlalchemy.orm import Session
 
-from app.core.security import utc_now
 from app.db.session import begin_repeatable_read
-from app.repositories.collaborative_registry import CollaborativeArtifactRegistryRepository
 from app.repositories.recommendation_catalog import RecommendationCatalogRepository
 from app.schemas.model_status import (
     CollaborativeComponentStatus,
@@ -16,13 +10,8 @@ from app.schemas.model_status import (
 )
 from app.services.recommendation.base import RecommendationService
 from app.services.recommendation.collaborative import CollaborativeArtifactComponent
-from app.services.recommendation.readiness import (
-    CollaborativeReadiness,
-    collaborative_readiness_build_id,
-    evaluate_collaborative_readiness,
-)
-
-logger = logging.getLogger(__name__)
+from app.services.recommendation.readiness import CollaborativeReadiness
+from app.services.recommendation.readiness_resolution import CollaborativeReadinessResolver
 
 _MISSING_CATALOG_FINGERPRINT = ""
 
@@ -49,11 +38,8 @@ class RecommendationStatusService:
             and self.collaborative_component.load_state != "loaded"
         ):
             content_status = self.recommendation_service.status()
-            collaborative_status = evaluate_collaborative_readiness(
-                self.collaborative_component,
-                catalog_fingerprint=_MISSING_CATALOG_FINGERPRINT,
-                current_consent_version=self.current_consent_version,
-                now=utc_now(),
+            collaborative_status = self._readiness_resolver().resolve(
+                catalog_fingerprint=_MISSING_CATALOG_FINGERPRINT
             )
             return _with_components(content_status, collaborative_status)
 
@@ -80,50 +66,14 @@ class RecommendationStatusService:
             self.session.rollback()
 
     def _collaborative_status(self, *, catalog_fingerprint: str) -> CollaborativeReadiness:
-        if self.collaborative_component.load_state != "loaded":
-            return evaluate_collaborative_readiness(
-                self.collaborative_component,
-                catalog_fingerprint=catalog_fingerprint,
-                current_consent_version=self.current_consent_version,
-                now=utc_now(),
-            )
+        return self._readiness_resolver().resolve(catalog_fingerprint=catalog_fingerprint)
 
-        try:
-            database_time = self.session.scalar(
-                select(func.current_timestamp(type_=DateTime(timezone=True)))
-            )
-            if not isinstance(database_time, datetime):
-                raise TypeError("Database time is unavailable")
-            if database_time.tzinfo is None or database_time.utcoffset() is None:
-                database_time = database_time.replace(tzinfo=UTC)
-            else:
-                database_time = database_time.astimezone(UTC)
-
-            lineage = None
-            if self.collaborative_component.source_kind == "live":
-                build_id = collaborative_readiness_build_id(self.collaborative_component)
-                if build_id is not None:
-                    lineage = CollaborativeArtifactRegistryRepository(self.session).readiness(
-                        build_id
-                    )
-            return evaluate_collaborative_readiness(
-                self.collaborative_component,
-                catalog_fingerprint=catalog_fingerprint,
-                current_consent_version=self.current_consent_version,
-                now=database_time,
-                lineage=lineage,
-            )
-        except Exception as error:
-            logger.warning(
-                "Collaborative status evaluation failed closed",
-                extra={"error_type": type(error).__name__},
-            )
-            return CollaborativeReadiness(
-                state="stale",
-                reason="artifact_incompatible",
-                source_kind=self.collaborative_component.source_kind,
-                artifact=None,
-            )
+    def _readiness_resolver(self) -> CollaborativeReadinessResolver:
+        return CollaborativeReadinessResolver(
+            self.session,
+            self.collaborative_component,
+            current_consent_version=self.current_consent_version,
+        )
 
 
 def _with_components(

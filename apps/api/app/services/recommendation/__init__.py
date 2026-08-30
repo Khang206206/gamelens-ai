@@ -3,10 +3,15 @@ from app.services.recommendation.collaborative import (
     CollaborativeArtifactComponent,
     create_collaborative_component,
 )
+from app.services.recommendation.decision import (
+    PersonalizedRankingDecision,
+    PersonalizedRankingDecisionService,
+)
 from app.services.recommendation.hybrid import (
     CollaborativeScorerFactory,
     CollaborativeScoringComponent,
     HybridContentComponent,
+    HybridRankingOrchestrator,
     LifecycleAwareHybridOrchestrator,
 )
 from app.services.recommendation.lifecycle import create_recommendation_service
@@ -26,9 +31,12 @@ __all__ = [
     "CollaborativeReadiness",
     "CollaborativeReadinessRow",
     "HybridContentComponent",
+    "HybridRankingOrchestrator",
     "LifecycleAwareHybridOrchestrator",
     "NotConfiguredRecommendationService",
     "RecommendationService",
+    "PersonalizedRankingDecision",
+    "PersonalizedRankingDecisionService",
     "create_collaborative_component",
     "create_recommendation_service",
     "evaluate_collaborative_readiness",

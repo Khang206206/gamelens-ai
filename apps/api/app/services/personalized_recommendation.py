@@ -39,6 +39,9 @@ from app.schemas.recommendations import (
 )
 from app.services.anonymous_identity import AnonymousIdentityService
 from app.services.recommendation.base import RecommendationService
+from app.services.recommendation.collaborative import CollaborativeArtifactComponent
+from app.services.recommendation.decision import PersonalizedRankingDecisionService
+from app.services.recommendation.hybrid import HybridRankingOrchestrator
 
 SCORE_SCALE = 1_000_000
 
@@ -53,10 +56,14 @@ class PersonalizedRecommendationService:
         session: Session,
         settings: Settings,
         recommendation_service: RecommendationService,
+        collaborative_component: CollaborativeArtifactComponent,
+        hybrid_orchestrator: HybridRankingOrchestrator | None,
     ) -> None:
         self.session = session
         self.settings = settings
         self.recommendation_service = recommendation_service
+        self.collaborative_component = collaborative_component
+        self.hybrid_orchestrator = hybrid_orchestrator
 
     def recommend(
         self,
@@ -167,8 +174,17 @@ class PersonalizedRecommendationService:
             preferred_platforms=tuple(sorted(values[PreferenceType.PLATFORM.value])),
             top_k=top_k,
         )
+        self.session.flush()
+        if self.hybrid_orchestrator is None:
+            raise RuntimeError("Ready content service did not expose hybrid orchestration")
         try:
-            result = self.recommendation_service.recommend_personalized(
+            decision = PersonalizedRankingDecisionService(
+                self.session,
+                self.recommendation_service,
+                self.collaborative_component,
+                self.hybrid_orchestrator,
+                current_consent_version=(self.settings.collaborative_contribution_consent_version),
+            ).decide(
                 snapshot=catalog.model_snapshot,
                 context=context,
                 feedback=tuple(feedback),
@@ -178,6 +194,7 @@ class PersonalizedRecommendationService:
                 str(error),
                 code="effective_context_required",
             ) from error
+        result = decision.legacy_stage_4_result
         status = self.recommendation_service.status(catalog.model_snapshot)
         active = status.active_model
         if active is None or active.data_fingerprint is None:
