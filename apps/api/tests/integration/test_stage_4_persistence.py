@@ -100,7 +100,7 @@ def test_stage_4_schema_columns_indexes_and_constraints(postgres_engine: Engine)
         "ix_recommendation_events_policy_generated_at",
         "ix_recommendation_events_model_generated_at",
     } <= {index["name"] for index in inspector.get_indexes("recommendation_events")}
-    assert "ck_recommendation_events_stage_4_identity_complete" in {
+    assert "ck_recommendation_events_event_identity_complete" in {
         constraint["name"]
         for constraint in inspector.get_check_constraints("recommendation_events")
     }

@@ -228,19 +228,92 @@ class RecommendationEvent(Base):
             "model_version",
             "generated_at",
         ),
+        Index(
+            "ix_recommendation_events_mode_generated_at",
+            "ranking_mode",
+            "generated_at",
+        ),
         CheckConstraint(
             "(event_schema_version = 'legacy-v1' "
             "AND data_fingerprint IS NULL "
             "AND ranking_policy_name IS NULL "
-            "AND ranking_policy_version IS NULL) OR "
+            "AND ranking_policy_version IS NULL "
+            "AND ranking_mode IS NULL "
+            "AND fallback_reason IS NULL "
+            "AND hybrid_policy_name IS NULL "
+            "AND hybrid_policy_version IS NULL "
+            "AND collaborative_model_name IS NULL "
+            "AND collaborative_model_version IS NULL "
+            "AND collaborative_interaction_fingerprint IS NULL "
+            "AND collaborative_policy_name IS NULL "
+            "AND collaborative_policy_version IS NULL) OR "
             "(event_schema_version = 'stage-4-v1' "
             "AND data_fingerprint ~ '^[0-9a-f]{64}$' "
             "AND ranking_policy_name IS NOT NULL "
             "AND length(btrim(ranking_policy_name)) > 0 "
             "AND ranking_policy_version IS NOT NULL "
             "AND length(btrim(ranking_policy_version)) > 0 "
-            "AND result_summary IS NOT NULL)",
-            name="stage_4_identity_complete",
+            "AND result_summary IS NOT NULL "
+            "AND ranking_mode IS NULL "
+            "AND fallback_reason IS NULL "
+            "AND hybrid_policy_name IS NULL "
+            "AND hybrid_policy_version IS NULL "
+            "AND collaborative_model_name IS NULL "
+            "AND collaborative_model_version IS NULL "
+            "AND collaborative_interaction_fingerprint IS NULL "
+            "AND collaborative_policy_name IS NULL "
+            "AND collaborative_policy_version IS NULL) OR "
+            "(event_schema_version = 'stage-5-v1' "
+            "AND length(btrim(model_name)) > 0 "
+            "AND length(btrim(model_version)) > 0 "
+            "AND data_fingerprint IS NOT NULL "
+            "AND data_fingerprint ~ '^[0-9a-f]{64}$' "
+            "AND ranking_policy_name IS NOT NULL "
+            "AND length(btrim(ranking_policy_name)) > 0 "
+            "AND ranking_policy_version IS NOT NULL "
+            "AND length(btrim(ranking_policy_version)) > 0 "
+            "AND result_summary IS NOT NULL "
+            "AND jsonb_array_length(result_summary) <= 20 "
+            "AND ranking_mode IS NOT NULL "
+            "AND request_context ? 'ranking_mode' "
+            "AND request_context ->> 'ranking_mode' IS NOT NULL "
+            "AND request_context ->> 'ranking_mode' = ranking_mode "
+            "AND request_context ? 'fallback_reason' "
+            "AND ((ranking_mode = 'hybrid' "
+            "AND fallback_reason IS NULL "
+            "AND request_context ->> 'fallback_reason' IS NULL "
+            "AND hybrid_policy_name IS NOT NULL "
+            "AND length(btrim(hybrid_policy_name)) > 0 "
+            "AND hybrid_policy_version IS NOT NULL "
+            "AND length(btrim(hybrid_policy_version)) > 0 "
+            "AND collaborative_model_name IS NOT NULL "
+            "AND length(btrim(collaborative_model_name)) > 0 "
+            "AND collaborative_model_version IS NOT NULL "
+            "AND length(btrim(collaborative_model_version)) > 0 "
+            "AND collaborative_interaction_fingerprint IS NOT NULL "
+            "AND collaborative_interaction_fingerprint ~ '^[0-9a-f]{64}$' "
+            "AND collaborative_policy_name IS NOT NULL "
+            "AND length(btrim(collaborative_policy_name)) > 0 "
+            "AND collaborative_policy_version IS NOT NULL "
+            "AND length(btrim(collaborative_policy_version)) > 0) OR "
+            "(ranking_mode = 'stage_4_fallback' "
+            "AND fallback_reason IS NOT NULL "
+            "AND fallback_reason IN ('not_configured', 'fixture_not_allowed', "
+            "'insufficient_data', 'artifact_missing', 'artifact_corrupt', "
+            "'artifact_incompatible', 'artifact_stale', 'privacy_invalid', "
+            "'artifact_expired', 'catalog_stale', 'artifact_retired', "
+            "'no_query_sources', 'no_supported_sources', 'no_candidate_edges', "
+            "'no_eligible_candidates') "
+            "AND request_context ->> 'fallback_reason' IS NOT NULL "
+            "AND request_context ->> 'fallback_reason' = fallback_reason "
+            "AND hybrid_policy_name IS NULL "
+            "AND hybrid_policy_version IS NULL "
+            "AND collaborative_model_name IS NULL "
+            "AND collaborative_model_version IS NULL "
+            "AND collaborative_interaction_fingerprint IS NULL "
+            "AND collaborative_policy_name IS NULL "
+            "AND collaborative_policy_version IS NULL)))",
+            name="event_identity_complete",
         ).ddl_if(dialect="postgresql"),
     )
 
@@ -256,6 +329,15 @@ class RecommendationEvent(Base):
     data_fingerprint: Mapped[str | None] = mapped_column(String(64))
     ranking_policy_name: Mapped[str | None] = mapped_column(String(100))
     ranking_policy_version: Mapped[str | None] = mapped_column(String(100))
+    ranking_mode: Mapped[str | None] = mapped_column(String(30))
+    fallback_reason: Mapped[str | None] = mapped_column(String(50))
+    hybrid_policy_name: Mapped[str | None] = mapped_column(String(100))
+    hybrid_policy_version: Mapped[str | None] = mapped_column(String(100))
+    collaborative_model_name: Mapped[str | None] = mapped_column(String(100))
+    collaborative_model_version: Mapped[str | None] = mapped_column(String(100))
+    collaborative_interaction_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    collaborative_policy_name: Mapped[str | None] = mapped_column(String(100))
+    collaborative_policy_version: Mapped[str | None] = mapped_column(String(100))
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
