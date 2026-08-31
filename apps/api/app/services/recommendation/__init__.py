@@ -16,6 +16,10 @@ from app.services.recommendation.hybrid import (
 )
 from app.services.recommendation.lifecycle import create_recommendation_service
 from app.services.recommendation.not_configured import NotConfiguredRecommendationService
+from app.services.recommendation.projection import (
+    Stage5DecisionProjection,
+    project_stage_5_decision,
+)
 from app.services.recommendation.readiness import (
     COLLABORATIVE_READINESS_REASONS,
     CollaborativeReadiness,
@@ -37,7 +41,9 @@ __all__ = [
     "RecommendationService",
     "PersonalizedRankingDecision",
     "PersonalizedRankingDecisionService",
+    "Stage5DecisionProjection",
     "create_collaborative_component",
     "create_recommendation_service",
     "evaluate_collaborative_readiness",
+    "project_stage_5_decision",
 ]

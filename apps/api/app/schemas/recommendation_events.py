@@ -1,3 +1,6 @@
+import json
+from typing import Any
+
 from pydantic import ConfigDict, Field, model_validator
 
 from app.schemas.common import ApiSchema
@@ -14,6 +17,22 @@ from app.schemas.personalized_recommendations import (
     Stage5PolicyIdentity,
     Stage5RankingMode,
 )
+
+MAX_EVENT_CONTEXT_BYTES = 8_192
+MAX_EVENT_RESULT_BYTES = 32_768
+
+
+def validated_recommendation_event_json(value: Any, *, maximum_bytes: int) -> Any:
+    encoded = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    if len(encoded) > maximum_bytes:
+        raise ValueError("Recommendation event payload exceeds its byte limit")
+    return value
 
 
 def _contribution_units(raw_units: int, weight_units: int) -> int:

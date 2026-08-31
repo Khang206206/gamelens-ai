@@ -1,4 +1,3 @@
-import json
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -9,26 +8,17 @@ from app.schemas.personalized_recommendations import (
     RecommendationEventResultItem,
 )
 from app.schemas.recommendation_events import (
+    MAX_EVENT_CONTEXT_BYTES,
+    MAX_EVENT_RESULT_BYTES,
     Stage5RecommendationEventContext,
     Stage5RecommendationEventIdentity,
     Stage5RecommendationEventResultItem,
+    validated_recommendation_event_json,
 )
-
-MAX_EVENT_CONTEXT_BYTES = 8_192
-MAX_EVENT_RESULT_BYTES = 32_768
 
 
 def _validated_json(value: Any, *, maximum_bytes: int) -> Any:
-    encoded = json.dumps(
-        value,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        allow_nan=False,
-    ).encode("utf-8")
-    if len(encoded) > maximum_bytes:
-        raise ValueError("Recommendation event payload exceeds its byte limit")
-    return value
+    return validated_recommendation_event_json(value, maximum_bytes=maximum_bytes)
 
 
 class RecommendationEventRepository:
