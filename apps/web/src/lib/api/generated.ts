@@ -312,6 +312,30 @@ export interface components {
             /** Source Kind */
             source_kind: ("fixture" | "live") | null;
         };
+        /** CollaborativeModelIdentityResponse */
+        CollaborativeModelIdentityResponse: {
+            /** Name */
+            name: string;
+            /** Version */
+            version: string;
+            /** Interaction Fingerprint */
+            interaction_fingerprint: string;
+            scoring_policy: components["schemas"]["Stage5PolicyIdentity"];
+        };
+        /** CollaborativeSourceEdgeResponse */
+        CollaborativeSourceEdgeResponse: {
+            /** Source Game Slug */
+            source_game_slug: string;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "liked" | "rating" | "saved_game";
+            /** Similarity Score */
+            similarity_score: number;
+            /** Pair Support */
+            pair_support: number;
+        };
         /** ContentComponentStatus */
         ContentComponentStatus: {
             /**
@@ -513,45 +537,6 @@ export interface components {
             feature_families?: string[] | null;
             components?: components["schemas"]["ModelComponentsStatus"] | null;
         };
-        /** PersonalizationPolicyIdentity */
-        PersonalizationPolicyIdentity: {
-            /** Name */
-            name: string;
-            /** Version */
-            version: string;
-        };
-        /** PersonalizedRecommendationItem */
-        PersonalizedRecommendationItem: {
-            /** Rank */
-            rank: number;
-            game: components["schemas"]["GameSummary"];
-            /** Base Ranking Score */
-            base_ranking_score: number;
-            /** Base Components */
-            base_components: components["schemas"]["ScoreComponentResponse"][];
-            /** Base Weight */
-            base_weight: number;
-            /** Base Contribution */
-            base_contribution: number;
-            /** Feedback Affinity Score */
-            feedback_affinity_score: number;
-            /** Feedback Affinity Weight */
-            feedback_affinity_weight: number;
-            /** Feedback Affinity Contribution */
-            feedback_affinity_contribution: number;
-            /** Pre Played Score */
-            pre_played_score: number;
-            /** Played Factor */
-            played_factor: number;
-            /** Played Delta */
-            played_delta: number;
-            /** Ranking Score */
-            ranking_score: number;
-            /** Adjustment Reasons */
-            adjustment_reasons: ("feedback_affinity" | "played_adjustment")[];
-            evidence: components["schemas"]["RecommendationEvidenceResponse"];
-            explanation: components["schemas"]["RecommendationExplanationResponse"];
-        };
         /** PersonalizedRecommendationRequest */
         PersonalizedRecommendationRequest: {
             /**
@@ -559,39 +544,6 @@ export interface components {
              * @default 10
              */
             top_k?: number;
-        };
-        /** PersonalizedRecommendationResponse */
-        PersonalizedRecommendationResponse: {
-            /** Generation Id */
-            generation_id: string;
-            /** Model Name */
-            model_name: string;
-            /** Model Version */
-            model_version: string;
-            /** Data Fingerprint */
-            data_fingerprint: string;
-            policy: components["schemas"]["PersonalizationPolicyIdentity"];
-            /**
-             * Response Reason
-             * @enum {string}
-             */
-            response_reason: "recommendations" | "no_content_support" | "no_eligible_candidates";
-            /** Requested Top K */
-            requested_top_k: number;
-            /** Positive Feedback Sources */
-            positive_feedback_sources: components["schemas"]["PositiveFeedbackSourceResponse"][];
-            /** Items */
-            items: components["schemas"]["PersonalizedRecommendationItem"][];
-        };
-        /** PositiveFeedbackSourceResponse */
-        PositiveFeedbackSourceResponse: {
-            /** Game Slug */
-            game_slug: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "liked" | "rating";
         };
         /** PreferenceReplaceRequest */
         PreferenceReplaceRequest: {
@@ -718,6 +670,118 @@ export interface components {
             title: string;
             /** Similarity Score */
             similarity_score: number;
+        };
+        /** Stage5PersonalizedRecommendationItem */
+        Stage5PersonalizedRecommendationItem: {
+            /** Rank */
+            rank: number;
+            game: components["schemas"]["GameSummary"];
+            /** Base Ranking Score */
+            base_ranking_score: number;
+            /** Base Components */
+            base_components: components["schemas"]["Stage5ScoreComponentResponse"][];
+            /** Base Weight */
+            base_weight: number;
+            /** Base Contribution */
+            base_contribution: number;
+            /** Feedback Affinity Score */
+            feedback_affinity_score: number;
+            /** Feedback Affinity Weight */
+            feedback_affinity_weight: number;
+            /** Feedback Affinity Contribution */
+            feedback_affinity_contribution: number;
+            /** Pre Played Score */
+            pre_played_score: number;
+            /** Played Factor */
+            played_factor: number;
+            /** Played Delta */
+            played_delta: number;
+            /** Ranking Score */
+            ranking_score: number;
+            /** Adjustment Reasons */
+            adjustment_reasons: ("feedback_affinity" | "collaborative_similarity" | "played_adjustment")[];
+            evidence: components["schemas"]["RecommendationEvidenceResponse"];
+            explanation: components["schemas"]["RecommendationExplanationResponse"];
+            /**
+             * Candidate Origin
+             * @enum {string}
+             */
+            candidate_origin: "content" | "collaborative" | "both";
+            /** Collaborative Supported */
+            collaborative_supported: boolean;
+            /** Collaborative Score */
+            collaborative_score: number;
+            /** Collaborative Weight */
+            collaborative_weight: number;
+            /** Collaborative Contribution */
+            collaborative_contribution: number;
+            /** Collaborative Item Support */
+            collaborative_item_support: number | null;
+            /** Collaborative Source Edges */
+            collaborative_source_edges: components["schemas"]["CollaborativeSourceEdgeResponse"][];
+        };
+        /** Stage5PersonalizedRecommendationResponse */
+        Stage5PersonalizedRecommendationResponse: {
+            /** Generation Id */
+            generation_id: string;
+            /** Model Name */
+            model_name: string;
+            /** Model Version */
+            model_version: string;
+            /** Data Fingerprint */
+            data_fingerprint: string;
+            policy: components["schemas"]["Stage5PolicyIdentity"];
+            /**
+             * Response Reason
+             * @enum {string}
+             */
+            response_reason: "recommendations" | "no_content_support" | "no_eligible_candidates";
+            /** Requested Top K */
+            requested_top_k: number;
+            /** Positive Feedback Sources */
+            positive_feedback_sources: components["schemas"]["Stage5PositiveFeedbackSourceResponse"][];
+            /** Items */
+            items: components["schemas"]["Stage5PersonalizedRecommendationItem"][];
+            /**
+             * Ranking Mode
+             * @enum {string}
+             */
+            ranking_mode: "hybrid" | "stage_4_fallback";
+            /** Fallback Reason */
+            fallback_reason: ("not_configured" | "fixture_not_allowed" | "insufficient_data" | "artifact_missing" | "artifact_corrupt" | "artifact_incompatible" | "artifact_stale" | "privacy_invalid" | "artifact_expired" | "catalog_stale" | "artifact_retired" | "no_query_sources" | "no_supported_sources" | "no_candidate_edges" | "no_eligible_candidates") | null;
+            hybrid_policy: components["schemas"]["Stage5PolicyIdentity"] | null;
+            collaborative_model: components["schemas"]["CollaborativeModelIdentityResponse"] | null;
+        };
+        /** Stage5PolicyIdentity */
+        Stage5PolicyIdentity: {
+            /** Name */
+            name: string;
+            /** Version */
+            version: string;
+        };
+        /** Stage5PositiveFeedbackSourceResponse */
+        Stage5PositiveFeedbackSourceResponse: {
+            /** Game Slug */
+            game_slug: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "liked" | "rating";
+        };
+        /** Stage5ScoreComponentResponse */
+        Stage5ScoreComponentResponse: {
+            /**
+             * Name
+             * @enum {string}
+             */
+            name: "content" | "platform" | "popularity";
+            /** Raw Score */
+            raw_score: number;
+            /** Weight */
+            weight: number;
+            /** Contribution */
+            contribution: number;
         };
         /** TaxonomyItem */
         TaxonomyItem: {
@@ -1669,7 +1733,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PersonalizedRecommendationResponse"];
+                    "application/json": components["schemas"]["Stage5PersonalizedRecommendationResponse"];
                 };
             };
             /** @description An active anonymous session is required. */

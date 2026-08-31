@@ -10,6 +10,115 @@ function jsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
+function stage5HybridResponse() {
+  return {
+    generation_id: "1".repeat(32),
+    model_name: "content-recommender",
+    model_version: "1.0.0",
+    data_fingerprint: "a".repeat(64),
+    policy: {
+      name: "gamelens-feedback-adjustment",
+      version: "1.0.0",
+    },
+    ranking_mode: "hybrid",
+    fallback_reason: null,
+    hybrid_policy: {
+      name: "gamelens-hybrid-ranking",
+      version: "1.0.0",
+    },
+    collaborative_model: {
+      name: "item-item-cosine",
+      version: "1.0.0",
+      interaction_fingerprint: "b".repeat(64),
+      scoring_policy: {
+        name: "gamelens-collaborative-scoring",
+        version: "1.0.0",
+      },
+    },
+    response_reason: "recommendations",
+    requested_top_k: 10,
+    positive_feedback_sources: [{ game_slug: "emberfall-tactics", kind: "liked" }],
+    items: [
+      {
+        rank: 1,
+        game: {
+          id: 7,
+          title: "Starbound Couriers",
+          slug: "starbound-couriers",
+          release_date: null,
+          developer: "Fixture Studio",
+          publisher: null,
+          average_rating: 8.5,
+          rating_count: 12,
+          popularity_score: 0.599117,
+          genres: [],
+          tags: [],
+          platforms: [],
+          cover_image_url: null,
+        },
+        base_ranking_score: 0.159912,
+        base_components: [
+          { name: "content", raw_score: 0, weight: 0.8, contribution: 0 },
+          { name: "platform", raw_score: 1, weight: 0.1, contribution: 0.1 },
+          {
+            name: "popularity",
+            raw_score: 0.599117,
+            weight: 0.1,
+            contribution: 0.059912,
+          },
+        ],
+        base_weight: 0.8,
+        base_contribution: 0.12793,
+        feedback_affinity_score: 0,
+        feedback_affinity_weight: 0.1,
+        feedback_affinity_contribution: 0,
+        pre_played_score: 0.170787,
+        played_factor: 1,
+        played_delta: 0,
+        ranking_score: 0.170787,
+        adjustment_reasons: ["feedback_affinity", "collaborative_similarity"],
+        evidence: {
+          matching_genres: [],
+          matching_tags: [],
+          preferred_platforms: [],
+          similar_selected_games: [],
+          popularity_score: 0.599117,
+        },
+        explanation: {
+          summary: "Aggregate interaction evidence contributed to this ranking.",
+          reasons: ["The result has bounded collaborative source support."],
+        },
+        candidate_origin: "collaborative",
+        collaborative_supported: true,
+        collaborative_score: 0.428571,
+        collaborative_weight: 0.1,
+        collaborative_contribution: 0.042857,
+        collaborative_item_support: 12,
+        collaborative_source_edges: [
+          {
+            source_game_slug: "emberfall-tactics",
+            source_kind: "liked",
+            similarity_score: 0.428571,
+            pair_support: 3,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function stage5FallbackResponse() {
+  return {
+    ...stage5HybridResponse(),
+    ranking_mode: "stage_4_fallback",
+    fallback_reason: "not_configured",
+    hybrid_policy: null,
+    collaborative_model: null,
+    response_reason: "no_eligible_candidates",
+    items: [],
+  };
+}
+
 class RequestHarnessClient extends ApiClient {
   protectedGet(signal?: AbortSignal): Promise<{ status: string }> {
     return this.request<{ status: string }>("/api/v1/me", {
@@ -87,18 +196,18 @@ describe("ApiClient", () => {
   });
 
   it("posts typed recommendation JSON through the project client", async () => {
-    const transport = vi.fn(async () =>
-      jsonResponse({
-        model: { name: "content", version: "1", data_fingerprint: "abc" },
-        response_reason: "no_content_support",
-        requested_top_k: 5,
-        items: [],
-      }),
-    );
+    const response = {
+      model: { name: "content", version: "1", data_fingerprint: "abc" },
+      response_reason: "no_content_support",
+      requested_top_k: 5,
+      items: [],
+      additive_server_field: true,
+    };
+    const transport = vi.fn(async () => jsonResponse(response));
     const client = new ApiClient({ baseUrl: "http://api.test", fetch: transport });
     const body = { preferred_genres: ["strategy"], top_k: 10 };
 
-    await client.recommend(body);
+    await expect(client.recommend(body)).resolves.toEqual(response);
 
     expect(transport).toHaveBeenCalledWith(
       "http://api.test/api/v1/recommendations",
@@ -193,9 +302,14 @@ describe("ApiClient", () => {
   });
 
   it("routes every typed persistence method through the protected transport", async () => {
-    const transport = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) =>
-      init?.method === "DELETE" ? new Response(null, { status: 204 }) : jsonResponse({}),
-    );
+    const transport = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "DELETE") return new Response(null, { status: 204 });
+      return jsonResponse(
+        String(input).endsWith("/api/v1/me/recommendations")
+          ? stage5FallbackResponse()
+          : {},
+      );
+    });
     const client = new ApiClient({ baseUrl: "http://api.test", fetch: transport });
     const csrf = "csrf-value";
 
@@ -236,6 +350,55 @@ describe("ApiClient", () => {
         csrf,
       );
     }
+  });
+
+  it("parses the complete Stage 5 personalized response contract", async () => {
+    const response = stage5HybridResponse();
+    const client = new ApiClient({
+      baseUrl: "http://api.test",
+      fetch: vi.fn(async () => jsonResponse(response)),
+    });
+
+    await expect(
+      client.recommendPersonalized({ top_k: 10 }, "csrf-value"),
+    ).resolves.toEqual(response);
+  });
+
+  it.each([
+    [
+      "a malformed nested value",
+      () => {
+        const response = stage5HybridResponse();
+        return {
+          ...response,
+          items: [{ ...response.items[0], collaborative_score: "0.428571" }],
+        };
+      },
+    ],
+    [
+      "an unknown top-level field",
+      () => ({ ...stage5HybridResponse(), additive_server_field: true }),
+    ],
+    [
+      "an unknown nested field",
+      () => {
+        const response = stage5HybridResponse();
+        return { ...response, policy: { ...response.policy, display_name: "Feedback" } };
+      },
+    ],
+  ])("rejects %s in a personalized response", async (_label, buildResponse) => {
+    const client = new ApiClient({
+      baseUrl: "http://api.test",
+      fetch: vi.fn(async () => jsonResponse(buildResponse())),
+    });
+
+    await expect(
+      client.recommendPersonalized({ top_k: 10 }, "csrf-value"),
+    ).rejects.toMatchObject({
+      kind: "invalid_response",
+      status: 200,
+      message: "The saved recommendation response did not match the API contract.",
+    });
   });
 
   it.each([

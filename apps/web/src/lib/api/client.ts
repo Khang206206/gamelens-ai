@@ -4,6 +4,10 @@ import {
   errorFromResponse,
   normalizeRequestError,
 } from "@/lib/api/errors";
+import {
+  parseStage5PersonalizedRecommendationResponse,
+  type Stage5PersonalizedRecommendationResponse,
+} from "@/lib/api/personalized-response";
 import { getPublicConfig, validateApiBaseUrl } from "@/lib/config";
 
 export type GamePage = components["schemas"]["GamePage"];
@@ -22,8 +26,7 @@ export type FeedbackResource = components["schemas"]["FeedbackResource"];
 export type FeedbackPage = components["schemas"]["FeedbackPage"];
 export type PersonalizedRecommendationRequest =
   components["schemas"]["PersonalizedRecommendationRequest"];
-export type PersonalizedRecommendationResponse =
-  components["schemas"]["PersonalizedRecommendationResponse"];
+export type PersonalizedRecommendationResponse = Stage5PersonalizedRecommendationResponse;
 
 export type CatalogSort = "popularity" | "rating" | "release_date" | "title";
 
@@ -222,16 +225,14 @@ export class ApiClient {
     csrfToken: string,
     signal?: AbortSignal,
   ): Promise<PersonalizedRecommendationResponse> {
-    return this.request<PersonalizedRecommendationResponse>(
-      "/api/v1/me/recommendations",
-      {
-        method: "POST",
-        access: "protected",
-        body,
-        csrfToken,
-        signal,
-      },
-    );
+    const payload = await this.request<unknown>("/api/v1/me/recommendations", {
+      method: "POST",
+      access: "protected",
+      body,
+      csrfToken,
+      signal,
+    });
+    return parseStage5PersonalizedRecommendationResponse(payload);
   }
 
   protected async request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
