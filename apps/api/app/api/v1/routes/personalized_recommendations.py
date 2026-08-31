@@ -10,7 +10,7 @@ from app.api.v1.routes.anonymous_sessions import (
 from app.core.exceptions import RECOMMENDATION_ERROR_RESPONSES
 from app.schemas.personalized_recommendations import (
     PersonalizedRecommendationRequest,
-    PersonalizedRecommendationResponse,
+    Stage5PersonalizedRecommendationResponse,
 )
 from app.services.personalized_recommendation import PersonalizedRecommendationService
 
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/me/recommendations", tags=["personalized-recommendat
 
 @router.post(
     "",
-    response_model=PersonalizedRecommendationResponse,
+    response_model=Stage5PersonalizedRecommendationResponse,
     responses={**SESSION_RESPONSES, **RECOMMENDATION_ERROR_RESPONSES},
     summary="Generate and durably log a feedback-aware recommendation",
 )
@@ -28,7 +28,7 @@ def create_personalized_recommendations(
     request: Request,
     response: Response,
     session: DatabaseSession,
-) -> PersonalizedRecommendationResponse:
+) -> Stage5PersonalizedRecommendationResponse:
     credential = _protected_credential(request)
     _no_store(response)
     return PersonalizedRecommendationService(

@@ -399,12 +399,20 @@ def test_postgresql_personalized_http_commit_correlates_event_and_delete_cascade
             )
         )
         assert stored_event is not None
+        assert stored_event.event_schema_version == "stage-5-v1"
         assert stored_event.model_name == body["model_name"]
         assert stored_event.model_version == body["model_version"]
         assert stored_event.data_fingerprint == body["data_fingerprint"]
         assert stored_event.ranking_policy_name == body["policy"]["name"]
         assert stored_event.ranking_policy_version == body["policy"]["version"]
+        assert stored_event.ranking_mode == body["ranking_mode"]
+        assert stored_event.fallback_reason == body["fallback_reason"]
+        assert stored_event.request_context["ranking_mode"] == body["ranking_mode"]
+        assert stored_event.request_context["fallback_reason"] == body["fallback_reason"]
         assert len(stored_event.result_summary or []) == len(body["items"])
+        assert [item["slug"] for item in stored_event.result_summary or []] == [
+            item["game"]["slug"] for item in body["items"]
+        ]
 
         statements: list[str] = []
 

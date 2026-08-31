@@ -1,4 +1,3 @@
-import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -281,20 +280,43 @@ def test_saved_handoff_uses_one_snapshot_then_observes_invalidation_and_retireme
         "artifact_retired",
         "artifact_incompatible",
     ]
+    bodies = [response.json() for response in (first, second, third, fourth)]
+    assert [body["ranking_mode"] for body in bodies] == [
+        "hybrid",
+        "stage_4_fallback",
+        "stage_4_fallback",
+        "stage_4_fallback",
+    ]
+    assert [body["fallback_reason"] for body in bodies] == [
+        None,
+        "privacy_invalid",
+        "artifact_retired",
+        "artifact_incompatible",
+    ]
+    assert bodies[0]["hybrid_policy"] == {
+        "name": "gamelens-hybrid-ranking",
+        "version": "1.0.0",
+    }
+    assert bodies[0]["collaborative_model"] is not None
+    assert all(body["hybrid_policy"] is None for body in bodies[1:])
+    assert all(body["collaborative_model"] is None for body in bodies[1:])
     postgres_session.rollback()
-    events = list(postgres_session.scalars(select(RecommendationEvent)).all())
-    assert len(events) == 4
-    assert all(event.event_schema_version == "stage-4-v1" for event in events)
-    assert all(event.ranking_policy_name == "gamelens-feedback-adjustment" for event in events)
-    assert "gamelens-hybrid-ranking" not in json.dumps(
-        [
-            {
-                "context": event.request_context,
-                "result": event.result_summary,
-                "policy": event.ranking_policy_name,
-            }
-            for event in events
-        ],
-        sort_keys=True,
+    events = list(
+        postgres_session.scalars(select(RecommendationEvent).order_by(RecommendationEvent.id)).all()
     )
+    assert len(events) == 4
+    assert all(event.event_schema_version == "stage-5-v1" for event in events)
+    assert all(event.ranking_policy_name == "gamelens-feedback-adjustment" for event in events)
+    assert [event.generation_id for event in events] == [body["generation_id"] for body in bodies]
+    assert [event.ranking_mode for event in events] == [body["ranking_mode"] for body in bodies]
+    assert [event.fallback_reason for event in events] == [
+        body["fallback_reason"] for body in bodies
+    ]
+    assert events[0].hybrid_policy_name == "gamelens-hybrid-ranking"
+    assert events[0].collaborative_model_name == bodies[0]["collaborative_model"]["name"]
+    assert all(event.hybrid_policy_name is None for event in events[1:])
+    assert all(event.collaborative_model_name is None for event in events[1:])
+    assert [event.request_context["ranking_mode"] for event in events] == [
+        body["ranking_mode"] for body in bodies
+    ]
     assert postgres_session.scalar(select(func.count()).select_from(RecommendationEvent)) == 4

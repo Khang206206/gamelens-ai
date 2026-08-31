@@ -5,7 +5,12 @@ import json
 import uuid
 from datetime import UTC
 
-from gamelens_recommender import ActiveGameFeedback, InsufficientContextError, UserContext
+from gamelens_recommender import (
+    ActiveGameFeedback,
+    InsufficientContextError,
+    Stage4FallbackResult,
+    UserContext,
+)
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
@@ -23,31 +28,16 @@ from app.repositories.preferences import PreferenceRepository
 from app.repositories.recommendation_catalog import RecommendationCatalogRepository
 from app.repositories.recommendation_events import RecommendationEventRepository
 from app.schemas.personalized_recommendations import (
-    PersonalizationPolicyIdentity,
-    PersonalizedRecommendationItem,
-    PersonalizedRecommendationResponse,
-    PositiveFeedbackSourceResponse,
     RecommendationEventContext,
-    RecommendationEventResultItem,
+    Stage5PersonalizedRecommendationResponse,
 )
-from app.schemas.recommendations import (
-    EvidenceValue,
-    RecommendationEvidenceResponse,
-    RecommendationExplanationResponse,
-    ScoreComponentResponse,
-    SimilarSelectedGameResponse,
-)
+from app.schemas.recommendations import RecommendationModelIdentity
 from app.services.anonymous_identity import AnonymousIdentityService
 from app.services.recommendation.base import RecommendationService
 from app.services.recommendation.collaborative import CollaborativeArtifactComponent
 from app.services.recommendation.decision import PersonalizedRankingDecisionService
 from app.services.recommendation.hybrid import HybridRankingOrchestrator
-
-SCORE_SCALE = 1_000_000
-
-
-def _score(units: int) -> float:
-    return units / SCORE_SCALE
+from app.services.recommendation.projection import project_stage_5_decision
 
 
 class PersonalizedRecommendationService:
@@ -70,7 +60,7 @@ class PersonalizedRecommendationService:
         credential: SessionCredential | None,
         *,
         top_k: int,
-    ) -> PersonalizedRecommendationResponse:
+    ) -> Stage5PersonalizedRecommendationResponse:
         self.recommendation_service.ensure_intrinsic_ready()
         begin_repeatable_read(self.session, read_only=False)
         user = AnonymousIdentityService(self.session, self.settings).resolve_active_for_update(
@@ -194,7 +184,6 @@ class PersonalizedRecommendationService:
                 str(error),
                 code="effective_context_required",
             ) from error
-        result = decision.legacy_stage_4_result
         status = self.recommendation_service.status(catalog.model_snapshot)
         active = status.active_model
         if active is None or active.data_fingerprint is None:
@@ -204,8 +193,13 @@ class PersonalizedRecommendationService:
             value["slug"] for value in canonical_state if value["reaction"] == "disliked"
         )
         played_slugs = sorted(value["slug"] for value in canonical_state if value["played"])
+        decision_positive_sources = (
+            decision.result.stage_4_result.positive_sources
+            if type(decision.result) is Stage4FallbackResult
+            else decision.result.positive_sources
+        )
         source_state = [
-            {"slug": source.game_slug, "kind": source.kind} for source in result.positive_sources
+            {"slug": source.game_slug, "kind": source.kind} for source in decision_positive_sources
         ]
         effective_state = {
             "disliked": disliked_slugs,
@@ -214,98 +208,16 @@ class PersonalizedRecommendationService:
         }
         state_body = json.dumps(effective_state, sort_keys=True, separators=(",", ":"))
         state_fingerprint = hashlib.sha256(state_body.encode("utf-8")).hexdigest()
-        response_items: list[PersonalizedRecommendationItem] = []
-        event_items: list[RecommendationEventResultItem] = []
-        for item in result.items:
-            evidence = item.base_evidence
-            response_items.append(
-                PersonalizedRecommendationItem(
-                    rank=item.rank,
-                    game=catalog.games_by_slug[item.slug],
-                    base_ranking_score=_score(item.base_score_units),
-                    base_components=[
-                        ScoreComponentResponse(
-                            name=component.name,
-                            raw_score=_score(component.raw_units),
-                            weight=_score(component.weight_units),
-                            contribution=_score(component.contribution_units),
-                        )
-                        for component in item.base_components
-                    ],
-                    base_weight=_score(item.base_weight_units),
-                    base_contribution=_score(item.base_contribution_units),
-                    feedback_affinity_score=_score(item.affinity_score_units),
-                    feedback_affinity_weight=_score(item.affinity_weight_units),
-                    feedback_affinity_contribution=_score(item.affinity_contribution_units),
-                    pre_played_score=_score(item.pre_played_score_units),
-                    played_factor=_score(item.played_factor_units),
-                    played_delta=_score(item.played_delta_units),
-                    ranking_score=_score(item.final_score_units),
-                    adjustment_reasons=list(item.adjustment_reasons),
-                    evidence=RecommendationEvidenceResponse(
-                        matching_genres=[
-                            EvidenceValue(slug=v.slug, name=v.name)
-                            for v in evidence.matching_genres
-                        ],
-                        matching_tags=[
-                            EvidenceValue(slug=v.slug, name=v.name) for v in evidence.matching_tags
-                        ],
-                        preferred_platforms=[
-                            EvidenceValue(slug=v.slug, name=v.name)
-                            for v in evidence.preferred_platforms
-                        ],
-                        similar_selected_games=[
-                            SimilarSelectedGameResponse(
-                                slug=v.slug,
-                                title=v.title,
-                                similarity_score=_score(v.similarity_units),
-                            )
-                            for v in evidence.similar_selected_games
-                        ],
-                        popularity_score=_score(evidence.popularity_percentile_units),
-                    ),
-                    explanation=RecommendationExplanationResponse(
-                        summary=item.explanation_summary,
-                        reasons=list(item.explanation_reasons),
-                    ),
-                )
-            )
-            event_items.append(
-                RecommendationEventResultItem(
-                    slug=item.slug,
-                    rank=item.rank,
-                    base_units=item.base_score_units,
-                    final_units=item.final_score_units,
-                    affinity_units=item.affinity_contribution_units,
-                    played_delta_units=item.played_delta_units,
-                )
-            )
-        response = PersonalizedRecommendationResponse(
+        projection = project_stage_5_decision(
+            decision,
             generation_id=generation_id,
-            model_name=active.name,
-            model_version=active.version,
-            data_fingerprint=active.data_fingerprint,
-            policy=PersonalizationPolicyIdentity(
-                name=result.policy.name,
-                version=result.policy.version,
+            content_model=RecommendationModelIdentity(
+                name=active.name,
+                version=active.version,
+                data_fingerprint=active.data_fingerprint,
             ),
-            response_reason=result.reason,
-            requested_top_k=top_k,
-            positive_feedback_sources=[
-                PositiveFeedbackSourceResponse(game_slug=source.game_slug, kind=source.kind)
-                for source in result.positive_sources
-            ],
-            items=response_items,
-        )
-        RecommendationEventRepository(self.session).add_stage_4(
-            generation_id=generation_id,
-            user_id=user.id,
-            model_name=active.name,
-            model_version=active.version,
-            data_fingerprint=active.data_fingerprint,
-            policy_name=result.policy.name,
-            policy_version=result.policy.version,
-            context=RecommendationEventContext(
+            games_by_slug=catalog.games_by_slug,
+            event_context=RecommendationEventContext(
                 top_k=top_k,
                 selected_game_slugs=[
                     slug for slug in context.selected_game_slugs if slug not in disliked_slugs
@@ -313,13 +225,19 @@ class PersonalizedRecommendationService:
                 preferred_genres=list(context.preferred_genres),
                 preferred_tags=list(context.preferred_tags),
                 preferred_platforms=list(context.preferred_platforms),
-                positive_source_slugs=[s.game_slug for s in result.positive_sources],
+                positive_source_slugs=[source.game_slug for source in decision_positive_sources],
                 disliked_count=len(disliked_slugs),
                 played_count=len(played_slugs),
-                positive_source_count=len(result.positive_sources),
+                positive_source_count=len(decision_positive_sources),
                 effective_state_fingerprint=state_fingerprint,
             ),
-            result=event_items,
+        )
+        RecommendationEventRepository(self.session).add_stage_5(
+            generation_id=generation_id,
+            user_id=user.id,
+            identity=projection.event_identity,
+            context=projection.event_context,
+            result=list(projection.event_result),
         )
         self.session.flush()
         try:
@@ -329,4 +247,4 @@ class PersonalizedRecommendationService:
                 "The generation commit outcome could not be confirmed",
                 details={"generation_id": generation_id},
             ) from error
-        return response
+        return projection.response

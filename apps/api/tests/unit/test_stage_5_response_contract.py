@@ -358,7 +358,9 @@ def test_stage_5_response_forbids_identity_leakage_and_unbounded_shapes() -> Non
         Stage5PersonalizedRecommendationResponse.model_validate(payload)
 
 
-def test_stage_4_response_and_openapi_remain_unmodified(client: TestClient) -> None:
+def test_stage_4_schema_remains_valid_while_saved_openapi_activates_stage_5(
+    client: TestClient,
+) -> None:
     fallback = _fallback_response()
     legacy_payload = {
         key: value
@@ -394,5 +396,5 @@ def test_stage_4_response_and_openapi_remain_unmodified(client: TestClient) -> N
     schema = client.get("/openapi.json").json()
     operation = schema["paths"]["/api/v1/me/recommendations"]["post"]
     response_schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
-    assert response_schema["$ref"].endswith("/PersonalizedRecommendationResponse")
-    assert "Stage5PersonalizedRecommendationResponse" not in schema["components"]["schemas"]
+    assert response_schema["$ref"].endswith("/Stage5PersonalizedRecommendationResponse")
+    assert "Stage5PersonalizedRecommendationResponse" in schema["components"]["schemas"]

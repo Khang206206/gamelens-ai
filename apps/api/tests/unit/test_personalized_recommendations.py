@@ -82,6 +82,7 @@ class _RecordingOrchestrator:
         self.delegate = delegate
         self.result = None
         self.legacy_result = None
+        self.call_count = 0
 
     def rank(
         self,
@@ -91,6 +92,7 @@ class _RecordingOrchestrator:
         feedback: tuple[ActiveGameFeedback, ...],
         collaborative_readiness: CollaborativeReadiness,
     ):
+        self.call_count += 1
         self.legacy_result = self.content.recommend_personalized(
             snapshot=snapshot,
             context=context,
@@ -252,6 +254,122 @@ def _dbapi_failure(statement: str) -> DBAPIError:
     )
 
 
+def _units(value: float) -> int:
+    return round(value * 1_000_000)
+
+
+def _assert_stage_5_event_matches_response(
+    event: RecommendationEvent,
+    body: dict[str, object],
+) -> None:
+    policy = body["policy"]
+    hybrid_policy = body["hybrid_policy"]
+    collaborative_model = body["collaborative_model"]
+    assert isinstance(policy, dict)
+    assert hybrid_policy is None or isinstance(hybrid_policy, dict)
+    assert collaborative_model is None or isinstance(collaborative_model, dict)
+
+    assert event.event_schema_version == "stage-5-v1"
+    assert event.generation_id == body["generation_id"]
+    assert event.model_name == body["model_name"]
+    assert event.model_version == body["model_version"]
+    assert event.data_fingerprint == body["data_fingerprint"]
+    assert event.ranking_policy_name == policy["name"]
+    assert event.ranking_policy_version == policy["version"]
+    assert event.ranking_mode == body["ranking_mode"]
+    assert event.fallback_reason == body["fallback_reason"]
+    assert event.hybrid_policy_name == (None if hybrid_policy is None else hybrid_policy["name"])
+    assert event.hybrid_policy_version == (
+        None if hybrid_policy is None else hybrid_policy["version"]
+    )
+    assert event.collaborative_model_name == (
+        None if collaborative_model is None else collaborative_model["name"]
+    )
+    assert event.collaborative_model_version == (
+        None if collaborative_model is None else collaborative_model["version"]
+    )
+    assert event.collaborative_interaction_fingerprint == (
+        None if collaborative_model is None else collaborative_model["interaction_fingerprint"]
+    )
+    collaborative_policy = (
+        None if collaborative_model is None else collaborative_model["scoring_policy"]
+    )
+    assert collaborative_policy is None or isinstance(collaborative_policy, dict)
+    assert event.collaborative_policy_name == (
+        None if collaborative_policy is None else collaborative_policy["name"]
+    )
+    assert event.collaborative_policy_version == (
+        None if collaborative_policy is None else collaborative_policy["version"]
+    )
+    assert event.request_context["ranking_mode"] == body["ranking_mode"]
+    assert event.request_context["fallback_reason"] == body["fallback_reason"]
+    positive_sources = body["positive_feedback_sources"]
+    assert isinstance(positive_sources, list)
+    assert event.request_context["positive_source_slugs"] == [
+        source["game_slug"] for source in positive_sources
+    ]
+
+    response_items = body["items"]
+    assert isinstance(response_items, list)
+    event_items = event.result_summary or []
+    assert len(event_items) == len(response_items)
+    expected_fields = {
+        "slug",
+        "rank",
+        "candidate_origin",
+        "base_units",
+        "base_weight_units",
+        "base_contribution_units",
+        "affinity_units",
+        "affinity_weight_units",
+        "affinity_contribution_units",
+        "collaborative_supported",
+        "collaborative_units",
+        "collaborative_weight_units",
+        "collaborative_contribution_units",
+        "collaborative_item_support",
+        "collaborative_source_edge_count",
+        "pre_played_units",
+        "played_factor_units",
+        "played_delta_units",
+        "final_units",
+    }
+    for event_item, response_item in zip(event_items, response_items, strict=True):
+        assert isinstance(response_item, dict)
+        assert set(event_item) == expected_fields
+        assert event_item["slug"] == response_item["game"]["slug"]
+        assert event_item["rank"] == response_item["rank"]
+        assert event_item["candidate_origin"] == response_item["candidate_origin"]
+        assert event_item["base_units"] == _units(response_item["base_ranking_score"])
+        assert event_item["base_weight_units"] == _units(response_item["base_weight"])
+        assert event_item["base_contribution_units"] == _units(response_item["base_contribution"])
+        assert event_item["affinity_units"] == _units(response_item["feedback_affinity_score"])
+        assert event_item["affinity_weight_units"] == _units(
+            response_item["feedback_affinity_weight"]
+        )
+        assert event_item["affinity_contribution_units"] == _units(
+            response_item["feedback_affinity_contribution"]
+        )
+        assert event_item["collaborative_supported"] == response_item["collaborative_supported"]
+        assert event_item["collaborative_units"] == _units(response_item["collaborative_score"])
+        assert event_item["collaborative_weight_units"] == _units(
+            response_item["collaborative_weight"]
+        )
+        assert event_item["collaborative_contribution_units"] == _units(
+            response_item["collaborative_contribution"]
+        )
+        assert (
+            event_item["collaborative_item_support"] == response_item["collaborative_item_support"]
+        )
+        assert event_item["collaborative_source_edge_count"] == len(
+            response_item["collaborative_source_edges"]
+        )
+        assert event_item["pre_played_units"] == _units(response_item["pre_played_score"])
+        assert event_item["played_factor_units"] == _units(response_item["played_factor"])
+        assert event_item["played_delta_units"] == _units(response_item["played_delta"])
+        assert event_item["final_units"] == _units(response_item["ranking_score"])
+
+
 def test_personalized_success_commits_one_correlated_bounded_event(
     personalized_client: tuple[TestClient, sessionmaker],
     test_settings: Settings,
@@ -277,6 +395,10 @@ def test_personalized_success_commits_one_correlated_bounded_event(
         "name": "gamelens-feedback-adjustment",
         "version": "1.0.0",
     }
+    assert body["ranking_mode"] == "stage_4_fallback"
+    assert body["fallback_reason"] == "not_configured"
+    assert body["hybrid_policy"] is None
+    assert body["collaborative_model"] is None
     assert body["requested_top_k"] == 5
     assert body["response_reason"] in {
         "recommendations",
@@ -285,9 +407,9 @@ def test_personalized_success_commits_one_correlated_bounded_event(
     }
     assert 0 <= len(body["items"]) <= 5
     for item in body["items"]:
-        assert item["base_contribution"] + item["feedback_affinity_contribution"] == (
-            pytest.approx(item["pre_played_score"], abs=0.000001)
-        )
+        assert item["base_contribution"] + item["feedback_affinity_contribution"] + item[
+            "collaborative_contribution"
+        ] == pytest.approx(item["pre_played_score"], abs=0.000001)
         assert item["pre_played_score"] + item["played_delta"] == pytest.approx(
             item["ranking_score"], abs=0.000001
         )
@@ -296,15 +418,11 @@ def test_personalized_success_commits_one_correlated_bounded_event(
         events = list(session.scalars(select(RecommendationEvent)).all())
     assert len(events) == 1
     event = events[0]
-    assert event.generation_id == body["generation_id"]
-    assert event.event_schema_version == "stage-4-v1"
-    assert event.model_name == body["model_name"]
-    assert event.model_version == body["model_version"]
-    assert event.data_fingerprint == body["data_fingerprint"]
-    assert event.ranking_policy_name == body["policy"]["name"]
-    assert event.ranking_policy_version == body["policy"]["version"]
+    _assert_stage_5_event_matches_response(event, body)
     assert set(event.request_context) == {
         "top_k",
+        "ranking_mode",
+        "fallback_reason",
         "selected_game_slugs",
         "preferred_genres",
         "preferred_tags",
@@ -321,24 +439,6 @@ def test_personalized_success_commits_one_correlated_bounded_event(
     assert event.request_context["played_count"] == 0
     assert event.request_context["positive_source_count"] == 0
     assert len(event.request_context["effective_state_fingerprint"]) == 64
-    assert len(event.result_summary or []) == len(body["items"])
-    for event_item, response_item in zip(event.result_summary or [], body["items"], strict=True):
-        assert set(event_item) == {
-            "slug",
-            "rank",
-            "base_units",
-            "final_units",
-            "affinity_units",
-            "played_delta_units",
-        }
-        assert event_item["slug"] == response_item["game"]["slug"]
-        assert event_item["rank"] == response_item["rank"]
-        assert event_item["base_units"] / 1_000_000 == pytest.approx(
-            response_item["base_ranking_score"], abs=0.000001
-        )
-        assert event_item["final_units"] / 1_000_000 == pytest.approx(
-            response_item["ranking_score"], abs=0.000001
-        )
 
 
 def test_personalized_event_records_only_canonical_effective_feedback_state(
@@ -606,13 +706,16 @@ def test_stateless_recommendation_ignores_valid_cookie_and_never_writes(
     )
 
     assert response.status_code == 200
-    assert response.json()["items"]
+    body = response.json()
+    assert body["items"]
+    assert "ranking_mode" not in body
+    assert "collaborative_model" not in body
     assert "set-cookie" not in response.headers
     assert _table_counts(factory) == before
 
 
 @pytest.mark.parametrize("reason", HYBRID_FALLBACK_REASONS)
-def test_every_phase5_fallback_maps_the_exact_stage4_decision_and_event(
+def test_every_fallback_activates_the_exact_stage_4_decision_and_stage_5_event(
     personalized_client: tuple[TestClient, sessionmaker],
     test_settings: Settings,
     reason: str,
@@ -641,6 +744,10 @@ def test_every_phase5_fallback_maps_the_exact_stage4_decision_and_event(
         "name": expected.policy.name,
         "version": expected.policy.version,
     }
+    assert body["ranking_mode"] == "stage_4_fallback"
+    assert body["fallback_reason"] == reason
+    assert body["hybrid_policy"] is None
+    assert body["collaborative_model"] is None
     assert body["response_reason"] == expected.reason
     assert [item["game"]["slug"] for item in body["items"]] == [
         item.slug for item in expected.items
@@ -649,18 +756,25 @@ def test_every_phase5_fallback_maps_the_exact_stage4_decision_and_event(
     assert [round(item["ranking_score"] * 1_000_000) for item in body["items"]] == [
         item.final_score_units for item in expected.items
     ]
+    assert all(item["candidate_origin"] == "content" for item in body["items"])
+    assert all(not item["collaborative_supported"] for item in body["items"])
+    assert all(item["collaborative_weight"] == 0 for item in body["items"])
     with factory() as session:
         event = session.scalar(select(RecommendationEvent))
     assert event is not None
-    assert event.event_schema_version == "stage-4-v1"
+    _assert_stage_5_event_matches_response(event, body)
     assert event.ranking_policy_name == expected.policy.name
     assert event.ranking_policy_version == expected.policy.version
+    assert event.ranking_mode == "stage_4_fallback"
+    assert event.fallback_reason == reason
+    assert event.hybrid_policy_name is None
+    assert event.collaborative_model_name is None
     assert [item["slug"] for item in event.result_summary or []] == [
         item.slug for item in expected.items
     ]
 
 
-def test_ready_hybrid_decision_stays_internal_until_phase6_mapping(
+def test_ready_hybrid_decision_activates_one_correlated_stage_5_response_and_event(
     test_settings: Settings,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -735,31 +849,33 @@ def test_ready_hybrid_decision_stays_internal_until_phase6_mapping(
         assert response.status_code == 200
         assert type(orchestrator.result) is HybridRecommendationsResult
         assert orchestrator.legacy_result is not None
+        assert orchestrator.call_count == 1
         assert client.app.state.collaborative_component is loaded_component
         body = response.json()
         assert body["policy"] == {
-            "name": orchestrator.legacy_result.policy.name,
-            "version": orchestrator.legacy_result.policy.version,
+            "name": orchestrator.result.feedback_policy.name,
+            "version": orchestrator.result.feedback_policy.version,
         }
+        assert body["ranking_mode"] == "hybrid"
+        assert body["fallback_reason"] is None
+        assert body["hybrid_policy"] == {
+            "name": orchestrator.result.policy.name,
+            "version": orchestrator.result.policy.version,
+        }
+        assert body["collaborative_model"] is not None
         assert [item["game"]["slug"] for item in body["items"]] == [
-            item.slug for item in orchestrator.legacy_result.items
+            item.slug for item in orchestrator.result.items
         ]
         assert [item["game"]["slug"] for item in body["items"]] != [
-            item.slug for item in orchestrator.result.items
+            item.slug for item in orchestrator.legacy_result.items
         ]
         with factory() as session:
             event = session.scalar(select(RecommendationEvent))
         assert event is not None
-        assert event.event_schema_version == "stage-4-v1"
-        assert event.ranking_policy_name == orchestrator.legacy_result.policy.name
-        assert "gamelens-hybrid-ranking" not in json.dumps(
-            {
-                "context": event.request_context,
-                "result": event.result_summary,
-                "policy": event.ranking_policy_name,
-            },
-            sort_keys=True,
-        )
+        _assert_stage_5_event_matches_response(event, body)
+        assert event.ranking_mode == "hybrid"
+        assert event.hybrid_policy_name == orchestrator.result.policy.name
+        assert event.collaborative_model_name == body["collaborative_model"]["name"]
 
 
 def test_ranking_decision_failure_commits_no_partial_event(
@@ -771,6 +887,30 @@ def test_ranking_decision_failure_commits_no_partial_event(
     _save_context(client, test_settings, csrf, genres=["strategy"])
     client.app.state.hybrid_orchestrator = _FailingOrchestrator()
 
+    response = client.post(
+        "/api/v1/me/recommendations",
+        headers=_headers(test_settings, csrf),
+        json={"top_k": 5},
+    )
+
+    assert response.status_code == 500
+    with factory() as session:
+        assert session.scalar(select(func.count()).select_from(RecommendationEvent)) == 0
+
+
+def test_stage_5_projection_failure_commits_no_partial_event(
+    personalized_client: tuple[TestClient, sessionmaker],
+    test_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, factory = personalized_client
+    csrf = _consent(client, test_settings)
+    _save_context(client, test_settings, csrf, genres=["strategy"])
+
+    def fail_projection(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise ValueError("stage 5 projection failed")
+
+    monkeypatch.setattr(personalized_services, "project_stage_5_decision", fail_projection)
     response = client.post(
         "/api/v1/me/recommendations",
         headers=_headers(test_settings, csrf),
@@ -817,7 +957,7 @@ def test_personalized_openapi_contract_is_exact(
 
     assert operation["requestBody"]["required"] is True
     assert operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
-        "/PersonalizedRecommendationResponse"
+        "/Stage5PersonalizedRecommendationResponse"
     )
     assert {"200", "401", "403", "409", "422", "500", "503"} <= set(operation["responses"])
     assert request_schema["additionalProperties"] is False
