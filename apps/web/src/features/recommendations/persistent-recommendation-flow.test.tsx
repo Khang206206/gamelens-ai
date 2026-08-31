@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -77,11 +77,15 @@ function feedbackResource(gameId: number) {
 }
 
 const personalized = {
-  generation_id: "generation-1",
+  generation_id: "1".repeat(32),
   model_name: "gamelens-content-tfidf",
   model_version: "1.0.0",
   data_fingerprint: "a".repeat(64),
   policy: { name: "gamelens-feedback-adjustment", version: "1.0.0" },
+  ranking_mode: "stage_4_fallback" as const,
+  fallback_reason: "not_configured" as const,
+  hybrid_policy: null,
+  collaborative_model: null,
   response_reason: "recommendations" as const,
   requested_top_k: 10,
   positive_feedback_sources: [],
@@ -101,6 +105,13 @@ const personalized = {
       played_delta: 0,
       ranking_score: 0.77,
       adjustment_reasons: ["feedback_affinity" as const],
+      candidate_origin: "content" as const,
+      collaborative_supported: false,
+      collaborative_score: 0,
+      collaborative_weight: 0,
+      collaborative_contribution: 0,
+      collaborative_item_support: null,
+      collaborative_source_edges: [],
       evidence: {
         matching_genres: [],
         matching_tags: [],
@@ -399,6 +410,47 @@ describe("PersistentRecommendationFlow", () => {
     );
   });
 
+  it("announces saved-result loading before focusing the completed shortlist", async () => {
+    const user = userEvent.setup();
+    mockClient.getCurrentSession.mockResolvedValue(session);
+    mockClient.getPreferences.mockResolvedValue({
+      ...emptyPreferences,
+      preferred_genres: ["strategy"],
+    });
+    let resolveRecommendation!: (value: typeof personalized) => void;
+    mockClient.recommendPersonalized.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRecommendation = resolve;
+      }),
+    );
+
+    render(
+      <PersistentRecommendationFlow>
+        <p>Request-only flow</p>
+      </PersistentRecommendationFlow>,
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: "Generate saved recommendations" }),
+    );
+    const loadingHeading = screen.getByRole("heading", {
+      name: "Generating saved recommendations",
+    });
+    expect(loadingHeading).toBeVisible();
+    const loadingRegion = loadingHeading.closest("section");
+    expect(loadingRegion).not.toBeNull();
+    expect(within(loadingRegion as HTMLElement).getByRole("status")).toHaveTextContent(
+      "The server is preparing an ordered shortlist",
+    );
+
+    resolveRecommendation(personalized);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "1 personalized recommendations" }),
+      ).toHaveFocus(),
+    );
+  });
+
   it("invalidates a rendered shortlist when its persisted context changes", async () => {
     const user = userEvent.setup();
     mockClient.getCurrentSession.mockResolvedValue(session);
@@ -624,6 +676,11 @@ describe("PersistentRecommendationFlow", () => {
       await screen.findByText(/Generation ID: generation-ambiguous-1/),
     ).toBeVisible();
     expect(screen.getByText(/Do not retry blindly/)).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Saved recommendations need attention" }),
+      ).toHaveFocus(),
+    );
     expect(mockClient.recommendPersonalized).toHaveBeenCalledOnce();
   });
 

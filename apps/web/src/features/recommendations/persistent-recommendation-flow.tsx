@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -9,12 +8,15 @@ import {
 } from "@/features/recommendations/consent-panel";
 import { FeedbackControls } from "@/features/recommendations/feedback-controls";
 import {
+  PersonalizedRecommendationResults,
+  type PersonalizedResultsState,
+} from "@/features/recommendations/personalized-recommendation-results";
+import {
   type ApiClient,
   type AnonymousSessionResponse,
   type FeedbackReplaceRequest,
   type FeedbackResource,
   getApiClient,
-  type PersonalizedRecommendationResponse,
   type PreferenceReplaceRequest,
   type PreferenceResponse,
 } from "@/lib/api/client";
@@ -151,8 +153,9 @@ export function PersistentRecommendationFlow({
   const [durable, setDurable] = useState<DurableState | null>(null);
   const [preferenceDraft, setPreferenceDraft] =
     useState<PreferenceReplaceRequest>(EMPTY_PREFERENCE_DRAFT);
-  const [personalized, setPersonalized] =
-    useState<PersonalizedRecommendationResponse | null>(null);
+  const [personalized, setPersonalized] = useState<PersonalizedResultsState>({
+    status: "idle",
+  });
   const [busy, setBusy] = useState(false);
   const [feedbackPending, setFeedbackPending] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -181,7 +184,7 @@ export function PersistentRecommendationFlow({
     setDurable(null);
     setLifecycle(null);
     setPreferenceDraft(EMPTY_PREFERENCE_DRAFT);
-    setPersonalized(null);
+    setPersonalized({ status: "idle" });
     setFeedbackPending(null);
     setFeedbackMessage({});
     setBusy(false);
@@ -201,7 +204,7 @@ export function PersistentRecommendationFlow({
         const currentConsentVersion = errorDetailString(error, "current_consent_version");
         setDurable(null);
         setPreferenceDraft(EMPTY_PREFERENCE_DRAFT);
-        setPersonalized(null);
+        setPersonalized({ status: "idle" });
         setFeedbackPending(null);
         setFeedbackMessage({});
         if (currentConsentVersion) setRequiredConsentVersion(currentConsentVersion);
@@ -230,7 +233,7 @@ export function PersistentRecommendationFlow({
       }
       if (error instanceof ApiClientError && error.code === "saved_preferences_stale") {
         const staleReferences = errorDetailStrings(error, "references");
-        setPersonalized(null);
+        setPersonalized({ status: "idle" });
         if (staleReferences.length) {
           setDurable((current) =>
             current
@@ -261,7 +264,7 @@ export function PersistentRecommendationFlow({
       if (session.status === "consent_outdated") {
         setDurable(null);
         setPreferenceDraft(EMPTY_PREFERENCE_DRAFT);
-        setPersonalized(null);
+        setPersonalized({ status: "idle" });
         setFeedbackPending(null);
         setFeedbackMessage({});
         setSessionState("consent_outdated");
@@ -275,7 +278,7 @@ export function PersistentRecommendationFlow({
       ]);
       if (signal?.aborted || requestEpoch !== epoch.current || feedback === null) return;
       setDurable({ session, preferences, feedback });
-      setPersonalized(null);
+      setPersonalized({ status: "idle" });
       setFeedbackPending(null);
       setFeedbackMessage({});
       setPreferenceDraft({
@@ -321,6 +324,11 @@ export function PersistentRecommendationFlow({
     void bootstrap();
     return () => controller.current?.abort();
   }, [bootstrap]);
+
+  useEffect(() => {
+    if (personalized.status !== "ready" && personalized.status !== "error") return;
+    personalizedHeading.current?.focus();
+  }, [personalized.status]);
 
   async function consent(csrfToken?: string) {
     if (mutationPending) return;
@@ -414,7 +422,7 @@ export function PersistentRecommendationFlow({
       );
       if (requestEpoch !== epoch.current) return;
       setDurable((current) => (current ? { ...current, preferences } : current));
-      setPersonalized(null);
+      setPersonalized({ status: "idle" });
       setMessage("Saved preferences were updated.");
     } catch (error) {
       if (requestEpoch === epoch.current) handleSessionFailure(error, "active");
@@ -446,7 +454,7 @@ export function PersistentRecommendationFlow({
           : current,
       );
       setPreferenceDraft(EMPTY_PREFERENCE_DRAFT);
-      setPersonalized(null);
+      setPersonalized({ status: "idle" });
       setMessage("Saved preferences were cleared.");
     } catch (error) {
       if (requestEpoch === epoch.current) handleSessionFailure(error, "active");
@@ -478,7 +486,7 @@ export function PersistentRecommendationFlow({
         durable.session.csrf_token,
       );
       if (requestEpoch !== epoch.current) return;
-      setPersonalized(null);
+      setPersonalized({ status: "idle" });
       await refreshFeedback(requestEpoch);
       if (requestEpoch !== epoch.current) return;
       setFeedbackMessage((current) => ({ ...current, [gameId]: "Feedback saved." }));
@@ -506,7 +514,7 @@ export function PersistentRecommendationFlow({
     try {
       await getApiClient().clearGameFeedback(gameId, durable.session.csrf_token);
       if (requestEpoch !== epoch.current) return;
-      setPersonalized(null);
+      setPersonalized({ status: "idle" });
       await refreshFeedback(requestEpoch);
       if (requestEpoch !== epoch.current) return;
       setFeedbackMessage((current) => ({ ...current, [gameId]: "Feedback cleared." }));
@@ -529,17 +537,29 @@ export function PersistentRecommendationFlow({
     const requestEpoch = chainedEpoch ?? epoch.current;
     if (chainedEpoch === undefined) setBusy(true);
     setMessage(null);
+    setPersonalized({ status: "loading" });
     try {
       const result = await getApiClient().recommendPersonalized(
         { top_k: 10 },
         durable.session.csrf_token,
       );
       if (requestEpoch !== epoch.current) return;
-      setPersonalized(result);
+      setPersonalized({ status: "ready", result });
       setMessage(successMessage ?? "Personalized recommendations are ready.");
-      requestAnimationFrame(() => personalizedHeading.current?.focus());
     } catch (error) {
-      if (requestEpoch === epoch.current) handleSessionFailure(error, "active");
+      if (requestEpoch === epoch.current) {
+        const contextChanged =
+          error instanceof ApiClientError &&
+          (error.kind === "unauthorized" ||
+            error.code === "consent_version_outdated" ||
+            error.code === "saved_preferences_stale");
+        if (contextChanged) {
+          handleSessionFailure(error, "active");
+        } else {
+          setSessionState("active");
+          setPersonalized({ status: "error", message: errorMessage(error) });
+        }
+      }
     } finally {
       if (chainedEpoch === undefined && requestEpoch === epoch.current) setBusy(false);
     }
@@ -648,93 +668,17 @@ export function PersistentRecommendationFlow({
         </section>
       ) : null}
 
-      {personalized ? (
-        <section
-          className="recommendation-results"
-          aria-labelledby="personalized-heading"
-        >
-          <div className="results-heading recommendation-results__heading">
-            <div aria-live="polite" aria-atomic="true">
-              <p className="eyebrow">Feedback-aware shortlist</p>
-              <h2 id="personalized-heading" ref={personalizedHeading} tabIndex={-1}>
-                {personalized.items.length
-                  ? `${personalized.items.length} personalized recommendations`
-                  : "No eligible personalized candidates"}
-              </h2>
-            </div>
-            <p>
-              {personalized.policy.name} · v{personalized.policy.version}
-            </p>
-          </div>
-          {personalized.items.length ? (
-            <ol className="recommendation-list">
-              {personalized.items.map((item) => (
-                <li
-                  className="recommendation-card recommendation-card--feedback"
-                  key={item.game.id}
-                >
-                  <div
-                    className="recommendation-card__rank"
-                    aria-label={`Rank ${item.rank}`}
-                  >
-                    {String(item.rank).padStart(2, "0")}
-                  </div>
-                  <div className="recommendation-card__body">
-                    <p className="eyebrow">Final score {item.ranking_score.toFixed(6)}</p>
-                    <h3>
-                      <Link href={`/games/${item.game.id}`}>{item.game.title}</Link>
-                    </h3>
-                    <p>{item.explanation.summary}</p>
-                    <details className="score-details">
-                      <summary>Inspect personalization components</summary>
-                      <dl>
-                        <div>
-                          <dt>Base</dt>
-                          <dd>
-                            {item.base_ranking_score.toFixed(6)} ×{" "}
-                            {item.base_weight.toFixed(6)} ={" "}
-                            {item.base_contribution.toFixed(6)}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>Feedback</dt>
-                          <dd>
-                            {item.feedback_affinity_score.toFixed(6)} ×{" "}
-                            {item.feedback_affinity_weight.toFixed(6)} ={" "}
-                            {item.feedback_affinity_contribution.toFixed(6)}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>Played</dt>
-                          <dd>
-                            factor {item.played_factor.toFixed(6)} · delta{" "}
-                            {item.played_delta.toFixed(6)}
-                          </dd>
-                        </div>
-                      </dl>
-                    </details>
-                    <FeedbackControls
-                      key={`${item.game.id}:${feedbackByGame.get(item.game.id)?.latest_occurred_at ?? "none"}:${feedbackPending === item.game.id ? "pending" : "idle"}`}
-                      gameId={item.game.id}
-                      gameTitle={item.game.title}
-                      saved={feedbackByGame.get(item.game.id)}
-                      disabled={mutationPending}
-                      pending={feedbackPending === item.game.id}
-                      message={feedbackMessage[item.game.id]}
-                      onSave={(gameId, feedback) => void saveFeedback(gameId, feedback)}
-                      onClear={(gameId) => void clearFeedback(gameId)}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p>
-              No remaining catalog game has positive content support after exclusions.
-            </p>
-          )}
-        </section>
-      ) : null}
+      <PersonalizedRecommendationResults
+        state={personalized}
+        headingRef={personalizedHeading}
+        feedbackByGame={feedbackByGame}
+        feedbackPending={feedbackPending}
+        feedbackMessage={feedbackMessage}
+        mutationPending={mutationPending}
+        onRetry={() => void generatePersonalized()}
+        onSaveFeedback={(gameId, feedback) => void saveFeedback(gameId, feedback)}
+        onClearFeedback={(gameId) => void clearFeedback(gameId)}
+      />
 
       <section
         className="stateless-recommendation-section"

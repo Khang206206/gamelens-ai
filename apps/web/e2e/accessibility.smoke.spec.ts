@@ -53,6 +53,20 @@ test("key routes have no serious automated accessibility violations", async ({
   ).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
 
+  await page.getByRole("textbox", { name: "Genre slugs" }).fill("strategy");
+  await page.getByRole("button", { name: "Save complete preference set" }).click();
+  await expect(page.getByText("Saved preferences were updated.")).toBeVisible();
+  await page.getByRole("button", { name: "Generate saved recommendations" }).click();
+  await expect(
+    page.getByRole("heading", { name: /personalized recommendations/ }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole("heading", {
+      name: /Hybrid ranking applied|Saved ranking fallback/,
+    }),
+  ).toBeVisible();
+  await expectNoSeriousAccessibilityViolations(page);
+
   await page.goto("/route-that-does-not-exist");
   await expect(
     page.getByRole("heading", {
