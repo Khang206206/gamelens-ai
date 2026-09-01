@@ -147,6 +147,7 @@ def test_collaborative_live_data_is_default_off_and_requires_contribution_versio
     for variable in (
         "COLLABORATIVE_LIVE_DATA_ENABLED",
         "COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION",
+        "COLLABORATIVE_LIVE_PROMOTION_ENABLED",
         "COLLABORATIVE_ALLOW_TEST_FIXTURE",
         "COLLABORATIVE_ARTIFACT_PATH",
     ):
@@ -155,6 +156,7 @@ def test_collaborative_live_data_is_default_off_and_requires_contribution_versio
 
     assert settings.collaborative_live_data_enabled is False
     assert settings.collaborative_contribution_consent_version is None
+    assert settings.collaborative_live_promotion_enabled is False
     assert settings.collaborative_allow_test_fixture is False
     assert settings.collaborative_artifact_path is None
 
@@ -176,6 +178,17 @@ def test_collaborative_live_data_is_default_off_and_requires_contribution_versio
         collaborative_contribution_consent_version=" stage-5-contribution-v1 ",
     )
     assert enabled.collaborative_contribution_consent_version == "stage-5-contribution-v1"
+
+    with pytest.raises(ValidationError, match="promotion requires live data"):
+        Settings(_env_file=None, collaborative_live_promotion_enabled=True)
+
+    promotion_enabled = Settings(
+        _env_file=None,
+        collaborative_live_data_enabled=True,
+        collaborative_contribution_consent_version="stage-5-contribution-v1",
+        collaborative_live_promotion_enabled=True,
+    )
+    assert promotion_enabled.collaborative_live_promotion_enabled is True
 
     with pytest.raises(ValidationError):
         Settings(

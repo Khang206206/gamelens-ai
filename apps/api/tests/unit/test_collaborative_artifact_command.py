@@ -1,16 +1,33 @@
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from app.commands import collaborative_artifact
+from app.core.config import PROJECT_ROOT
+
+FIXTURE_PATH = (
+    PROJECT_ROOT / "data" / "fixtures" / "interactions" / "collaborative-interactions.json"
+)
+CATALOG_PATH = PROJECT_ROOT / "data" / "catalog" / "games.json"
 
 
-def _settings(tmp_path: Path, *, allow_fixture: bool = False) -> SimpleNamespace:
+def _settings(
+    tmp_path: Path,
+    *,
+    allow_fixture: bool = False,
+    live_promotion_enabled: bool = False,
+) -> SimpleNamespace:
     return SimpleNamespace(
         environment="test" if allow_fixture else "development",
         collaborative_allow_test_fixture=allow_fixture,
+        collaborative_live_data_enabled=live_promotion_enabled,
+        collaborative_contribution_consent_version=(
+            "stage-5-contribution-v1" if live_promotion_enabled else None
+        ),
+        collaborative_live_promotion_enabled=live_promotion_enabled,
         collaborative_artifact_path=tmp_path / "configured-collaborative",
         collaborative_fixture_path=tmp_path / "fixture.json",
     )
@@ -28,7 +45,21 @@ def test_live_build_is_fail_closed_before_external_access(
         collaborative_artifact.main()
 
     payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "error"
     assert payload["error"]["code"] == "unapproved_live_source"
+    assert payload["error"]["message"] == "Live collaborative promotion is disabled by default"
+
+
+def test_enabled_live_promotion_does_not_bypass_later_approval_slices(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path, live_promotion_enabled=True)
+
+    with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as caught:
+        collaborative_artifact.build_live_artifact(settings, tmp_path / "artifact")
+
+    assert caught.value.code == "unapproved_live_source"
+    assert "lineage-bound build and promotion slices" in str(caught.value)
 
 
 def test_fixture_build_requires_both_test_environment_and_explicit_gate(
@@ -177,10 +208,12 @@ def test_validate_and_inspect_are_read_only_loader_calls(
 
 def test_command_rejects_missing_configured_and_explicit_path(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     settings = SimpleNamespace(
         environment="development",
         collaborative_allow_test_fixture=False,
+        collaborative_live_promotion_enabled=False,
         collaborative_artifact_path=None,
     )
     monkeypatch.setattr(collaborative_artifact, "get_settings", lambda: settings)
@@ -188,6 +221,14 @@ def test_command_rejects_missing_configured_and_explicit_path(
 
     with pytest.raises(SystemExit, match="2"):
         collaborative_artifact.main()
+
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "error",
+        "error": {
+            "code": "artifact_path_required",
+            "message": ("Configure COLLABORATIVE_ARTIFACT_PATH or pass an explicit artifact path"),
+        },
+    }
 
 
 def test_fixture_build_id_is_deterministic_and_input_sensitive() -> None:
@@ -205,3 +246,74 @@ def test_fixture_build_id_is_deterministic_and_input_sensitive() -> None:
     assert first != collaborative_artifact._fixture_build_id(
         **{**values, "interaction_fingerprint": "d" * 64}
     )
+
+
+def _bundle_snapshot(root: Path) -> dict[str, tuple[bytes, int]]:
+    return {
+        path.name: (path.read_bytes(), path.stat().st_mtime_ns) for path in sorted(root.iterdir())
+    }
+
+
+def test_validate_and_inspect_are_idempotent_and_do_not_repair_or_mutate(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    settings = _settings(tmp_path, allow_fixture=True)
+    settings.collaborative_fixture_path = FIXTURE_PATH
+    artifact = tmp_path / "artifact"
+    collaborative_artifact.build_fixture_artifact(
+        settings,
+        artifact,
+        fixture_path=FIXTURE_PATH,
+        catalog_path=CATALOG_PATH,
+        built_at=datetime.now(UTC),
+    )
+    before = _bundle_snapshot(artifact)
+    monkeypatch.setattr(collaborative_artifact, "get_settings", lambda: settings)
+
+    for command in ("validate", "inspect", "validate", "inspect"):
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "collaborative-artifact",
+                command,
+                "--artifact",
+                str(artifact),
+                "--catalog",
+                str(CATALOG_PATH),
+            ],
+        )
+        collaborative_artifact.main()
+        assert json.loads(capsys.readouterr().out)["status"] == "valid"
+
+    assert _bundle_snapshot(artifact) == before
+
+
+def test_invalid_settings_use_the_stable_command_error_contract(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "get_settings",
+        lambda: (_ for _ in ()).throw(ValueError("settings are invalid")),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["collaborative-artifact", "inspect", "--artifact", str(tmp_path / "artifact")],
+    )
+
+    with pytest.raises(SystemExit, match="2"):
+        collaborative_artifact.main()
+
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "error",
+        "error": {
+            "code": "collaborative_artifact_failed",
+            "message": "settings are invalid",
+        },
+    }

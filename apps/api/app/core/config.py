@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     collaborative_contribution_consent_version: (
         Annotated[str, Field(min_length=1, max_length=100)] | None
     ) = None
+    collaborative_live_promotion_enabled: bool = False
     collaborative_allow_test_fixture: bool = False
     collaborative_fixture_path: Path = (
         PROJECT_ROOT / "data" / "fixtures" / "interactions" / "collaborative-interactions.json"
@@ -212,6 +213,8 @@ class Settings(BaseSettings):
             and self.collaborative_contribution_consent_version is None
         ):
             raise ValueError("live collaborative data requires a contribution consent version")
+        if self.collaborative_live_promotion_enabled and not self.collaborative_live_data_enabled:
+            raise ValueError("live collaborative promotion requires live data to be enabled")
         if self.collaborative_allow_test_fixture and self.environment != "test":
             raise ValueError("collaborative fixture access is limited to ENVIRONMENT=test")
         return self

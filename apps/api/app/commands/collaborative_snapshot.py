@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 
 from gamelens_recommender import (
@@ -13,6 +12,7 @@ from gamelens_recommender import (
 )
 from gamelens_recommender.interaction_snapshot import SnapshotAuditError
 
+from app.commands.output import fail_command, write_json
 from app.core.config import Settings, get_settings
 from app.db.seed import DEFAULT_SEED_PATH, load_seed_file
 from app.db.session import create_database_engine, create_session_factory
@@ -78,6 +78,7 @@ def audit_live_source(settings: Settings) -> dict[str, object]:
             contribution_consent_version_configured=(
                 settings.collaborative_contribution_consent_version is not None
             ),
+            live_promotion_enabled=settings.collaborative_live_promotion_enabled,
         )
     engine = create_database_engine(settings.database_url)
     try:
@@ -108,8 +109,8 @@ def main() -> None:
     audit_parser.add_argument("--catalog", type=Path, default=DEFAULT_SEED_PATH)
     audit_parser.add_argument("--format", choices=("json", "summary"), default="json")
     args = parser.parse_args()
-    settings = get_settings()
     try:
+        settings = get_settings()
         if args.source == "fixture":
             report = audit_fixture_source(
                 settings,
@@ -119,17 +120,11 @@ def main() -> None:
         else:
             report = audit_live_source(settings)
     except (CollaborativeSnapshotError, SnapshotAuditError, OSError, ValueError) as error:
-        code = getattr(error, "code", "audit_failed")
-        print(
-            json.dumps(
-                {"status": "error", "error": {"code": code, "message": str(error)}},
-                sort_keys=True,
-            )
-        )
-        raise SystemExit(2) from error
-    print(
-        json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else _summary(report)
-    )
+        fail_command(error, fallback_code="audit_failed")
+    if args.format == "json":
+        write_json(report)
+    else:
+        print(_summary(report))
 
 
 if __name__ == "__main__":

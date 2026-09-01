@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -22,6 +21,7 @@ from gamelens_recommender.interaction_snapshot import (
 )
 
 from app.commands.collaborative_snapshot import catalog_from_seed
+from app.commands.output import fail_command, write_json
 from app.core.config import Settings, get_settings
 from app.db.seed import DEFAULT_SEED_PATH
 
@@ -127,22 +127,29 @@ def build_fixture_artifact(
     )
 
 
-def build_live_artifact(_settings: Settings, _output: Path) -> dict[str, object]:
+def build_live_artifact(settings: Settings, _output: Path) -> dict[str, object]:
+    if not settings.collaborative_live_promotion_enabled:
+        raise CollaborativeArtifactCommandError(
+            "unapproved_live_source",
+            "Live collaborative promotion is disabled by default",
+        )
     raise CollaborativeArtifactCommandError(
         "unapproved_live_source",
-        "Live collaborative builds remain blocked until protected lineage and "
-        "activation are approved",
+        "Live collaborative builds remain blocked until the lineage-bound build "
+        "and promotion slices are implemented and separately approved",
     )
 
 
 def _artifact_path(
-    parser: argparse.ArgumentParser,
     settings: Settings,
     explicit: Path | None,
 ) -> Path:
     value = explicit or settings.collaborative_artifact_path
     if value is None:
-        parser.error("configure COLLABORATIVE_ARTIFACT_PATH or pass an explicit artifact path")
+        raise CollaborativeArtifactCommandError(
+            "artifact_path_required",
+            "Configure COLLABORATIVE_ARTIFACT_PATH or pass an explicit artifact path",
+        )
     return value
 
 
@@ -166,15 +173,15 @@ def main() -> None:
     inspect_parser.add_argument("--catalog", type=Path, default=DEFAULT_SEED_PATH)
 
     args = parser.parse_args()
-    settings = get_settings()
-    explicit_path = (
-        getattr(args, "output", None)
-        if args.command == "build"
-        else getattr(args, "artifact", None)
-    )
-    artifact_path = _artifact_path(parser, settings, explicit_path)
-    allow_fixture = _fixture_allowed(settings)
     try:
+        settings = get_settings()
+        explicit_path = (
+            getattr(args, "output", None)
+            if args.command == "build"
+            else getattr(args, "artifact", None)
+        )
+        artifact_path = _artifact_path(settings, explicit_path)
+        allow_fixture = _fixture_allowed(settings)
         if args.command == "build":
             if args.source == "fixture":
                 result = build_fixture_artifact(
@@ -199,15 +206,8 @@ def main() -> None:
         OSError,
         ValueError,
     ) as error:
-        code = getattr(error, "code", "collaborative_artifact_failed")
-        print(
-            json.dumps(
-                {"status": "error", "error": {"code": code, "message": str(error)}},
-                sort_keys=True,
-            )
-        )
-        raise SystemExit(2) from error
-    print(json.dumps(result, indent=2, sort_keys=True))
+        fail_command(error, fallback_code="collaborative_artifact_failed")
+    write_json(result)
 
 
 if __name__ == "__main__":

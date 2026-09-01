@@ -17,6 +17,7 @@ def blocked_live_audit(
     *,
     live_data_enabled: bool = False,
     contribution_consent_version_configured: bool = False,
+    live_promotion_enabled: bool = False,
 ) -> dict[str, object]:
     return {
         "audit_schema_version": 1,
@@ -34,7 +35,8 @@ def blocked_live_audit(
         "integration_gates": {
             "live_data_enabled": live_data_enabled,
             "contribution_consent_version_configured": contribution_consent_version_configured,
-            "build_lineage_implemented": False,
+            "build_lineage_implemented": True,
+            "live_promotion_enabled": live_promotion_enabled,
             "serving_activation_approved": False,
         },
     }
@@ -50,6 +52,7 @@ def audit_live_snapshot(
         return blocked_live_audit(
             live_data_enabled=settings.collaborative_live_data_enabled,
             contribution_consent_version_configured=contribution_version is not None,
+            live_promotion_enabled=settings.collaborative_live_promotion_enabled,
         )
 
     session = session_factory()
@@ -82,7 +85,8 @@ def audit_live_snapshot(
     report["integration_gates"] = {
         "live_data_enabled": True,
         "contribution_consent_version_configured": True,
-        "build_lineage_implemented": False,
+        "build_lineage_implemented": True,
+        "live_promotion_enabled": settings.collaborative_live_promotion_enabled,
         "serving_activation_approved": False,
     }
     return report

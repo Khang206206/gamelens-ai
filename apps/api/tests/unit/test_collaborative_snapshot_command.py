@@ -1,3 +1,5 @@
+import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -31,6 +33,13 @@ def test_default_live_audit_is_blocked_without_database_access(monkeypatch) -> N
     assert report["status"] == "integration_blocked"
     assert report["reasons"] == ["unapproved_live_source"]
     assert report["approved_live_training_eligibility"] is False
+    assert report["integration_gates"] == {
+        "live_data_enabled": False,
+        "contribution_consent_version_configured": False,
+        "build_lineage_implemented": True,
+        "live_promotion_enabled": False,
+        "serving_activation_approved": False,
+    }
 
 
 def test_blocked_live_audit_reports_each_configured_gate_truthfully(monkeypatch) -> None:  # type: ignore[no-untyped-def]
@@ -46,6 +55,21 @@ def test_blocked_live_audit_reports_each_configured_gate_truthfully(monkeypatch)
     assert report["status"] == "integration_blocked"
     assert report["integration_gates"]["live_data_enabled"] is False
     assert report["integration_gates"]["contribution_consent_version_configured"] is True
+    assert report["integration_gates"]["build_lineage_implemented"] is True
+    assert report["integration_gates"]["live_promotion_enabled"] is False
+    assert report["integration_gates"]["serving_activation_approved"] is False
+
+
+def test_promotion_enablement_is_reported_without_implying_approval() -> None:
+    report = collaborative_snapshot.blocked_live_audit(
+        live_data_enabled=False,
+        contribution_consent_version_configured=False,
+        live_promotion_enabled=True,
+    )
+
+    assert report["integration_gates"]["live_promotion_enabled"] is True
+    assert report["integration_gates"]["serving_activation_approved"] is False
+    assert report["approved_live_training_eligibility"] is False
 
 
 def test_fixture_audit_requires_explicit_test_gate() -> None:
@@ -82,3 +106,48 @@ def test_fixture_audit_rejects_missing_file(tmp_path: Path) -> None:
         )
 
     assert error.value.code == "fixture_invalid"
+
+
+def test_blocked_audit_command_emits_one_successful_json_report(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(collaborative_snapshot, "get_settings", _settings)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["collaborative-snapshot", "audit", "--source", "live", "--format", "json"],
+    )
+
+    collaborative_snapshot.main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "integration_blocked"
+    assert payload["reasons"] == ["unapproved_live_source"]
+
+
+def test_audit_command_failure_uses_stable_json_and_exit_code(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(collaborative_snapshot, "get_settings", lambda: _settings())
+    monkeypatch.setattr(
+        collaborative_snapshot,
+        "audit_fixture_source",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            SnapshotAuditError("fixture_invalid", "fixture is invalid")
+        ),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["collaborative-snapshot", "audit", "--source", "fixture"],
+    )
+
+    with pytest.raises(SystemExit, match="2"):
+        collaborative_snapshot.main()
+
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "error",
+        "error": {"code": "fixture_invalid", "message": "fixture is invalid"},
+    }
