@@ -56,8 +56,23 @@ def test_support_pruning_reaches_the_same_cascading_fixed_point() -> None:
     )
 
     assert supported.profiles == (("a", "b"), ("a", "b"))
+    assert supported.source_indices == (0, 1)
     assert supported.item_support == (("a", 2), ("b", 2))
     assert supported.fixed_point_passes == 4
+
+
+def test_support_pruning_retains_original_identity_free_row_indices() -> None:
+    supported = prune_supported_profiles(
+        (
+            ("orphan",),
+            ("a", "b"),
+            ("a", "b"),
+            ("c", "d"),
+        )
+    )
+
+    assert supported.profiles == (("a", "b"), ("a", "b"))
+    assert supported.source_indices == (1, 2)
 
 
 def test_binary_matrix_is_int64_canonical_and_preserves_duplicate_profiles() -> None:

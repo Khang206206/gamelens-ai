@@ -30,6 +30,7 @@ def _settings(
         collaborative_live_promotion_enabled=live_promotion_enabled,
         collaborative_artifact_path=tmp_path / "configured-collaborative",
         collaborative_fixture_path=tmp_path / "fixture.json",
+        database_url="postgresql+psycopg://test:test@localhost:5432/gamelens",
     )
 
 
@@ -50,16 +51,153 @@ def test_live_build_is_fail_closed_before_external_access(
     assert payload["error"]["message"] == "Live collaborative promotion is disabled by default"
 
 
-def test_enabled_live_promotion_does_not_bypass_later_approval_slices(
+def test_enabled_live_promotion_requires_explicit_build_id_and_confirmation(
     tmp_path: Path,
 ) -> None:
     settings = _settings(tmp_path, live_promotion_enabled=True)
 
     with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as caught:
-        collaborative_artifact.build_live_artifact(settings, tmp_path / "artifact")
+        collaborative_artifact.build_live_artifact(
+            settings,
+            tmp_path / "artifact",
+            build_id=None,
+            confirmation=None,
+        )
 
-    assert caught.value.code == "unapproved_live_source"
-    assert "lineage-bound build and promotion slices" in str(caught.value)
+    assert caught.value.code == "build_id_required"
+
+    with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as confirmation:
+        collaborative_artifact.build_live_artifact(
+            settings,
+            tmp_path / "artifact",
+            build_id="stage5-live-v1",
+            confirmation="different-build",
+        )
+
+    assert confirmation.value.code == "live_build_confirmation_required"
+
+
+def test_confirmed_live_build_uses_one_disposed_database_engine(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path, live_promotion_enabled=True)
+    received: list[tuple[Path, object, str]] = []
+
+    class _Engine:
+        disposed = False
+
+        def dispose(self) -> None:
+            self.disposed = True
+
+    engine = _Engine()
+
+    class _Service:
+        def __init__(self, factory: object) -> None:
+            assert factory == "session-factory"
+
+        def build(
+            self,
+            output: Path,
+            *,
+            settings: object,
+            build_id: str,
+        ) -> dict[str, object]:
+            received.append((output, settings, build_id))
+            return {"status": "valid"}
+
+    monkeypatch.setattr(collaborative_artifact, "create_database_engine", lambda _url: engine)
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "create_session_factory",
+        lambda _engine: "session-factory",
+    )
+    monkeypatch.setattr(collaborative_artifact, "CollaborativeLiveBuildService", _Service)
+
+    result = collaborative_artifact.build_live_artifact(
+        settings,
+        tmp_path / "artifact",
+        build_id="stage5-live-v1",
+        confirmation="stage5-live-v1",
+    )
+
+    assert result == {"status": "valid"}
+    assert received == [(tmp_path / "artifact", settings, "stage5-live-v1")]
+    assert engine.disposed is True
+
+
+def test_live_build_command_passes_exact_operator_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    settings = _settings(tmp_path, live_promotion_enabled=True)
+    output = tmp_path / "live-artifact"
+    received: list[tuple[Path, str | None, str | None]] = []
+    monkeypatch.setattr(collaborative_artifact, "get_settings", lambda: settings)
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "build_live_artifact",
+        lambda _settings, path, *, build_id, confirmation: (
+            received.append((path, build_id, confirmation)) or {"status": "valid"}
+        ),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "collaborative-artifact",
+            "build",
+            "--source",
+            "live",
+            "--output",
+            str(output),
+            "--build-id",
+            "stage5-live-v1",
+            "--confirm-live-build",
+            "stage5-live-v1",
+        ],
+    )
+
+    collaborative_artifact.main()
+
+    assert received == [(output, "stage5-live-v1", "stage5-live-v1")]
+    assert json.loads(capsys.readouterr().out) == {"status": "valid"}
+
+
+def test_live_build_command_confirmation_failure_is_stable_json(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "get_settings",
+        lambda: _settings(tmp_path, live_promotion_enabled=True),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "collaborative-artifact",
+            "build",
+            "--build-id",
+            "stage5-live-v1",
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="2"):
+        collaborative_artifact.main()
+
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "error",
+        "error": {
+            "code": "live_build_confirmation_required",
+            "message": (
+                "Live collaborative promotion requires --confirm-live-build to match --build-id"
+            ),
+        },
+    }
 
 
 def test_fixture_build_requires_both_test_environment_and_explicit_gate(

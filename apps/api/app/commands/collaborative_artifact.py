@@ -24,6 +24,12 @@ from app.commands.collaborative_snapshot import catalog_from_seed
 from app.commands.output import fail_command, write_json
 from app.core.config import Settings, get_settings
 from app.db.seed import DEFAULT_SEED_PATH
+from app.db.session import create_database_engine, create_session_factory
+from app.repositories.collaborative_registry import CollaborativeRegistryMutationError
+from app.services.collaborative_build import (
+    CollaborativeLiveBuildError,
+    CollaborativeLiveBuildService,
+)
 
 DEFAULT_FIXTURE_VALIDITY_DAYS = 30
 
@@ -127,17 +133,37 @@ def build_fixture_artifact(
     )
 
 
-def build_live_artifact(settings: Settings, _output: Path) -> dict[str, object]:
+def build_live_artifact(
+    settings: Settings,
+    output: Path,
+    *,
+    build_id: str | None,
+    confirmation: str | None,
+) -> dict[str, object]:
     if not settings.collaborative_live_promotion_enabled:
         raise CollaborativeArtifactCommandError(
             "unapproved_live_source",
             "Live collaborative promotion is disabled by default",
         )
-    raise CollaborativeArtifactCommandError(
-        "unapproved_live_source",
-        "Live collaborative builds remain blocked until the lineage-bound build "
-        "and promotion slices are implemented and separately approved",
-    )
+    if build_id is None:
+        raise CollaborativeArtifactCommandError(
+            "build_id_required",
+            "Live collaborative builds require an explicit build ID",
+        )
+    if confirmation != build_id:
+        raise CollaborativeArtifactCommandError(
+            "live_build_confirmation_required",
+            "Live collaborative promotion requires --confirm-live-build to match --build-id",
+        )
+    engine = create_database_engine(settings.database_url)
+    try:
+        return CollaborativeLiveBuildService(create_session_factory(engine)).build(
+            output,
+            settings=settings,
+            build_id=build_id,
+        )
+    finally:
+        engine.dispose()
 
 
 def _artifact_path(
@@ -164,6 +190,8 @@ def main() -> None:
     build_parser.add_argument("--output", type=Path)
     build_parser.add_argument("--fixture", type=Path)
     build_parser.add_argument("--catalog", type=Path, default=DEFAULT_SEED_PATH)
+    build_parser.add_argument("--build-id")
+    build_parser.add_argument("--confirm-live-build")
 
     validate_parser = commands.add_parser("validate", help="Validate without mutation")
     validate_parser.add_argument("--artifact", type=Path)
@@ -191,7 +219,12 @@ def main() -> None:
                     catalog_path=args.catalog,
                 )
             else:
-                result = build_live_artifact(settings, artifact_path)
+                result = build_live_artifact(
+                    settings,
+                    artifact_path,
+                    build_id=args.build_id,
+                    confirmation=args.confirm_live_build,
+                )
         else:
             catalog = catalog_from_seed(args.catalog)
             result = inspect_collaborative_artifact(
@@ -202,6 +235,8 @@ def main() -> None:
     except (
         CollaborativeArtifactCommandError,
         CollaborativeArtifactError,
+        CollaborativeLiveBuildError,
+        CollaborativeRegistryMutationError,
         SnapshotAuditError,
         OSError,
         ValueError,

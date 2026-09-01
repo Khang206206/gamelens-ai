@@ -45,6 +45,8 @@ class ExtractedInteractionSnapshot:
     data_revision: int
     catalog_fingerprint: str
     profiles: tuple[tuple[str, ...], ...]
+    profile_user_ids: tuple[int, ...]
+    profile_authority_valid_until: tuple[datetime, ...]
     exclusion_counts: dict[str, int]
     eligible_contributors: int
 
@@ -70,7 +72,12 @@ def _eligible_users_subquery(
     contribution_consent_version: str,
 ) -> Subquery:
     return (
-        select(User.id.label("user_id"))
+        select(
+            User.id.label("user_id"),
+            User.expires_at.label("expires_at"),
+            User.revoked_at.label("revoked_at"),
+            CollaborativeContributionConsent.withdrawn_at.label("contribution_withdrawn_at"),
+        )
         .join(
             CollaborativeContributionConsent,
             CollaborativeContributionConsent.user_id == User.id,
@@ -213,18 +220,41 @@ class CollaborativeSnapshotRepository:
             personalization_consent_version=personalization_consent_version,
             contribution_consent_version=contribution_consent_version,
         )
-        eligible_user_ids = list(
-            self.session.scalars(
-                select(eligible_users.c.user_id)
+        eligible_user_rows = list(
+            self.session.execute(
+                select(
+                    eligible_users.c.user_id,
+                    eligible_users.c.expires_at,
+                    eligible_users.c.revoked_at,
+                    eligible_users.c.contribution_withdrawn_at,
+                )
                 .order_by(eligible_users.c.user_id)
                 .limit(MAX_PROFILES + 1)
             ).all()
         )
-        if len(eligible_user_ids) > MAX_PROFILES:
+        if len(eligible_user_rows) > MAX_PROFILES:
             raise CollaborativeSnapshotError(
                 "snapshot_limit_exceeded",
                 "Eligible contributor limit exceeded",
             )
+        eligible_user_ids = [int(row.user_id) for row in eligible_user_rows]
+        authority_valid_until_by_user: dict[int, datetime] = {}
+        for row in eligible_user_rows:
+            horizons = tuple(
+                value
+                for value in (
+                    row.expires_at,
+                    row.revoked_at,
+                    row.contribution_withdrawn_at,
+                )
+                if value is not None
+            )
+            if not horizons:
+                raise CollaborativeSnapshotError(
+                    "authority_invalid",
+                    "Eligible contributor has no bounded authority horizon",
+                )
+            authority_valid_until_by_user[int(row.user_id)] = min(horizons)
 
         exclusions = self._eligibility_exclusions(
             cutoff=cutoff,
@@ -319,15 +349,34 @@ class CollaborativeSnapshotRepository:
             elif InteractionType.VIEWED in signal.other_types:
                 exclusions["viewed_only"] += 1
 
+        identified_profiles = tuple(
+            sorted(
+                (
+                    tuple(sorted(profiles_by_user[user_id])),
+                    user_id,
+                    authority_valid_until_by_user[user_id],
+                )
+                for user_id in eligible_user_ids
+            )
+        )
         profiles = canonicalize_profiles(
-            (profiles_by_user[user_id] for user_id in eligible_user_ids),
+            (profile for profile, _user_id, _horizon in identified_profiles),
             catalog_slugs=catalog_slugs,
         )
+        if profiles != tuple(profile for profile, _user_id, _horizon in identified_profiles):
+            raise CollaborativeSnapshotError(
+                "snapshot_invalid",
+                "Contributor profile mapping is not canonical",
+            )
         return ExtractedInteractionSnapshot(
             cutoff=cutoff,
             data_revision=int(data_revision),
             catalog_fingerprint=catalog.model_snapshot.fingerprint,
             profiles=profiles,
+            profile_user_ids=tuple(user_id for _profile, user_id, _horizon in identified_profiles),
+            profile_authority_valid_until=tuple(
+                horizon for _profile, _user_id, horizon in identified_profiles
+            ),
             exclusion_counts=dict(sorted(exclusions.items())),
             eligible_contributors=len(eligible_user_ids),
         )
@@ -412,13 +461,24 @@ class CollaborativeSnapshotRepository:
 
 
 def verify_data_revision(session: Session, *, expected_revision: int) -> None:
-    current_revision = session.scalar(
-        select(CollaborativeDataRevision.revision).where(
-            CollaborativeDataRevision.singleton_id == 1
+    verified_data_revision_time(session, expected_revision=expected_revision)
+
+
+def verified_data_revision_time(session: Session, *, expected_revision: int) -> datetime:
+    record = session.execute(
+        select(
+            CollaborativeDataRevision.revision,
+            func.clock_timestamp().label("database_time"),
+        ).where(CollaborativeDataRevision.singleton_id == 1)
+    ).one_or_none()
+    if record is None:
+        raise CollaborativeSnapshotError(
+            "revision_unavailable",
+            "Collaborative source revision singleton is unavailable",
         )
-    )
-    if current_revision != expected_revision:
+    if record.revision != expected_revision:
         raise CollaborativeSnapshotError(
             "revision_race",
             "Collaborative source revision changed after extraction",
         )
+    return record.database_time

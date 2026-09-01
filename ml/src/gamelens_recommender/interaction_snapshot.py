@@ -89,6 +89,7 @@ class SupportedProfiles:
     """Identity-free bipartite two-core retained by the support policy."""
 
     profiles: tuple[tuple[str, ...], ...]
+    source_indices: tuple[int, ...]
     item_support: tuple[tuple[str, int], ...]
     fixed_point_passes: int
 
@@ -193,7 +194,12 @@ def prune_supported_profiles(
     ):
         raise SnapshotAuditError("snapshot_invalid", "Support thresholds must be positive integers")
 
-    multi_profiles = [profile for profile in profiles if len(profile) >= minimum_profile_items]
+    multi_profile_rows = [
+        (source_index, profile)
+        for source_index, profile in enumerate(profiles)
+        if len(profile) >= minimum_profile_items
+    ]
+    multi_profiles = [profile for _source_index, profile in multi_profile_rows]
     initial_item_support = Counter(item for profile in multi_profiles for item in profile)
     profile_items = [set(profile) for profile in multi_profiles]
     item_profiles: defaultdict[str, list[int]] = defaultdict(list)
@@ -241,9 +247,15 @@ def prune_supported_profiles(
         for profile_index, profile in enumerate(multi_profiles)
         if active_profiles[profile_index]
     )
+    source_indices = tuple(
+        multi_profile_rows[profile_index][0]
+        for profile_index in range(len(multi_profiles))
+        if active_profiles[profile_index]
+    )
     final_item_support = Counter(item for profile in retained_profiles for item in profile)
     return SupportedProfiles(
         profiles=retained_profiles,
+        source_indices=source_indices,
         item_support=tuple(sorted(final_item_support.items())),
         fixed_point_passes=pruning_rounds + 1,
     )

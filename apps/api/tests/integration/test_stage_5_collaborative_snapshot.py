@@ -275,6 +275,8 @@ def test_extractor_applies_consent_temporal_and_label_precedence(
 
     assert snapshot.eligible_contributors == 1
     assert snapshot.profiles == (("emberfall-tactics", "neon-drift-circuit", "verdant-vale"),)
+    assert snapshot.profile_user_ids == (eligible.id,)
+    assert snapshot.profile_authority_valid_until == (eligible.expires_at,)
     assert "lumen-depths" not in snapshot.profiles[0]
     assert "metro-botanist" not in snapshot.profiles[0]
     assert snapshot.exclusion_counts["noncontributing"] >= 2
