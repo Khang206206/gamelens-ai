@@ -10,9 +10,9 @@ game metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 4 complete and verified 2026-08-13; Stage 5 implementation Phases 0–5
-verified through 2026-08-30; Phase 6 response, event, OpenAPI, and product
-integration is next**
+**Stage 4 complete and verified 2026-08-13; Stage 5 implementation Phases 0–6
+verified through 2026-09-01; Phase 7 derived-data lifecycle and safe commands is
+next**
 
 The detailed
 [Stage 5 collaborative-and-hybrid engineering plan](docs/stage-5-collaborative-hybrid-ranking-plan.md)
@@ -20,22 +20,20 @@ now has two deliberately separate Phase 0–1 paths. The UCSD Steam verifier,
 ingestion-preparation profiler, and aggregate suitability audit inspect only
 ignored local bytes and keep the source explicitly not integrated. The
 first-party path adds separate contribution-consent storage, monotonic source
-revision, a default-off repeatable-read/read-only extractor, canonical
-aggregate audit, and a strictly test-only project-authored fixture. Phases 2–4
-add the bounded sparse item-item cosine artifact, immutable loader, pure scorer,
+revision, a default-off repeatable-read/read-only extractor, canonical aggregate
+audit, and a strictly test-only project-authored fixture. Phases 2–4 add the
+bounded sparse item-item cosine artifact, immutable loader, pure scorer,
 exact-row materializers, versioned hybrid candidate union, fixed-point policy,
-structured evidence, and exact Stage 4 fallback. Phase 5 now adds the optional
+structured evidence, and exact Stage 4 fallback. Phase 5 adds the optional
 application loader, one-row lifecycle readiness, protected live build and
 contributor registry, transactional authority/label invalidation, additive
-component status, and saved-request orchestration over the hybrid ranker.
-
-The Phase 5 handoff deliberately keeps the public saved response and committed
-event on the verified Stage 4 contract. A hybrid or fallback decision is made
-internally in the same request transaction, but only the retained exact Stage 4
-result is exposed and recorded until Phase 6 introduces the additive response
-and `stage-5-v1` event contract. No product contribution-consent flow, approved
-live build/promotion command, public hybrid response, or hybrid browser evidence
-exists yet.
+component status, and saved-request orchestration over the hybrid ranker. Phase
+6 now projects that one decision into a synchronized additive saved response and
+bounded `stage-5-v1` event, regenerates the OpenAPI-owned browser contract, and
+renders server order, mode, neutral fallback, and conditional
+aggregate-interaction evidence without client ranking. Product contribution
+consent and approved live build/promotion remain intentionally blocked for Phase
+7 rather than being inferred from saved-personalization consent.
 
 The repository now provides:
 
@@ -53,11 +51,11 @@ The repository now provides:
   built from an explicit, fingerprinted PostgreSQL snapshot.
 - A checksum-validated, non-executable JSON/NPY artifact loaded once by the API.
 - A bounded, read-only UCSD Steam source preflight that verifies exact local
-  archives, profiles only aggregate source facts, and leaves license,
-  provenance approval, GameLens catalog mapping, and activation gates closed.
+  archives, profiles only aggregate source facts, and leaves license, provenance
+  approval, GameLens catalog mapping, and activation gates closed.
 - A separate optional contribution-consent and monotonic-revision contract that
-  grants no authority to existing users and excludes recommendation events
-  from labels and revision changes.
+  grants no authority to existing users and excludes recommendation events from
+  labels and revision changes.
 - A default-off, identity-free live interaction audit plus a deterministic
   project-authored fixture gated to `ENVIRONMENT=test`; neither path writes a
   row-level snapshot, and only the guarded fixture path may build the separate
@@ -72,9 +70,9 @@ The repository now provides:
   query sources/edges, reconstructible source evidence, typed no-support
   outcomes, and exact-row content/affinity materialization.
 - A public ML-only `gamelens-hybrid-ranking/1.0.0` policy with pre-top-K
-  candidate union, fixed-point base/affinity/collaborative contributions,
-  played adjustment, reconstructible evidence, deterministic ordering, and an
-  exact Stage 4 fallback result for every typed unavailable/no-support reason.
+  candidate union, fixed-point base/affinity/collaborative contributions, played
+  adjustment, reconstructible evidence, deterministic ordering, and an exact
+  Stage 4 fallback result for every typed unavailable/no-support reason.
 - An optional immutable collaborative component loaded once by the API, with a
   guarded fixture boundary and bounded lifecycle states: `not_configured`,
   `fixture_only`, `insufficient_data`, `unavailable`, `stale`, and `ready`.
@@ -83,26 +81,27 @@ The repository now provides:
   positive label; request readiness reads one bounded build row rather than
   scanning contributors.
 - Additive content/collaborative status from `GET /api/v1/models/status` and a
-  lifecycle-aware internal saved-ranking decision that preserves the current
-  Stage 4 response/event boundary until Phase 6.
+  lifecycle-aware saved-ranking decision projected once into matching public
+  response and event contracts.
 - A bounded, typed `POST /api/v1/recommendations` contract with observable
   content, platform, and popularity components plus structured evidence.
 - Accessible anonymous onboarding and explained results at `/recommendations`;
   selections remain request-scoped and are not persisted.
-- An opt-in anonymous-session path with a host-only `HttpOnly` cookie,
-  explicit versioned consent, HMAC-digested lookup, exact-origin checks, and
-  CSRF protection for protected mutations.
-- User-scoped replace-all preferences; temporal like/dislike, played,
-  wishlist, and half-step rating state; and clear-all deletion.
+- An opt-in anonymous-session path with a host-only `HttpOnly` cookie, explicit
+  versioned consent, HMAC-digested lookup, exact-origin checks, and CSRF
+  protection for protected mutations.
+- User-scoped replace-all preferences; temporal like/dislike, played, wishlist,
+  and half-step rating state; and clear-all deletion.
 - A separately versioned `gamelens-feedback-adjustment` `1.0.0` ranker plus a
-  protected personalized endpoint that records one bounded model/data/policy
+  protected personalized endpoint that returns `hybrid` or exact
+  `stage_4_fallback` evidence and records one matching bounded `stage-5-v1`
   event in the same committed use case.
-- An accessible opt-in, rehydration, feedback, expiry/re-consent, and
-  clear-data experience that leaves the Stage 3 request-only flow available.
+- An accessible opt-in, rehydration, feedback, expiry/re-consent, and clear-data
+  experience that leaves the Stage 3 request-only flow available.
 - Preview-by-default, bounded retention and bulk-session-revocation commands;
   execution requires explicit cutoffs and the confirmation emitted by preview.
-- Vitest, React Testing Library, Playwright, axe, pytest, PostgreSQL integration,
-  Ruff, and Docker-first quality workflows.
+- Vitest, React Testing Library, Playwright, axe, pytest, PostgreSQL
+  integration, Ruff, and Docker-first quality workflows.
 
 The completed
 [Stage 3 plan and verification record](docs/stage-3-content-recommendation-mvp-plan.md)
@@ -117,15 +116,14 @@ or claims of real-world recommendation quality.
 The detailed
 [Stage 4 feedback-and-persistence engineering plan](docs/stage-4-feedback-persistence-plan.md)
 records the completed implementation on `feat/stage-4-feedback-persistence`.
-Final evidence passes 184 fast API tests with 89%
-diagnostic coverage, 52 ML tests with 83%, 76 web tests with 67.15% statement/
-71.4% line coverage, and 49 disposable-PostgreSQL integration tests in 4.53
-seconds. Ruff checks 112 Python files; strict TypeScript, ESLint, Prettier,
-production build, generated OpenAPI drift, both npm audits, and all three
-Compose definitions pass. The exact-host Docker browser gate passes 38/38 in
-1.3 minutes without retry using two workers: 28 Chromium, 5 Firefox, and 5
-WebKit. Its isolated containers, network, and volume were removed, and the
-post-teardown Compose process list was empty.
+Final evidence passes 184 fast API tests with 89% diagnostic coverage, 52 ML
+tests with 83%, 76 web tests with 67.15% statement/ 71.4% line coverage, and 49
+disposable-PostgreSQL integration tests in 4.53 seconds. Ruff checks 112 Python
+files; strict TypeScript, ESLint, Prettier, production build, generated OpenAPI
+drift, both npm audits, and all three Compose definitions pass. The exact-host
+Docker browser gate passes 38/38 in 1.3 minutes without retry using two workers:
+28 Chromium, 5 Firefox, and 5 WebKit. Its isolated containers, network, and
+volume were removed, and the post-teardown Compose process list was empty.
 
 ## Implemented user experience
 
@@ -149,6 +147,9 @@ An anonymous development user can:
 10. Save or clear like/dislike, played, wishlist, and half-step rating state,
     renew outdated consent explicitly, or delete the anonymous session and all
     owned data.
+11. Inspect whether hybrid ranking or the saved fallback path ran, and see
+    aggregate interaction support only for items where that contribution was
+    actually applied.
 
 The request-only Stage 3 path still omits credentials and writes no user-owned
 state. Saved behavior is a separate explicit-consent path; it is not account
@@ -173,23 +174,24 @@ flowchart LR
     L --> O
     T["Explicit offline model builds"] --> M
     T --> CM
-    O -. "Phase 6 public mapping pending" .-> E5["Stage 5 response + event"]
+    O --> E5["Stage 5 response + event"]
+    E5 --> P
     T -. "Formal evaluation in Stage 6" .-> E["Evaluation reports"]
     D["Seed or imported datasets"] --> T
     D --> P
 ```
 
-The web application, backend, persistent data, and offline ML workflow
-remain separate. Training never runs inside an API request. See
+The web application, backend, persistent data, and offline ML workflow remain
+separate. Training never runs inside an API request. See
 [Architecture](docs/architecture.md) for detailed boundaries.
 
-Stage 5 Phase 0–5 implements the consent-aware interaction extractor, aggregate
+Stage 5 Phase 0–6 implements the consent-aware interaction extractor, aggregate
 audit, revision contract, test fixture, offline collaborative artifact, pure
 scorer/materializers, versioned hybrid policy, optional application loader,
 lifecycle registry/readiness, component status, and internal saved-request
-orchestration. The public saved response and recommendation event remain
-`stage-4-v1`; Phase 6 owns their synchronized Stage 5 mapping and browser
-presentation. The stateless endpoint remains unchanged.
+orchestration. The saved endpoint now exposes the synchronized Stage 5 response
+and `stage-5-v1` event and the browser presents cautious mode/fallback evidence.
+The stateless endpoint remains unchanged.
 
 ## Technology
 
@@ -288,15 +290,14 @@ Artifact directories are immutable. After a catalog or model change, set
 `/artifacts/content-v1-r2`), run the build and validation commands again, then
 recreate the API. This keeps the previous bundle available for rollback and
 prevents an in-place overwrite of a loaded model. The hardened loader rejects
-non-canonical CSR indices; operators upgrading an existing Stage 3 artifact
-must rotate the path and rebuild and validate the bundle before restarting the
-API.
+non-canonical CSR indices; operators upgrading an existing Stage 3 artifact must
+rotate the path and rebuild and validate the bundle before restarting the API.
 
-The collaborative bundle follows the same immutable-path rule but has a
-separate `COLLABORATIVE_ARTIFACT_PATH` and lifecycle. `make collaborative-build`
-and `make collaborative-validate` operate only on the guarded synthetic fixture.
-The API can load that fixture only with the explicit test-only gate; development
-and production reject it. Live artifacts additionally require a matching active
+The collaborative bundle follows the same immutable-path rule but has a separate
+`COLLABORATIVE_ARTIFACT_PATH` and lifecycle. `make collaborative-build` and
+`make collaborative-validate` operate only on the guarded synthetic fixture. The
+API can load that fixture only with the explicit test-only gate; development and
+production reject it. Live artifacts additionally require a matching active
 registry row before they can participate in the internal saved-request decision.
 
 Stop services without deleting development data:
@@ -320,32 +321,32 @@ npm run dev
 ```
 
 The app-local `.env.local` is ignored. Next.js does not automatically load the
-repository-root `.env` when commands run from `apps/web`. The OpenAPI
-generation scripts do load the app-local Next.js environment, so direct npm
-development and contract checks use the same API base URL.
+repository-root `.env` when commands run from `apps/web`. The OpenAPI generation
+scripts do load the app-local Next.js environment, so direct npm development and
+contract checks use the same API base URL.
 
 ## Root commands
 
-| Command                               | Purpose                                                           |
-| ------------------------------------- | ----------------------------------------------------------------- |
-| `make config`                         | Validate development, API-test, and browser-test Compose files    |
-| `make build` / `make build-web`       | Build API or web development images                               |
-| `make up` / `make down`               | Start or stop containers; migration and seed remain explicit      |
-| `make logs` / `make api` / `make web` | Follow logs or run API/full stack in the foreground               |
-| `make migrate` / `make seed`          | Upgrade schema or idempotently load the catalog                   |
-| `make model-build` / `model-validate` | Build or validate the configured recommendation artifact          |
-| `make collaborative-audit` / `collaborative-fixture-audit` | Audit the blocked live source or guarded fixture |
-| `make collaborative-build` / `collaborative-validate` | Build or validate the guarded fixture artifact |
-| `make retention-preview`              | Preview eligible event/session retention rows without mutation    |
-| `make ucsd-steam-verify` / `ucsd-steam-prepare` | Verify pinned source bytes or emit preparation aggregates |
-| `make ucsd-steam-audit` / `ucsd-steam-audit-check` | Audit source support or compare it with the committed report |
-| `make test-ml`                        | Run deterministic ML, artifact, and ranking tests                 |
-| `make test` / `make test-integration` | Run fast API or disposable-PostgreSQL tests                       |
-| `make test-web`                       | Run web type, lint, format, test, build, and contract-drift gates |
-| `make test-web-e2e`                   | Run browser tests against isolated tmpfs PostgreSQL               |
-| `make lint` / `make format`           | Check or apply Ruff rules                                         |
-| `make lint-web` / `make format-web`   | Check or apply web lint/format rules                              |
-| `make api-types`                      | Refresh web types from the running API OpenAPI document           |
+| Command                                                    | Purpose                                                           |
+| ---------------------------------------------------------- | ----------------------------------------------------------------- |
+| `make config`                                              | Validate development, API-test, and browser-test Compose files    |
+| `make build` / `make build-web`                            | Build API or web development images                               |
+| `make up` / `make down`                                    | Start or stop containers; migration and seed remain explicit      |
+| `make logs` / `make api` / `make web`                      | Follow logs or run API/full stack in the foreground               |
+| `make migrate` / `make seed`                               | Upgrade schema or idempotently load the catalog                   |
+| `make model-build` / `model-validate`                      | Build or validate the configured recommendation artifact          |
+| `make collaborative-audit` / `collaborative-fixture-audit` | Audit the blocked live source or guarded fixture                  |
+| `make collaborative-build` / `collaborative-validate`      | Build or validate the guarded fixture artifact                    |
+| `make retention-preview`                                   | Preview eligible event/session retention rows without mutation    |
+| `make ucsd-steam-verify` / `ucsd-steam-prepare`            | Verify pinned source bytes or emit preparation aggregates         |
+| `make ucsd-steam-audit` / `ucsd-steam-audit-check`         | Audit source support or compare it with the committed report      |
+| `make test-ml`                                             | Run deterministic ML, artifact, and ranking tests                 |
+| `make test` / `make test-integration`                      | Run fast API or disposable-PostgreSQL tests                       |
+| `make test-web`                                            | Run web type, lint, format, test, build, and contract-drift gates |
+| `make test-web-e2e`                                        | Run browser tests against isolated tmpfs PostgreSQL               |
+| `make lint` / `make format`                                | Check or apply Ruff rules                                         |
+| `make lint-web` / `make format-web`                        | Check or apply web lint/format rules                              |
+| `make api-types`                                           | Refresh web types from the running API OpenAPI document           |
 
 Every optional Make target has a direct equivalent in the
 [API README](apps/api/README.md), [ML README](ml/README.md), or
@@ -366,9 +367,9 @@ Every optional Make target has a direct equivalent in the
 | `LOG_LEVEL`                                           | API structured logging level                                                  |
 | `MODEL_ARTIFACT_PATH`                                 | Builder/API container path to the validated recommendation artifact           |
 | `COLLABORATIVE_ARTIFACT_PATH`                         | Separate immutable collaborative bundle path; blank leaves it unconfigured    |
-| `COLLABORATIVE_LIVE_DATA_ENABLED`                     | Default-off live collaborative extraction gate                               |
+| `COLLABORATIVE_LIVE_DATA_ENABLED`                     | Default-off live collaborative extraction gate                                |
 | `COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION`          | Explicit contribution-policy version required before live audit               |
-| `COLLABORATIVE_ALLOW_TEST_FIXTURE`                    | Test-only fixture read/build/load gate; never enable for production            |
+| `COLLABORATIVE_ALLOW_TEST_FIXTURE`                    | Test-only fixture read/build/load gate; never enable for production           |
 | `ANONYMOUS_SESSION_SECRET`                            | Server-only HMAC key; replace the development default outside local use       |
 | `ANONYMOUS_SESSION_COOKIE_NAME` / `_PATH`             | Host-only cookie name and API path scope                                      |
 | `ANONYMOUS_SESSION_COOKIE_SECURE` / `_SAMESITE`       | Cookie transport policy; production requires `Secure=true`                    |
@@ -412,14 +413,14 @@ The Stage 2 acceptance gate was executed on Windows, Node.js 24.18.0, npm
 | Stage 1 regression          | 84 fast tests, 28 PostgreSQL integration tests, Ruff lint and format passed          |
 
 Diagnostic frontend coverage was 41.48% statements overall. Pure configuration,
-formatting, route, and API modules ranged from 82.35% to 100%; real-browser tests
-own the primary catalog/detail feature coverage.
+formatting, route, and API modules ranged from 82.35% to 100%; real-browser
+tests own the primary catalog/detail feature coverage.
 
 ## Stage 3 verification
 
-The Stage 3 acceptance gate was executed on Windows with Python 3.12.13,
-Node.js 24.18.0, npm 11.16.0, Docker Engine 29.6.2, Docker Desktop 4.83, and
-Docker Compose 5.3.1 on 2026-08-07:
+The Stage 3 acceptance gate was executed on Windows with Python 3.12.13, Node.js
+24.18.0, npm 11.16.0, Docker Engine 29.6.2, Docker Desktop 4.83, and Docker
+Compose 5.3.1 on 2026-08-07:
 
 | Check                          | Verified result                                                                                 |
 | ------------------------------ | ----------------------------------------------------------------------------------------------- |
@@ -440,32 +441,32 @@ the POST sample ran inside the local container stack.
 
 Coverage and latency are diagnostics on the synthetic local fixture, not
 service-level objectives. At Stage 3 verification, Docker Scout found two
-critical and two high Debian Perl advisories in the pinned development base.
-The Stage 4 Dockerfile now removes unused `perl-base` after all install steps,
+critical and two high Debian Perl advisories in the pinned development base. The
+Stage 4 Dockerfile now removes unused `perl-base` after all install steps,
 resolving those critical/high findings. A comprehensive scan of the rebuilt
 no-cache `gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e`
 reports 0 critical, 0 high, 3 medium, 27 low, and 2 unspecified findings across
-193 packages. Its only-fixed scan reports no actionable fixed advisory;
-runtime imports, `pip check`, and all 49 PostgreSQL integration tests remain
-green. The remaining findings stay documented. The API runs non-root and
-publishes to loopback locally; choosing and rescanning a production-minimal
-image remains Stage 7 work.
+193 packages. Its only-fixed scan reports no actionable fixed advisory; runtime
+imports, `pip check`, and all 49 PostgreSQL integration tests remain green. The
+remaining findings stay documented. The API runs non-root and publishes to
+loopback locally; choosing and rescanning a production-minimal image remains
+Stage 7 work.
 
 ## Stage 4 verification
 
 The Stage 4 acceptance gate completed on 2026-08-13 on branch
 `feat/stage-4-feedback-persistence`:
 
-| Check | Verified result |
-| --- | --- |
-| ML | 52 passed; 83% diagnostic coverage |
-| API | 184 passed; 89% diagnostic coverage; Ruff clean across 112 files |
-| PostgreSQL | 49 passed in 4.53 s, including populated downgrade/re-upgrade, concurrency, cascades, retention, and revocation |
-| Web | 76 passed; 67.15% statements and 71.4% lines; type, lint, format, build, and OpenAPI drift passed |
-| Browser/accessibility | 38/38 in 1.3 min without retry: 28 Chromium, 5 Firefox, 5 WebKit; stateless and active axe paths passed |
-| Security/dependencies | `pip check` passed; full and production npm audits reported zero vulnerabilities |
-| Compose/privacy | All three Compose definitions passed; final review found no retained credential, trace, coverage, or browser artifact |
-| Teardown | E2E containers, network, and volume removed; `compose ps` empty |
+| Check                 | Verified result                                                                                                       |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| ML                    | 52 passed; 83% diagnostic coverage                                                                                    |
+| API                   | 184 passed; 89% diagnostic coverage; Ruff clean across 112 files                                                      |
+| PostgreSQL            | 49 passed in 4.53 s, including populated downgrade/re-upgrade, concurrency, cascades, retention, and revocation       |
+| Web                   | 76 passed; 67.15% statements and 71.4% lines; type, lint, format, build, and OpenAPI drift passed                     |
+| Browser/accessibility | 38/38 in 1.3 min without retry: 28 Chromium, 5 Firefox, 5 WebKit; stateless and active axe paths passed               |
+| Security/dependencies | `pip check` passed; full and production npm audits reported zero vulnerabilities                                      |
+| Compose/privacy       | All three Compose definitions passed; final review found no retained credential, trace, coverage, or browser artifact |
+| Teardown              | E2E containers, network, and volume removed; `compose ps` empty                                                       |
 
 The browser suite uses `gamelens.test` on ports 3000/8000. WebKit active-state
 accessibility includes a real consent `201`; real Origin and CSRF rejection
@@ -475,29 +476,31 @@ re-consent mutation are verified in the API/PostgreSQL suites. These are
 functional and safety results on synthetic fixtures, not quality or
 service-level claims.
 
-## Stage 5 Phase 5 verification
+## Stage 5 Phase 6 verification
 
-Phase 5 was delivered as eight independently tested slices on 2026-08-30:
+Phase 6 was delivered as six implementation slices plus this verification and
+documentation handoff on 2026-09-01:
 
-| Slice | Commit | Complete boundary |
-| --- | --- | --- |
-| 5A | `0eab24f` | Immutable optional collaborative component loader |
-| 5B | `189ce4c` | Pure bounded lifecycle-readiness policy |
-| 5C | `a6d7a34` | Artifact build registry and contributor lineage |
-| 5D | `fb7251f` | Transactional invalidation on authority loss |
-| 5E | `4f52547` | Transactional invalidation on included-label change |
-| 5F | `7e10882` | Additive content/collaborative model status and generated type |
-| 5G | `aefb425` | Lifecycle-aware hybrid orchestrator |
-| 5H | `66af706` | Same-snapshot saved-request orchestration handoff |
+| Slice | Commit          | Complete boundary                                                      |
+| ----- | --------------- | ---------------------------------------------------------------------- |
+| 6A    | `8c1c4f9`       | Additive Stage 5 personalized response contract                        |
+| 6B    | `fe784e2`       | Data-preserving `stage-5-v1` event migration and repository contract   |
+| 6C    | `c2ddd2d`       | One deterministic response/event decision projector                    |
+| 6D    | `0bbdc58`       | Saved-route activation with commit/acknowledgement semantics preserved |
+| 6E    | `9ab9f68`       | Generated OpenAPI/TypeScript contract and runtime parsing              |
+| 6F    | `51664b5`       | Server-order hybrid/fallback presentation and conditional evidence     |
+| 6G    | current handoff | Complete contract gate and synchronized documentation                  |
 
-The handoff gate passes 311 API unit tests, 98 disposable-PostgreSQL integration
-tests, and the full ML regression suite with 331 passes and one Windows
-symbolic-link capability skip. Ruff lint and format checks pass across 165
-Python files, generated OpenAPI types have no drift, and the Docker test stack
-was removed after the run. Integration coverage proves same-snapshot readiness,
-next-request authority/retirement invalidation, fail-closed readiness errors,
-and continued exact `stage-4-v1` event commits. These are lifecycle and
-functional results, not Stage 5 completion or recommendation-quality evidence.
+The handoff gate passes 365 API unit tests, 109 disposable-PostgreSQL
+integration tests, 331 ML tests with one Windows symbolic-link capability skip,
+and 86 web component tests. Ruff lint and format pass across 172 Python files;
+strict TypeScript, ESLint, production build, generated OpenAPI drift, and diff
+checks pass. A focused no-retry Docker browser gate passes five cases: axe on
+Chromium, Firefox, and WebKit plus request-only and saved-result responsive
+checks on Chromium. Disposable PostgreSQL, browser, network, and artifact
+resources were removed after the runs. These are functional, deterministic,
+privacy, and contract results—not Stage 5 completion or recommendation-quality
+evidence.
 
 ## Project documentation
 
@@ -532,19 +535,19 @@ functional results, not Stage 5 completion or recommendation-quality evidence.
   including feedback and collaborative lifecycle behavior, not recommendation-
   quality evaluation. The UCSD Steam source-preflight commands and aggregate
   audit do not integrate that external source or authorize its use. The
-  collaborative loader, registry, readiness, scorer, hybrid policy, and internal
-  saved-request orchestration are functional infrastructure only. No approved
-  live cohort/build promotion, product contribution-consent flow, public hybrid
-  response/event/browser contract, or approved external interaction dataset is
-  implemented. Those product contracts are Phase 6; formal comparative
-  evaluation remains roadmap Stage 6.
+  collaborative loader, registry, readiness, scorer, hybrid policy, synchronized
+  saved response/event, and browser evidence are functional infrastructure only.
+  No approved live cohort/build promotion, product contribution-consent flow,
+  lifecycle command set, or approved external interaction dataset is
+  implemented. Those operator/lifecycle contracts are Phase 7; formal
+  comparative evaluation remains roadmap Stage 6.
 - No external metadata service or approved remote cover-image source.
 - Seed ratings and popularity values are synthetic development signals.
 - Social metadata currently uses a localhost development base. A validated
   public site origin remains part of the Stage 7 deployment configuration.
 - Game-detail routes use deliberate malformed-ID and missing-ID views, but the
-  streamed dynamic route shell has HTTP 200. A missing-ID API response itself
-  is 404; propagating status through the page requires the later
+  streamed dynamic route shell has HTTP 200. A missing-ID API response itself is
+  404; propagating status through the page requires the later
   internal-origin/deployment design.
 - Production deployment, monitoring, CI, and hardened production images remain
   Stage 7 work.

@@ -2,10 +2,10 @@
 
 ## Objective
 
-GameLens AI produces ranked game recommendations using project-owned
-signals. The first usable model must work from a small local dataset and an
-anonymous user's onboarding choices, without paid services or an external
-recommendation API.
+GameLens AI produces ranked game recommendations using project-owned signals.
+The first usable model must work from a small local dataset and an anonymous
+user's onboarding choices, without paid services or an external recommendation
+API.
 
 ## Algorithm progression
 
@@ -24,8 +24,8 @@ baselines.
 
 ## Recommendation interface
 
-The API recommendation service depends on a replaceable model contract
-with the following conceptual capabilities:
+The API recommendation service depends on a replaceable model contract with the
+following conceptual capabilities:
 
 - Fit or build an artifact in an offline process.
 - Recommend from user context and candidate games for a requested top-K.
@@ -49,12 +49,12 @@ and current-catalog validation.
 ## Popularity baseline
 
 The first baseline combines rating quality and volume with the documented
-synthetic popularity signal. A Bayesian weighted rating uses a 50-vote prior
-and the vote-weighted catalog rating mean. A missing rating uses that mean.
-Weighted rating and synthetic popularity are independently min-max normalized;
-a constant range maps to 0.5. The final baseline is 70% rating and 30%
-popularity. It contributes a documented prior to content results but is never a
-silent fallback when the configured artifact is unavailable.
+synthetic popularity signal. A Bayesian weighted rating uses a 50-vote prior and
+the vote-weighted catalog rating mean. A missing rating uses that mean. Weighted
+rating and synthetic popularity are independently min-max normalized; a constant
+range maps to 0.5. The final baseline is 70% rating and 30% popularity. It
+contributes a documented prior to content results but is never a silent fallback
+when the configured artifact is unavailable.
 
 ## Content-based MVP
 
@@ -74,10 +74,9 @@ products over normalized vectors provide content similarity.
 A request-scoped anonymous user vector combines the normalized selected-game
 centroid with positive genre/tag preference tokens using model-owned versioned
 weights. Either source receives 100% when alone; together they receive 65% and
-35% before the result is normalized again.
-Clients do not supply arbitrary floating-point weights. Preferred platforms
-contribute a separate interpretable signal rather than being hidden in free
-text.
+35% before the result is normalized again. Clients do not supply arbitrary
+floating-point weights. Preferred platforms contribute a separate interpretable
+signal rather than being hidden in free text.
 
 The Stage 3 request accepts bounded distinct selected game IDs, preferred
 genre/tag/platform slugs, and top-K. At least one selected game, genre, or tag
@@ -90,13 +89,13 @@ Candidate filtering occurs before ranking:
 - Resolve database IDs to stable artifact slugs.
 - Exclude selected example games from their own results.
 - Reject stale or structurally invalid artifacts before ranking.
-- Do not promote a zero-content-support candidate through platform or
-  popularity alone.
+- Do not promote a zero-content-support candidate through platform or popularity
+  alone.
 - Apply deterministic score and stable-slug tie-breaking.
 
 The Stage 4 personalized path now applies feedback-derived disliked-game
-exclusion and played-game adjustment after resolving durable state. The Stage
-3 endpoint remains unchanged and applies neither. The current data model has no
+exclusion and played-game adjustment after resolving durable state. The Stage 3
+endpoint remains unchanged and applies neither. The current data model has no
 general game-availability field, so neither stage implies an unavailable state
 that the catalog cannot represent.
 
@@ -105,28 +104,25 @@ Model version `1.0.0` combines content at 80%, preferred-platform overlap at
 query rather than appearing as a second final-score component, avoiding hidden
 double counting. A raw ranking score is not a probability or calibrated match
 percentage. Components are quantized to a 1,000,000 fixed scale with
-round-half-up before ordering;
-serialized weighted contributions sum exactly to the serialized final score,
-and ties resolve by final score, content score, popularity score, then stable
-slug.
+round-half-up before ordering; serialized weighted contributions sum exactly to
+the serialized final score, and ties resolve by final score, content score,
+popularity score, then stable slug.
 
 ## Stage 4 feedback and persistence layer
 
-The detailed
-[Stage 4 engineering plan](stage-4-feedback-persistence-plan.md) defines a
-separate explicit-consent personalized path. Current evidence passes 184 fast
-API, 52 ML, 76 web, and 49 disposable-PostgreSQL tests. The 38-case exact-host
-Docker browser matrix passes in 1.3 minutes without retry: 28 Chromium, 5
-Firefox, and 5 WebKit. The rebuilt no-cache
+The detailed [Stage 4 engineering plan](stage-4-feedback-persistence-plan.md)
+defines a separate explicit-consent personalized path. Current evidence passes
+184 fast API, 52 ML, 76 web, and 49 disposable-PostgreSQL tests. The 38-case
+exact-host Docker browser matrix passes in 1.3 minutes without retry: 28
+Chromium, 5 Firefox, and 5 WebKit. The rebuilt no-cache
 `gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e` removes
 unused Debian `perl-base` after all install steps, resolving its earlier two
 critical and two high findings. Runtime imports, `pip check`, and all 49
 PostgreSQL tests remain green; the comprehensive scan reports 0 critical, 0
 high, 3 medium, 27 low, and 2 unspecified findings across 193 packages. Its
 only-fixed scan reports no actionable fixed advisory. Final release diff and
-privacy review are clean. The existing
-`POST /api/v1/recommendations` remains request-scoped, ignores an attached
-identity cookie, and performs no write.
+privacy review are clean. The existing `POST /api/v1/recommendations` remains
+request-scoped, ignores an attached identity cookie, and performs no write.
 
 `POST /api/v1/me/recommendations` uses canonical saved preferences as its base
 context and applies a separately versioned feedback policy before top-K
@@ -155,39 +151,39 @@ evidence sufficient to reconstruct the ranking. All operations retain the
 tie-break is final score, pre-played score, base score, affinity, content,
 popularity, then stable slug.
 
-The Stage 3 artifact schema, model identity, and compatibility remain
-unchanged. `ContentRanker.score_candidates()` exposes pre-top-K candidates for
-the feedback layer while `ContentRanker.rank()` preserves the Stage 3 response
-and ordering contract.
+The Stage 3 artifact schema, model identity, and compatibility remain unchanged.
+`ContentRanker.score_candidates()` exposes pre-top-K candidates for the feedback
+layer while `ContentRanker.rank()` preserves the Stage 3 response and ordering
+contract.
 
 User IDs, token digests, consent, preferences, interactions, and events never
-enter the immutable artifact. A successful personalized generation commits one
-bounded `stage-4-v1` event carrying exact model, data fingerprint, policy, bounded
-context metadata, a fingerprint of the complete effective state, and compact
-result identity. The event is audit/correlation data for server generation,
-not a standalone replay snapshot, impression, click, conversion, or positive
-label.
+enter the immutable artifact. A successful personalized generation now commits
+one bounded `stage-5-v1` event carrying exact content/feedback identity, mode,
+fallback or hybrid/collaborative identity, bounded context metadata, a
+fingerprint of the complete effective state, and compact reconstructible result
+units. The event is audit/correlation data for server generation, not a
+standalone replay snapshot, impression, click, conversion, or positive label.
 
-## Implemented Stage 5 Phase 0–5 collaborative lifecycle and orchestration
+## Implemented Stage 5 Phase 0–6 collaborative ranking and product contract
 
 The detailed
 [Stage 5 engineering plan](stage-5-collaborative-hybrid-ranking-plan.md) is
-being implemented in phases. Phase 0–4 source governance, offline artifact,
-pure collaborative scoring/materialization, and versioned hybrid-policy
-boundaries are complete. Phase 5 adds optional artifact loading, protected live
-lineage, lifecycle readiness, additive component status, and internal saved-
-request orchestration. The public saved response and event remain the Stage 4
-contract until Phase 6 maps the same hybrid decision to synchronized API,
-event, generated-client, and browser fields.
+being implemented in phases. Phase 0–4 source governance, offline artifact, pure
+collaborative scoring/materialization, and versioned hybrid-policy boundaries
+are complete. Phase 5 adds optional artifact loading, protected live lineage,
+lifecycle readiness, additive component status, and internal saved-request
+orchestration. Phase 6 maps the same immutable decision to synchronized API,
+event, generated-client, and browser fields while preserving the stateless
+contract.
 
 Stage 5 first audits whether an interaction source is authorized, sufficiently
 supported, catalog-aligned, and retention-aware. Existing Stage 4 storage
 consent is not silently reused for aggregate offline training. The proposed
 snapshot uses one PostgreSQL-generated cutoff and a repeatable-read, read-only
-transaction. Explicit saved positive game preferences, likes, and ratings of
-at least 7 when no dislike overrides them collapse to one binary user-game
-edge. Views, played-only, wishlist-only, unknown state, low ratings, dislikes,
-and recommendation events do not become positive matrix entries.
+transaction. Explicit saved positive game preferences, likes, and ratings of at
+least 7 when no dislike overrides them collapse to one binary user-game edge.
+Views, played-only, wishlist-only, unknown state, low ratings, dislikes, and
+recommendation events do not become positive matrix entries.
 
 The implemented baseline is deterministic sparse item-item cosine with minimum
 user, item, and pair support, zero diagonal, bounded top-neighbor pruning,
@@ -196,19 +192,22 @@ factorization, deep learning, or an online learner. A separate checksum-covered
 artifact stores item-level neighbors and aggregate support, never the user
 matrix, internal IDs, credentials, or raw interactions.
 
-The Phase 3 scorer canonicalizes at most ten positive/saved query sources,
-reads at most 1,000 stored neighbor edges, averages only present fixed-point
+The Phase 3 scorer canonicalizes at most ten positive/saved query sources, reads
+at most 1,000 stored neighbor edges, averages only present fixed-point
 similarities, excludes source/disliked slugs, and returns reconstructible edge
 evidence plus typed no-support outcomes. Exact-row content/base and affinity
-materializers preserve zero-content collaborative candidates for the next
-phase without changing existing Stage 3/4 eligibility or ranking wrappers.
+materializers preserve zero-content collaborative candidates for the next phase
+without changing existing Stage 3/4 eligibility or ranking wrappers.
 
-The implemented saved-personalization policy unions content-supported
-candidates with supported collaborative neighbors before final top-K. It
-preserves selected-source and dislike exclusions, then applies separately
-observable fixed-point base, feedback-affinity, collaborative, and played
-contributions under `gamelens-hybrid-ranking/1.0.0`. When its caller reports
-the collaborative component absent, insufficient, unsupported, corrupt, stale,
+The implemented saved-personalization policy unions content-supported candidates
+with supported collaborative neighbors before final top-K. It preserves
+selected-source and dislike exclusions, then applies separately observable
+fixed-point base, feedback-affinity, collaborative, and played contributions
+under `gamelens-hybrid-ranking/1.0.0`. When its caller reports an active
+affinity profile, request-wide base/affinity/collaborative weights are
+`800000/100000/100000`; without one they are `900000/0/100000`. The existing
+`500000` played factor applies once after blending. When its caller reports the
+collaborative component absent, insufficient, unsupported, corrupt, stale,
 expired, retired, privacy-invalid, or otherwise without candidate support, the
 public ranker wraps the exact unchanged Stage 4 result with an explicit reason.
 
@@ -222,18 +221,21 @@ catalog mismatch. Scoring additionally distinguishes no query sources, no
 supported sources, no retained candidate edges, and all candidates excluded.
 Every unavailable/no-support reason enters the exact Stage 4 fallback policy.
 
-The saved application service now computes one typed `hybrid` or
-`stage_4_fallback` decision in the same transaction as event insertion. During
-the Phase 5 handoff, a real hybrid result remains internal and a separately
-retained exact Stage 4 result is used for the public response and `stage-4-v1`
-event. This prevents a hybrid HTTP 200 or mislabeled event before Phase 6 owns
-the complete contract. The stateless Stage 3 endpoint remains unchanged and
+The saved application service computes one typed `hybrid` or `stage_4_fallback`
+decision in the same transaction as event insertion. A pure Phase 6 projector
+derives both the additive response and compact `stage-5-v1` event from those
+same fixed-point records. Hybrid rows require complete collaborative identity;
+fallback rows retain exact Stage 4 ranking and carry one bounded reason with no
+collaborative identity. The stateless Stage 3 endpoint remains unchanged and
 never reads collaborative lineage.
 
-The Phase 5 handoff passes 311 API unit tests, 98 disposable-PostgreSQL tests,
-and 331 ML tests with one Windows symbolic-link capability skip. It also passes
-Ruff lint/format across 165 Python files and generated OpenAPI drift. These
-tests establish lifecycle, determinism, fallback, and event truth only.
+The Phase 6 handoff passes 365 API unit tests, 109 disposable-PostgreSQL tests,
+331 ML tests with one Windows symbolic-link capability skip, and 86 web tests.
+It also passes Ruff lint/format across 172 Python files, strict TypeScript,
+ESLint, production build, and generated OpenAPI drift. Five focused no-retry
+browser cases verify axe across Chromium/Firefox/WebKit and responsive
+request-only/saved results. These tests establish lifecycle, determinism,
+fallback, event truth, and presentation behavior only.
 
 The collaborative score is an aggregate ranking signal, not a probability or
 proof that “users like you” prefer an item. Initial thresholds and weights are
@@ -251,9 +253,19 @@ Each Stage 3 recommendation returns:
 - Preferred-platform contribution.
 - Popularity contribution.
 
+Each saved Stage 5 recommendation additionally returns:
+
+- `hybrid` or `stage_4_fallback` mode and a typed fallback reason when used.
+- Candidate origin plus exact base, feedback-affinity, collaborative, and played
+  values needed to reconstruct the returned score.
+- Aggregate item support and retained stable-slug source edges with similarity
+  and pair support only when collaborative evidence contributed.
+- Hybrid and collaborative component identity in the technical API contract;
+  fingerprints and contributor/lineage identity are not ordinary UI prose.
+
 User-facing explanations are deterministically generated from these signals.
-They may not introduce a reason that is absent from structured evidence.
-An optional LLM may rewrite an explanation later, but it cannot determine the
+They may not introduce a reason that is absent from structured evidence. An
+optional LLM may rewrite an explanation later, but it cannot determine the
 ranked list and the application must work without it.
 
 ## Training and artifacts
@@ -267,9 +279,8 @@ The implemented Stage 3 artifact lifecycle:
   checksums, and compatible code/library/schema metadata.
 - Uses transparent non-executable JSON and numeric sparse-array formats for the
   first artifact rather than pickle-compatible model deserialization.
-- Rejects non-canonical CSR indices, negative feature weights, IDF weights
-  below one, and feature rows that are not L2-normalized before activating the
-  ranker.
+- Rejects non-canonical CSR indices, negative feature weights, IDF weights below
+  one, and feature rows that are not L2-normalized before activating the ranker.
 - Writes to a temporary sibling and promotes only after complete validation.
 - Treats the configured operator-controlled artifact root as the provenance
   trust boundary; self-recorded checksums detect corruption but do not
@@ -281,16 +292,15 @@ The implemented Stage 3 artifact lifecycle:
 - Keeps generated bundles ignored; tests build their deterministic fixture in a
   temporary directory.
 
-Generated development artifacts remain ignored by Git. Activating a new
-artifact requires an explicit offline build and API restart; request
-handling and ordinary startup will never fit or mutate a model. Operators
-adopting stricter loader rules rotate `MODEL_ARTIFACT_PATH`, rebuild and
-validate the bundle, and restart the API instead of changing an artifact in
-place.
+Generated development artifacts remain ignored by Git. Activating a new artifact
+requires an explicit offline build and API restart; request handling and
+ordinary startup will never fit or mutate a model. Operators adopting stricter
+loader rules rotate `MODEL_ARTIFACT_PATH`, rebuild and validate the bundle, and
+restart the API instead of changing an artifact in place.
 
-Stage 4 feedback computation consumes the loaded artifact read-only. User
-state remains bounded per-request input and is never serialized back into the
-bundle or retained on the application-lifecycle ranker.
+Stage 4 feedback computation consumes the loaded artifact read-only. User state
+remains bounded per-request input and is never serialized back into the bundle
+or retained on the application-lifecycle ranker.
 
 Stage 5 implements a second immutable artifact because interaction data has a
 different consent, freshness, invalidation, and rebuild lifecycle from catalog
@@ -305,8 +315,8 @@ that optional component and preserves the content/feedback path.
 
 ## Evaluation
 
-Stage 6 will use the implemented interaction and component contracts to
-compare models with the popularity baseline using applicable metrics:
+Stage 6 will use the implemented interaction and component contracts to compare
+models with the popularity baseline using applicable metrics:
 
 - Precision@K
 - Recall@K
@@ -316,9 +326,9 @@ compare models with the popularity baseline using applicable metrics:
 - Intra-list diversity
 - Novelty when its popularity definition is defensible
 
-A temporal user split is preferred when timestamps are available. Otherwise,
-the holdout strategy and limitations must be documented. Results are generated
-as machine-readable data and a Markdown report; no result is invented.
+A temporal user split is preferred when timestamps are available. Otherwise, the
+holdout strategy and limitations must be documented. Results are generated as
+machine-readable data and a Markdown report; no result is invented.
 
 ## Deferred work
 
@@ -326,12 +336,11 @@ Persistent preferences, feedback adjustment, disliked-game filtering, and
 recommendation-event logging are implemented on the Stage 4 branch. The
 PostgreSQL, fast, static/build, OpenAPI, dependency-audit, Compose, and image
 gates and the 38/38 exact-host Docker browser matrix pass; Stage 4 is verified
-complete.
-The identity-free collaborative artifact, pure candidate scorer, versioned
-hybrid policy, protected lineage/invalidation, bounded readiness, additive
-model status, and internal saved-request orchestration are implemented through
-Stage 5 Phase 5. Public personalized hybrid response/event mapping, generated
-contract changes for those fields, and conditional browser evidence remain
-Phase 6 work.
-Formal ranking evaluation is Stage 6 work. Semantic embeddings, exploration,
-LLM explanations, and diversity reranking remain outside the first MVP model.
+complete. The identity-free collaborative artifact, pure candidate scorer,
+versioned hybrid policy, protected lineage/invalidation, bounded readiness,
+additive model status, saved-request orchestration, synchronized personalized
+response/event mapping, generated contract, and conditional browser evidence are
+implemented through Stage 5 Phase 6. Product contribution consent, approved live
+promotion, and derived-data lifecycle commands remain Phase 7 work. Formal
+ranking evaluation is Stage 6 work. Semantic embeddings, exploration, LLM
+explanations, and diversity reranking remain outside the first MVP model.

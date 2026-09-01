@@ -1,8 +1,8 @@
 # Machine-learning workspace
 
 **Status:** Stage 4 feedback policy complete and verified 2026-08-13; Stage 5
-external-source preflight and implementation Phases 0–5 verified through
-2026-08-30; Phase 6 public response/event/product integration is next.
+external-source preflight and implementation Phases 0–6 verified through
+2026-09-01; Phase 7 derived-data lifecycle and safe commands is next.
 
 This directory owns deterministic catalog normalization, the popularity
 baseline, TF-IDF feature construction, sparse artifact serialization, pure
@@ -13,22 +13,23 @@ The complete decision and verification record is in the
 
 The
 [Stage 4 feedback-and-persistence plan](../docs/stage-4-feedback-persistence-plan.md)
-is complete and verified. The package now exposes a pure feedback-aware ranker in
-addition to the unchanged Stage 3 request-scoped ranker. It still receives no
+is complete and verified. The package now exposes a pure feedback-aware ranker
+in addition to the unchanged Stage 3 request-scoped ranker. It still receives no
 user identity or mutable database object and stores no durable state.
 
 The detailed
 [Stage 5 collaborative-and-hybrid plan](../docs/stage-5-collaborative-hybrid-ranking-plan.md)
 is being implemented in reviewable phases. The package now contains canonical
-interaction-profile serialization, fingerprinting, bounded aggregate auditing,
-a strict project-authored fixture loader, the sparse item-item trainer, and the
+interaction-profile serialization, fingerprinting, bounded aggregate auditing, a
+strict project-authored fixture loader, the sparse item-item trainer, and the
 separate collaborative artifact builder/validator/loader. It also exposes the
 Phase 3 canonical source selector, bounded CSR lookup/scorer, and exact-row base
-and affinity materializers plus the Phase 4
-`gamelens-hybrid-ranking/1.0.0` policy. Phase 5 consumes these pure contracts
-from the API through optional lifecycle readiness and internal saved-request
-orchestration. No approved live builder/promotion or public hybrid response and
-event contract exists.
+and affinity materializers plus the Phase 4 `gamelens-hybrid-ranking/1.0.0`
+policy. Phase 5 consumes these pure contracts from the API through optional
+lifecycle readiness and internal saved-request orchestration. Phase 6 exposes
+the resulting decision through synchronized saved response/event and browser
+contracts. No approved live builder/promotion or product contribution-consent
+flow exists.
 
 ## Stage 5 Phase 0–1 interaction audit
 
@@ -42,13 +43,13 @@ not become positives.
 The API supplies only a sorted multiset of sorted stable-slug profiles plus the
 exact content-catalog fingerprint. This package never receives a credential or
 emits an internal user ID/cohort mapping. It computes a fixed canonical
-interaction fingerprint, bounded aggregate distributions, deterministic
-two-core support diagnostics, and typed insufficiency reasons without writing
-a row-level snapshot.
+interaction fingerprint, bounded aggregate distributions, deterministic two-core
+support diagnostics, and typed insufficiency reasons without writing a row-level
+snapshot.
 
-Fixture reads are capped at 1,000,000 bytes and reject duplicate or
-unrecognized schema keys, non-finite constants, and bool/int/float JSON type
-aliases before audit.
+Fixture reads are capped at 1,000,000 bytes and reject duplicate or unrecognized
+schema keys, non-finite constants, and bool/int/float JSON type aliases before
+audit.
 
 The test-only fixture audit is:
 
@@ -67,10 +68,10 @@ The implemented baseline consumes identity-free profiles, applies the same
 deterministic user/item support fixed point as the audit, and builds a canonical
 binary `int64` CSR. Bounded sparse pair counts produce raw cosine similarities;
 self-edges and pair support below two are removed. Similarities are quantized
-round-half-up at scale 1,000,000. Top neighbors are selected by similarity,
-pair support, then stable slug and serialized in canonical neighbor-index order.
-The fixture resolves to 12 retained profiles, 6 items, 36 positives, and 20
-directed neighborhood edges.
+round-half-up at scale 1,000,000. Top neighbors are selected by similarity, pair
+support, then stable slug and serialized in canonical neighbor-index order. The
+fixture resolves to 12 retained profiles, 6 items, 36 positives, and 20 directed
+neighborhood edges.
 
 Model `gamelens-item-item-cosine` version `1.0.0` uses artifact schema `1` and
 code compatibility `stage-5-v1`. Its exact directory members are:
@@ -85,14 +86,14 @@ similarity-units.npy
 pair-support.npy
 ```
 
-The manifest binds configuration, aggregate diagnostics, catalog and
-interaction fingerprints, source/build identity, validity horizon, exact member
-sizes, and SHA-256 checksums. The artifact excludes the contributor matrix,
-internal IDs, stable user keys, credentials, interaction rows, and
-recommendation events. The bounded loader disables pickle and rejects an
-unexpected member set, symlinks, traversal, malformed JSON/NPY, checksum or
-dtype/shape mismatch, noncanonical CSR, invalid support/cosine values, catalog
-or revision mismatch, and expiry. Returned arrays have immutable byte backing.
+The manifest binds configuration, aggregate diagnostics, catalog and interaction
+fingerprints, source/build identity, validity horizon, exact member sizes, and
+SHA-256 checksums. The artifact excludes the contributor matrix, internal IDs,
+stable user keys, credentials, interaction rows, and recommendation events. The
+bounded loader disables pickle and rejects an unexpected member set, symlinks,
+traversal, malformed JSON/NPY, checksum or dtype/shape mismatch, noncanonical
+CSR, invalid support/cosine values, catalog or revision mismatch, and expiry.
+Returned arrays have immutable byte backing.
 
 The guarded functional workflow is:
 
@@ -107,8 +108,8 @@ docker compose --profile quality run --rm --no-deps `
 Fixture build requires `ENVIRONMENT=test` and the explicit fixture gate,
 validates a temporary sibling with the production loader, and promotes only to
 an unused path. Live build fails closed before database access because protected
-live lineage and activation are not yet approved. Validation and inspection
-bind the artifact to the catalog read from `--catalog`, which defaults to the
+live lineage and activation are not yet approved. Validation and inspection bind
+the artifact to the catalog read from `--catalog`, which defaults to the
 canonical seed file.
 
 ## Stage 5 Phase 3 pure collaborative scoring
@@ -147,33 +148,33 @@ can enter the union, but it remains functional evidence rather than a quality
 comparison.
 
 Phase 5 now supplies the loader, lifecycle readiness, and saved-request
-orchestration around this package. The public response and recommendation event
-remain Stage 4 until Phase 6 maps the complete hybrid decision. Matrix
-factorization, neural models, online fitting, shrinkage tuning, and formal
-quality evaluation remain outside this phase.
+orchestration around this package. Phase 6 maps the complete hybrid decision to
+one public response and matching `stage-5-v1` event. Matrix factorization,
+neural models, online fitting, shrinkage tuning, and formal quality evaluation
+remain outside this phase.
 
 ## UCSD Steam source preflight
 
 `gamelens_recommender.ucsd_steam` uses only the Python 3.12 standard library.
 The audit runtime never downloads source data, rewrites or extracts the pinned
 archives, fits or promotes a model, or deletes data. It first verifies the
-manifest and every compressed size and SHA-256, streams each gzip member
-through manifest-specific shape bounds capped at 2 MiB per line and 2 GB per
-member, then rechecks compressed identity after scanning. Loose Python-literal
-records are parsed with `ast.literal_eval`, never `eval`.
+manifest and every compressed size and SHA-256, streams each gzip member through
+manifest-specific shape bounds capped at 2 MiB per line and 2 GB per member,
+then rechecks compressed identity after scanning. Loose Python-literal records
+are parsed with `ast.literal_eval`, never `eval`.
 
-The dedicated `ucsd-source-audit` service mounts `data/` and `ml/`
-read-only, has a read-only root filesystem, and disables runtime networking.
+The dedicated `ucsd-source-audit` service mounts `data/` and `ml/` read-only,
+has a read-only root filesystem, and disables runtime networking.
 `docker compose ... --build` may still obtain image dependencies; the audit
 module itself has no source-download path.
 
-`prepare` emits source-schema and v1-to-v2 alignment aggregates only.
-`audit` additionally collapses duplicate source user/item reviews, treats
+`prepare` emits source-schema and v1-to-v2 alignment aggregates only. `audit`
+additionally collapses duplicate source user/item reviews, treats
 `recommend=true` as a preparation-only candidate signal, and measures sparse
 support after deterministic user/item fixed-point pruning. Ownership, playtime,
-and `recommend=false` never become candidates.
-Source user keys exist only in bounded process memory and neither the command
-nor its report writes a row-level snapshot or emits an identifier.
+and `recommend=false` never become candidates. Source user keys exist only in
+bounded process memory and neither the command nor its report writes a row-level
+snapshot or emits an identifier.
 
 Run the pinned-container human summaries from the repository root:
 
@@ -197,13 +198,13 @@ docker compose --profile source-audit run --build --rm --no-deps ucsd-source-aud
 ```
 
 Replace `audit` with `verify` or `prepare` for the other reports.
-`make ucsd-steam-audit-check` reruns the audit and compares its JSON
-by canonical JSON type and value with the committed report; a mismatch is the typed
+`make ucsd-steam-audit-check` reruns the audit and compares its JSON by
+canonical JSON type and value with the committed report; a mismatch is the typed
 `report_mismatch` error. The local ignored archives must already exist at the
 manifest paths. The aggregate
-[source-v1 report](../data/external/ucsd-steam/suitability-audit.json)
-records the verified 2026-08-23 run. Passing its source-only support thresholds
-does not approve a label or integration: no Stage 5 label authority, dataset
+[source-v1 report](../data/external/ucsd-steam/suitability-audit.json) records
+the verified 2026-08-23 run. Passing its source-only support thresholds does not
+approve a label or integration: no Stage 5 label authority, dataset
 license/redistribution grant, ingestion-approved provenance, GameLens Steam-ID
 mapping, UCSD-backed activatable fixture evidence, or live consent/lifecycle
 proof is recorded.
@@ -217,10 +218,10 @@ sparse feature pipeline do not require a dataframe dependency.
 
 Catalog records are sorted by stable game slug and normalized with NFKC plus
 collapsed whitespace before canonical JSON serialization and SHA-256
-fingerprinting. Feature documents repeat title twice, genre and tag tokens
-three times, and developer, publisher, and description once. The word TF-IDF
-space uses one- and two-grams, sublinear term frequency, L2 normalization, and
-float64 values.
+fingerprinting. Feature documents repeat title twice, genre and tag tokens three
+times, and developer, publisher, and description once. The word TF-IDF space
+uses one- and two-grams, sublinear term frequency, L2 normalization, and float64
+values.
 
 The popularity baseline applies a 50-vote Bayesian rating prior against the
 catalog-weighted mean, min-max normalizes rating and the synthetic popularity
@@ -241,23 +242,22 @@ that accompanies each score.
 
 ## Stage 4 feedback policy
 
-`FeedbackRanker` implements policy
-`gamelens-feedback-adjustment/1.0.0` over the immutable Stage 3 artifact. Saved
-preferences produce the base context; dislikes are hard exclusions; likes and
-ratings of at least 7 (when no reaction exists) produce a deduplicated,
-most-recent-five artifact-vector profile. Positive source games are excluded
-from their own results. When that profile exists, base and affinity scores
-blend at 90% and 10%; otherwise the exact base score/order is retained. Played
-candidates remain eligible with a 0.5 factor, while wishlist is neutral.
-Filtering and adjustment occur before top-K.
+`FeedbackRanker` implements policy `gamelens-feedback-adjustment/1.0.0` over the
+immutable Stage 3 artifact. Saved preferences produce the base context; dislikes
+are hard exclusions; likes and ratings of at least 7 (when no reaction exists)
+produce a deduplicated, most-recent-five artifact-vector profile. Positive
+source games are excluded from their own results. When that profile exists, base
+and affinity scores blend at 90% and 10%; otherwise the exact base score/order
+is retained. Played candidates remain eligible with a 0.5 factor, while wishlist
+is neutral. Filtering and adjustment occur before top-K.
 
-The policy receives only stable slugs and immutable bounded feedback context.
-It never receives an internal user ID, raw/digested credential, consent
-metadata, or mutable database object, and it never writes into an artifact.
-Every intermediate uses the 1,000,000 fixed scale and round-half-up
-contributions. Ordering resolves by final score, pre-played score, base score,
-affinity, content, popularity, then stable slug. Returned evidence separately
-exposes base, affinity, and played contributions.
+The policy receives only stable slugs and immutable bounded feedback context. It
+never receives an internal user ID, raw/digested credential, consent metadata,
+or mutable database object, and it never writes into an artifact. Every
+intermediate uses the 1,000,000 fixed scale and round-half-up contributions.
+Ordering resolves by final score, pre-played score, base score, affinity,
+content, popularity, then stable slug. Returned evidence separately exposes
+base, affinity, and played contributions.
 
 `ContentRanker.score_candidates()` and `materialize_candidate()` expose the
 pre-top-K boundary needed by feedback ranking. The Stage 3 `rank()` wrapper,
@@ -272,12 +272,12 @@ JSON members, and five non-pickle NPY arrays for TF-IDF and CSR data. The loader
 uses `allow_pickle=False`, checks the exact member set, sizes, SHA-256 digests,
 dtypes, shapes, finite values, canonical CSR indices, non-negative feature
 weights, IDF weights of at least one, L2-normalized rows, feature configuration,
-resource caps, and catalog fingerprint before returning immutable arrays.
-Builds write a temporary sibling and promote only after validation.
+resource caps, and catalog fingerprint before returning immutable arrays. Builds
+write a temporary sibling and promote only after validation.
 
 Generated bundles live under ignored `ml/artifacts/`; only `.gitkeep` is
-tracked. Build and validate against the migrated and seeded development
-database from the repository root:
+tracked. Build and validate against the migrated and seeded development database
+from the repository root:
 
 ```powershell
 docker compose up -d db
@@ -293,8 +293,8 @@ Both commands consume the same `MODEL_ARTIFACT_PATH` as the API. Bundles are
 immutable: rotate that setting to a new directory before rebuilding, validate
 it, then recreate the API. The previous directory remains available for an
 explicit rollback. Because the hardened loader now rejects non-canonical CSR
-matrices, operators upgrading an existing Stage 3 bundle must rotate and
-rebuild it rather than patch or overwrite the old directory.
+matrices, operators upgrading an existing Stage 3 bundle must rotate and rebuild
+it rather than patch or overwrite the old directory.
 
 Run the focused suite with `make test-ml`, or directly:
 
@@ -304,33 +304,32 @@ docker compose run --build --rm --no-deps quality `
 ```
 
 The Stage 3 gate passed 25 ML tests with 81% diagnostic branch-aware package
-coverage. The current Phase 5 handoff passes the complete 331-test ML suite with
+coverage. The current Phase 6 handoff passes the complete 331-test ML suite with
 one symbolic-link rejection case capability-skipped on this Windows host; that
 case remains runnable on systems that permit symlink creation. Cross-stack
-evidence also passes 311 API unit and 98 disposable-PostgreSQL tests. Ruff lint
-and format checks pass across 165 Python files, and generated OpenAPI types have
-no drift. No new dependency or diagnostic coverage percentage was introduced
-for Phase 5.
-The 38-case exact-host Docker browser matrix passes in 1.3 minutes without
-retry. The rebuilt
-no-cache `gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e`
-removes unused Debian `perl-base` after all install steps,
-resolving its earlier two critical and two high findings. Runtime imports,
-`pip check`, and all 49 PostgreSQL tests remain green. Its comprehensive Docker
-Scout scan reports 0 critical, 0 high, 3 medium, 27 low, and 2 unspecified
-findings across 193 packages; its only-fixed scan reports no actionable fixed
-advisory. Final release diff/privacy review is clean.
+evidence also passes 365 API unit, 109 disposable-PostgreSQL, and 86 web tests.
+Ruff lint and format checks pass across 172 Python files, and generated OpenAPI
+types have no drift. No new ML dependency or diagnostic coverage percentage was
+introduced for Phase 6. The 38-case exact-host Docker browser matrix passes in
+1.3 minutes without retry. The rebuilt no-cache `gamelens-ai-api:stage4-test`
+image with digest prefix `11b2f940731e` removes unused Debian `perl-base` after
+all install steps, resolving its earlier two critical and two high findings.
+Runtime imports, `pip check`, and all 49 PostgreSQL tests remain green. Its
+comprehensive Docker Scout scan reports 0 critical, 0 high, 3 medium, 27 low,
+and 2 unspecified findings across 193 packages; its only-fixed scan reports no
+actionable fixed advisory. Final release diff/privacy review is clean.
 
-On the 30-game seed fixture, the verified bundle contains 1,037 vocabulary
-terms and 1,399 sparse nonzeros, occupies 69,743 bytes, and built from the
-database in 0.43 seconds. Ten complete validation loads from the Docker Desktop
-bind mount had min/median/max latency of 89.64/95.54/274.79 ms. These are local
+On the 30-game seed fixture, the verified bundle contains 1,037 vocabulary terms
+and 1,399 sparse nonzeros, occupies 69,743 bytes, and built from the database in
+0.43 seconds. Ten complete validation loads from the Docker Desktop bind mount
+had min/median/max latency of 89.64/95.54/274.79 ms. These are local
 diagnostics, not performance guarantees or recommendation-quality evidence.
 
 Persistent preferences and lifecycle lineage live in the API/database rather
 than this package. The collaborative artifact, pure scorer/materializers, and
 hybrid ranking policy are implemented and consumed by Phase 5 internal API
-orchestration. Public personalized hybrid response/event fields remain Phase 6
-work. Formal offline ranking evaluation remains roadmap Stage 6 work. The
-synthetic catalog and authored interaction fixture validate deterministic
-behavior only, not recommendation quality.
+orchestration. Phase 6 public personalized hybrid response/event fields and
+conditional browser evidence consume those pure outputs without changing ML.
+Formal offline ranking evaluation remains roadmap Stage 6 work. The synthetic
+catalog and authored interaction fixture validate deterministic behavior only,
+not recommendation quality.

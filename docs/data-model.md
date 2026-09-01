@@ -11,35 +11,34 @@
 - JSON is reserved for genuinely flexible recommendation-event context.
 
 The Alembic migration chain is the executable source of truth for this model.
-Stage 5 Phase 5 extends the Stage 1–4 chain through expected head
-`0009_stage_5_label_changes` without embedding seed, fixture, audit, model
+Stage 5 Phase 6 extends the Stage 1–4 chain through expected head
+`0010_stage_5_event_contract` without embedding seed, fixture, audit, model
 fitting, promotion, or retention commands in migrations.
 
 The
 [Stage 4 feedback-and-persistence plan](stage-4-feedback-persistence-plan.md)
-defines the activation and migration policy for the existing future-facing
-user tables. Revisions `0003_stage_4_anonymous_identity` through
+defines the activation and migration policy for the existing future-facing user
+tables. Revisions `0003_stage_4_anonymous_identity` through
 `0005_stage_4_event_contract` implement token-digest, consent, temporal-state,
 and event-identity schema. Revision `0006_stage_5_collab_contract` adds separate
 contribution consent and monotonic collaborative source revision. Revisions
 `0007`–`0009` add protected live build/contributor lineage and transactional
 invalidation for authority loss and removal/change of included positive labels.
-The 98-test disposable-PostgreSQL suite passes through the current head.
+Revision `0010` adds the Stage 5 event identity contract without rewriting old
+rows. The 109-test disposable-PostgreSQL suite passes through the current head.
 
-The Stage 5 Phase 5 handoff passes 311 API unit tests, 98 disposable-
-PostgreSQL tests, and 331 ML tests with one Windows symlink-capability skip.
-Ruff lint and format pass across 165 Python files, and generated OpenAPI types
-have no drift. The most recent web/browser acceptance remains the verified
-Stage 4 run: 76 web tests and a 38-case exact-host Docker matrix. The rebuilt
-no-cache
-`gamelens-ai-api:stage4-test` image with digest prefix `11b2f940731e`
-removes unused Debian `perl-base` after all install steps, resolving its earlier
-two critical and two high findings. Runtime imports, `pip check`, and all 49
-PostgreSQL tests remain green. Its comprehensive Docker Scout scan reports 0
-critical, 0 high, 3 medium, 27 low, and 2 unspecified findings across 193
-packages; its only-fixed scan reports no actionable fixed advisory. Final
-release diff/privacy review is clean, and the Stage 4 completion record is in
-the detailed plan.
+The Stage 5 Phase 6 handoff passes 365 API unit tests, 109 disposable-
+PostgreSQL tests, 331 ML tests with one Windows symlink-capability skip, and 86
+web tests. Ruff lint and format pass across 172 Python files, generated OpenAPI
+types have no drift, and five focused no-retry browser cases cover Phase 6 axe
+and responsive behavior. The rebuilt no-cache `gamelens-ai-api:stage4-test`
+image with digest prefix `11b2f940731e` removes unused Debian `perl-base` after
+all install steps, resolving its earlier two critical and two high findings.
+Runtime imports, `pip check`, and all 49 PostgreSQL tests remain green. Its
+comprehensive Docker Scout scan reports 0 critical, 0 high, 3 medium, 27 low,
+and 2 unspecified findings across 193 packages; its only-fixed scan reports no
+actionable fixed advisory. Final release diff/privacy review is clean, and the
+Stage 4 completion record is in the detailed plan.
 
 ## Entity relationship overview
 
@@ -67,20 +66,20 @@ erDiagram
 
 ### Game
 
-| Field | Notes |
-| --- | --- |
-| `id` | Internal primary key |
-| `external_id` | Nullable identifier from a documented source |
-| `title` | Required display title |
-| `slug` | Unique stable URL identifier |
-| `description` | Plain-text game summary |
-| `release_date` | Nullable date |
-| `developer`, `publisher` | Nullable normalized display values for MVP |
-| `average_rating` | Nullable aggregate rating |
-| `rating_count` | Non-negative count, default zero |
-| `popularity_score` | Documented numeric baseline signal |
-| `cover_image_url` | Nullable; no binary cover image in the database |
-| `created_at`, `updated_at` | UTC audit timestamps |
+| Field                      | Notes                                           |
+| -------------------------- | ----------------------------------------------- |
+| `id`                       | Internal primary key                            |
+| `external_id`              | Nullable identifier from a documented source    |
+| `title`                    | Required display title                          |
+| `slug`                     | Unique stable URL identifier                    |
+| `description`              | Plain-text game summary                         |
+| `release_date`             | Nullable date                                   |
+| `developer`, `publisher`   | Nullable normalized display values for MVP      |
+| `average_rating`           | Nullable aggregate rating                       |
+| `rating_count`             | Non-negative count, default zero                |
+| `popularity_score`         | Documented numeric baseline signal              |
+| `cover_image_url`          | Nullable; no binary cover image in the database |
+| `created_at`, `updated_at` | UTC audit timestamps                            |
 
 ### Genre, Tag, and Platform
 
@@ -98,12 +97,12 @@ cookie through its domain-separated HMAC-SHA-256 digest. Legacy plaintext-key
 rows are migrated to deterministic replacement digests and marked revoked,
 without fabricated consent. Account identity and cross-device recovery remain
 deferred. For migrated legacy rows the exact non-authenticating value is
-`md5('legacy-revoked-v1:' || anonymous_key) || lpad(to_hex(id), 32, '0')`;
-the ID suffix guarantees uniqueness while null consent plus `revoked_at` makes
-the row inaccessible.
+`md5('legacy-revoked-v1:' || anonymous_key) || lpad(to_hex(id), 32, '0')`; the
+ID suffix guarantees uniqueness while null consent plus `revoked_at` makes the
+row inaccessible.
 
-Recommendation logic receives bounded context only; neither internal user ID
-nor token material enters model artifacts.
+Recommendation logic receives bounded context only; neither internal user ID nor
+token material enters model artifacts.
 
 ### UserPreference
 
@@ -127,39 +126,49 @@ Associates a user and game with one of:
 - `wishlisted`
 - `rated`
 
-Only `rated` carries a numeric value, which is required to be from 0 through
-10; every other interaction type requires a null value. Each current row has a
-UTC occurrence timestamp. Stage 1 preserves interactions as repeatable rows
-and exposes no write API.
+Only `rated` carries a numeric value, which is required to be from 0 through 10;
+every other interaction type requires a null value. Each current row has a UTC
+occurrence timestamp. Stage 1 preserves interactions as repeatable rows and
+exposes no write API.
 
 Revision `0004_stage_4_interaction_state` adds `superseded_at`; a null value
 denotes active state. PostgreSQL partial unique indexes permit at most one
-active liked/disliked reaction and one active played, wishlisted, or rated
-state per user/game. Changing state supersedes the prior row and inserts the
-new state in one transaction; clearing supersedes it; identical writes are
-no-ops. Older rows remain temporal history rather than being deleted. `viewed`
-remains repeatable and receives no implicit Stage 4 page-view write.
+active liked/disliked reaction and one active played, wishlisted, or rated state
+per user/game. Changing state supersedes the prior row and inserts the new state
+in one transaction; clearing supersedes it; identical writes are no-ops. Older
+rows remain temporal history rather than being deleted. `viewed` remains
+repeatable and receives no implicit Stage 4 page-view write.
 
 ### RecommendationEvent
 
 Records the user, model name and version, generation time, bounded request
 context, and optionally a compact top-K result summary. It supports audit and
-evaluation without treating logged recommendations as user feedback.
-PostgreSQL checks require request context to be a JSON object and a non-null
-result summary to be a JSON array.
+evaluation without treating logged recommendations as user feedback. PostgreSQL
+checks require request context to be a JSON object and a non-null result summary
+to be a JSON array.
 
-Revision `0005_stage_4_event_contract` adds a unique generation ID,
-event-schema version, catalog data fingerprint, and personalization-policy
-identity. New `stage-4-v1` events are application-bounded to typed context
-metadata, a fingerprint of the complete effective feedback state, and at most
-20 compact result objects. They do not store credentials, headers, internal
-user ID inside JSON, descriptions, or explanation prose. An event is bounded
-audit/correlation data for a committed server generation, not a standalone
-replay snapshot or proof of browser receipt, view, click, conversion, or
-positive feedback. Pre-Stage-4 events are marked `legacy-v1` and retain
-nullable data/policy identity.
+Revision `0005_stage_4_event_contract` adds a unique generation ID, event-schema
+version, catalog data fingerprint, and personalization-policy identity. New
+`stage-4-v1` events are application-bounded to typed context metadata, a
+fingerprint of the complete effective feedback state, and at most 20 compact
+result objects. They do not store credentials, headers, internal user ID inside
+JSON, descriptions, or explanation prose. An event is bounded audit/correlation
+data for a committed server generation, not a standalone replay snapshot or
+proof of browser receipt, view, click, conversion, or positive feedback.
+Pre-Stage-4 events are marked `legacy-v1` and retain nullable data/policy
+identity.
 
-## Implemented Stage 5 Phase 0–5 Data Boundary
+Revision `0010_stage_5_event_contract` adds nullable bounded ranking mode,
+fallback reason, hybrid-policy identity, collaborative model/fingerprint, and
+collaborative scoring-policy identity. Existing `legacy-v1` and `stage-4-v1`
+rows keep those fields null. A `stage-5-v1` row must have complete required
+content/feedback identity plus either complete hybrid/collaborative identity or
+an allowed fallback reason with every hybrid field null. `request_context` must
+agree with the relational mode/reason, and `result_summary` remains a non-null
+array capped at 20 compact objects. These records are still committed-
+generation audit data, never a training label or proof of browser exposure.
+
+## Implemented Stage 5 Phase 0–6 Data Boundary
 
 ### CollaborativeContributionConsent
 
@@ -172,46 +181,45 @@ consent, so the product flow and live activation remain blocked.
 
 ### CollaborativeDataRevision
 
-`collaborative_data_revision` has exactly one logical row
-(`singleton_id=1`), a non-negative bigint revision, and an update timestamp.
-PostgreSQL statement triggers increment it for mutations to users,
-contribution consent, preferences, interactions, games, taxonomies, and
-catalog association tables. Recommendation events do not increment it. The
-trigger atomically recreates the singleton after a test-only truncate and a
-subsequent source mutation. Until then, the live extractor rejects the missing
-revision with a typed fail-closed error.
+`collaborative_data_revision` has exactly one logical row (`singleton_id=1`), a
+non-negative bigint revision, and an update timestamp. PostgreSQL statement
+triggers increment it for mutations to users, contribution consent, preferences,
+interactions, games, taxonomies, and catalog association tables. Recommendation
+events do not increment it. The trigger atomically recreates the singleton after
+a test-only truncate and a subsequent source mutation. Until then, the live
+extractor rejects the missing revision with a typed fail-closed error.
 
 User deletion cascades contribution consent and existing user-owned source
 state; the source-table mutation advances the revision. Withdrawal, revocation,
-expiry changes, feedback changes, and catalog changes also advance it. Phase
-0–1 writes no row-level snapshot or model bundle, so there is no derived file
-to retain or delete yet. A future promotion must recheck the captured revision
-and add protected build/contributor lineage before serving is possible.
+expiry changes, feedback changes, and catalog changes also advance it. Phase 0–1
+writes no row-level snapshot or model bundle, so there is no derived file to
+retain or delete yet. A future promotion must recheck the captured revision and
+add protected build/contributor lineage before serving is possible.
 
 ### Canonical interaction audit input
 
-The live repository requires PostgreSQL and one verified `REPEATABLE READ,
-READ ONLY` transaction. Its initialization query calls
-`pg_current_snapshot()` to pin MVCC visibility before returning and captures
-one `clock_timestamp()` cutoff in that same query. Eligibility requires current
-base consent, unexpired/unrevoked state, and the
-configured contribution version granted and not withdrawn at the cutoff. An
-interaction is active as of the cutoff only when `occurred_at <= cutoff` and
+The live repository requires PostgreSQL and one verified
+`REPEATABLE READ, READ ONLY` transaction. Its initialization query calls
+`pg_current_snapshot()` to pin MVCC visibility before returning and captures one
+`clock_timestamp()` cutoff in that same query. Eligibility requires current base
+consent, unexpired/unrevoked state, and the configured contribution version
+granted and not withdrawn at the cutoff. An interaction is active as of the
+cutoff only when `occurred_at <= cutoff` and
 `superseded_at IS NULL OR superseded_at > cutoff`.
 
 Preference and interaction reads join one reusable eligible-user subquery and
 stream in 1,000-row batches; they never expand one bind parameter per user.
 Label policy `gamelens-collaborative-labels/1.0.0` produces binary positive
 edges. Dislike dominates; otherwise an active like, rating of at least 7, or
-saved positive game preference is positive. Views, played-only,
-wishlist-only, low ratings, non-game preferences, superseded/post-cutoff rows,
-and recommendation events are absent.
+saved positive game preference is positive. Views, played-only, wishlist-only,
+low ratings, non-game preferences, superseded/post-cutoff rows, and
+recommendation events are absent.
 
 Only the sorted multiset of sorted stable-slug profiles plus the exact current
 catalog fingerprint crosses into ML. Internal user IDs remain transient. Audit
 schema 1 emits aggregate distributions, support diagnostics, catalog and
-interaction fingerprints, cutoff, revision, typed reasons, and privacy flags;
-it writes no per-user row or cohort mapping.
+interaction fingerprints, cutoff, revision, typed reasons, and privacy flags; it
+writes no per-user row or cohort mapping.
 
 The committed project-authored fixture has 12 synthetic profiles, 36 expected
 positive edges, 6 supported items, exclusions, and cold-start cases. It loads
@@ -220,11 +228,11 @@ quality or live-data authority. Generated snapshots and bundles remain ignored.
 No collaborative artifact or serving path exists in Phase 0–1.
 
 Phase 2 adds a fixture-only offline artifact under the ignored `ml/artifacts/`
-boundary. It contains item-level aggregate support and neighborhoods, not a
-user matrix or contributor lineage. Phase 2 itself added no database table or
-serving reference; Phase 5 subsequently adds protected live build/contributor
-lineage and transactional invalidation. Approved live promotion and operator
-retirement still remain required before a live-derived bundle can activate.
+boundary. It contains item-level aggregate support and neighborhoods, not a user
+matrix or contributor lineage. Phase 2 itself added no database table or serving
+reference; Phase 5 subsequently adds protected live build/contributor lineage
+and transactional invalidation. Approved live promotion and operator retirement
+still remain required before a live-derived bundle can activate.
 
 Phase 3 is entirely inside the ML package. Canonical source selection, sparse
 candidate scoring, and exact-row base/affinity materialization add no table,
@@ -244,11 +252,11 @@ Only `source_kind=live` is registrable. A fixture artifact never receives a
 registry row.
 
 `collaborative_artifact_contributors` records only `(build_id, user_id)`
-membership so a change can invalidate affected builds. The artifact itself
-still contains no identity. Build deletion cascades membership; user deletion
-cascades membership and also triggers invalidation before the row disappears.
-A database trigger maintains `current_contributor_count`, while request
-readiness reads one aggregate build row and never scans this membership table.
+membership so a change can invalidate affected builds. The artifact itself still
+contains no identity. Build deletion cascades membership; user deletion cascades
+membership and also triggers invalidation before the row disappears. A database
+trigger maintains `current_contributor_count`, while request readiness reads one
+aggregate build row and never scans this membership table.
 
 Revision `0008_stage_5_authority_loss` rejects contributor membership without
 matching current user/session and contribution-consent authority. Withdrawal,
@@ -263,10 +271,9 @@ invalidate the loaded artifact.
 Phase 5 model readiness combines immutable artifact facts with database time,
 current catalog fingerprint, current consent-policy version, and at most one
 matching build row. Bounded states are `not_configured`, `fixture_only`,
-`insufficient_data`, `unavailable`, `stale`, and `ready`. This data boundary is
-already used by internal saved-request orchestration, but Phase 6 still owns
-the public `stage-5-v1` response/event schema. Current events remain
-`stage-4-v1` and remain excluded from labels and revision changes.
+`insufficient_data`, `unavailable`, `stale`, and `ready`. Phase 6 uses this data
+boundary in saved-request orchestration and persists the same decision as a
+`stage-5-v1` event. Events remain excluded from labels and revision changes.
 
 ## Index and constraint plan
 
@@ -275,8 +282,8 @@ the public `stage-5-v1` response/event schema. Current events remain
 - PostgreSQL statement triggers own monotonic revision changes for every
   eligible source/catalog table while excluding recommendation events.
 - Live artifact builds have a stable primary key, status/validity lookup index,
-  lifecycle and fingerprint checks, and exact expected/current contributor
-  count bounds.
+  lifecycle and fingerprint checks, and exact expected/current contributor count
+  bounds.
 - Contributor membership has a composite primary key plus a user/build lookup
   index; database triggers enforce current authority, maintain the aggregate
   count, and invalidate affected builds on authority or included-label loss.
@@ -284,23 +291,25 @@ the public `stage-5-v1` response/event schema. Current events remain
 - Indexes on game title and common catalog filters.
 - Composite indexes on interaction user/time and game/type.
 - Index on recommendation event user/generation time.
+- Stage 5 adds a recommendation event mode/generated-time index and an
+  all-or-none versioned identity check covering legacy, Stage 4, hybrid, and
+  fallback rows.
 - Stage 4 adds unique active temporal-interaction indexes, an anonymous
-  token-digest lookup, expiry/revocation cleanup indexes, and
-  model/policy/time event indexes.
+  token-digest lookup, expiry/revocation cleanup indexes, and model/policy/time
+  event indexes.
 - Check constraints enforce ratings from 0 through 10, non-negative counts and
   popularity, preference weights from -1 through 1, lowercase slug shape,
   interaction-value semantics, and recommendation JSON shapes.
-- User-owned contribution consent, preferences, interactions, and
-  recommendation events cascade when a user is deleted. Game-taxonomy
-  associations cascade with either side. Games referenced by interactions use
-  `RESTRICT`.
+- User-owned contribution consent, preferences, interactions, and recommendation
+  events cascade when a user is deleted. Game-taxonomy associations cascade with
+  either side. Games referenced by interactions use `RESTRICT`.
 
 ## Migration policy
 
 Alembic migrations begin in Stage 1. Every schema change must include a
-migration, model update, tests, and documentation update. Development seed
-data is loaded by a separate deterministic command and must not be embedded in
-schema migrations.
+migration, model update, tests, and documentation update. Development seed data
+is loaded by a separate deterministic command and must not be embedded in schema
+migrations.
 
 Stage 4 migrations remain verified for empty, `0001`, `0002`, and populated
 legacy starting points. `0006_stage_5_collab_contract` upgrades and downgrades
@@ -308,9 +317,12 @@ without assuming empty user tables, grants no contribution consent, seeds only
 the non-authority revision singleton, and installs/removes bounded source
 triggers. Revisions `0007`–`0009` preserve existing application rows while
 adding registry, authority, count, cutoff, and label-invalidation constraints.
-The 98-test PostgreSQL suite covers migration head, populated upgrade paths,
-constraints, cascades, source versus event revision changes, label/temporal
-exclusions, repeatable-read concurrency, exact request-snapshot readiness, and
-transactional invalidation. Retention, audits, fixture loading, model fitting,
-live build registration/promotion, retirement, and physical cleanup remain
+Revision `0010` adds nullable columns before replacing the prior identity check;
+downgrade restores the Stage 4/legacy constraint and removes only Stage 5
+columns/indexes. The 109-test PostgreSQL suite covers migration head, populated
+upgrade paths, constraints, cascades, source versus event revision changes,
+label/temporal exclusions, repeatable-read concurrency, exact request-snapshot
+readiness, transactional invalidation, old-row readability, and Stage 5 event
+commit/correlation. Retention, audits, fixture loading, model fitting, live
+build registration/promotion, retirement, and physical cleanup remain
 application or operator actions rather than migration side effects.

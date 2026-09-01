@@ -8,8 +8,9 @@
   verified on 2026-08-25; Phase 3 pure collaborative scoring and exact-row
   handoff verified on 2026-08-28; Phase 4 versioned hybrid policy and exact
   Stage 4 fallback verified on 2026-08-29; Phase 5 artifact lifecycle,
-  readiness, and internal API orchestration verified on 2026-08-30. Phase 6
-  response, event, OpenAPI, and product integration is next.
+  readiness, and internal API orchestration verified on 2026-08-30; Phase 6
+  response, event, OpenAPI, and product integration verified on 2026-09-01.
+  Phase 7 derived-data lifecycle and safe commands is next.
 - **Stage 4 prerequisite:** Complete and verified on 2026-08-13.
 - **Planning and target implementation branch:**
   `feat/stage-5-collaborative-and-hybrid-ranking`
@@ -18,32 +19,33 @@
   content, feedback, collaborative, platform, and popularity signals remain
   independently observable.
 
-Sections 1–20 remain the forward-looking engineering plan except where the
-Phase 0–5 slices are explicitly marked verified. Section 21 records only
-measured implementation decisions. Section 22 is a provisional roadmap Stage 6
-handoff, and Section 23 remains pending until every Stage 5 acceptance gate
-passes. Phase 5 makes lifecycle readiness and the hybrid decision available
-inside saved-request orchestration; it deliberately does not expose a public
-hybrid response or `stage-5-v1` event before Phase 6.
+Sections 1–20 remain the forward-looking engineering plan except where the Phase
+0–6 slices are explicitly marked verified. Section 21 records only measured
+implementation decisions. Section 22 is a provisional roadmap Stage 6 handoff,
+and Section 23 remains pending until every Stage 5 acceptance gate passes. Phase
+6 exposes one synchronized saved response and `stage-5-v1` event from the Phase
+5 decision and presents cautious browser evidence. It does not grant
+contribution consent, approve a live build, or complete Stage 5.
 
 ## 1. Context
 
 Stages 1 through 4 established the repository, PostgreSQL catalog, FastAPI and
-Next.js applications, deterministic 30-game synthetic seed, reproducible
-content artifact, request-scoped recommendation flow, explicit-consent
-anonymous persistence, temporal feedback state, feedback-aware ranking, and
-bounded recommendation-generation events. The implemented contracts and
-verification evidence are recorded in the
+Next.js applications, deterministic 30-game synthetic seed, reproducible content
+artifact, request-scoped recommendation flow, explicit-consent anonymous
+persistence, temporal feedback state, feedback-aware ranking, and bounded
+recommendation-generation events. The implemented contracts and verification
+evidence are recorded in the
 [Stage 4 plan](stage-4-feedback-persistence-plan.md).
 
-The currently served recommender is not collaborative. Model
+The stateless recommender is not collaborative. Model
 `gamelens-content-tfidf/1.0.0` learns catalog-level TF-IDF features, and policy
-`gamelens-feedback-adjustment/1.0.0` applies a deterministic per-request
-content affinity plus dislike and played rules. Neither component learns
-cross-user interaction patterns. The ML package also exposes a pure artifact-
-backed collaborative candidate scorer and versioned hybrid ranker, and Phase 5
-now consumes them internally from saved-request orchestration. Public HTTP and
-event mapping still expose the exact Stage 4 contract until Phase 6.
+`gamelens-feedback-adjustment/1.0.0` applies a deterministic per-request content
+affinity plus dislike and played rules. Neither component learns cross-user
+interaction patterns. The ML package also exposes a pure artifact-backed
+collaborative candidate scorer and versioned hybrid ranker, and Phase 5 consumes
+them from saved-request orchestration. Phase 6 now exposes the resulting hybrid
+decision when the optional component is ready or an explicit exact Stage 4
+fallback when it is not; the stateless endpoint remains unchanged.
 
 Stage 4 also leaves four constraints that control Stage 5:
 
@@ -58,11 +60,11 @@ Stage 4 also leaves four constraints that control Stage 5:
   snapshots, caches, artifacts, fixtures, or a rebuild.
 
 Stage 5 therefore begins with a data-suitability and governance gate, not an
-algorithm. An approved interaction source must have explicit provenance,
-label meaning, consent authority, retention behavior, catalog alignment, and
-enough support for the baseline. Until those conditions hold, the system must
-report collaborative ranking as unavailable and preserve the verified Stage 4
-path exactly.
+algorithm. An approved interaction source must have explicit provenance, label
+meaning, consent authority, retention behavior, catalog alignment, and enough
+support for the baseline. Until those conditions hold, the system must report
+collaborative ranking as unavailable and preserve the verified Stage 4 path
+exactly.
 
 The intended vertical slice is:
 
@@ -80,8 +82,8 @@ separate affirmative contribution consent or project-owned test fixture
 ```
 
 The production-shaped pipeline may be verified with a clearly labeled
-project-authored interaction fixture. Activating an artifact built from local
-or real user data remains blocked unless the Phase 0 consent and derived-data
+project-authored interaction fixture. Activating an artifact built from local or
+real user data remains blocked unless the Phase 0 consent and derived-data
 lifecycle are implemented and the suitability audit passes.
 
 ## 2. Stage Objectives
@@ -94,16 +96,16 @@ Stage 5 will deliver:
 2. A read-only suitability command that reports aggregate cohort, label, user,
    item, sparsity, support, and exclusion counts without fitting a model or
    exposing an identity.
-3. A separate affirmative data-contribution boundary, or an explicit decision
-   to keep non-fixture collaborative training disabled when that boundary is
+3. A separate affirmative data-contribution boundary, or an explicit decision to
+   keep non-fixture collaborative training disabled when that boundary is
    absent.
-4. A canonical database-time snapshot query using one repeatable-read,
-   read-only transaction and an as-of-cutoff interpretation of temporal rows.
+4. A canonical database-time snapshot query using one repeatable-read, read-only
+   transaction and an as-of-cutoff interpretation of temporal rows.
 5. A frozen positive-label policy that never converts unknown, viewed,
    wishlisted, played, disliked, or recommendation-event rows into implicit
    positives.
-6. A project-authored deterministic interaction fixture, isolated from real
-   data and labeled only as functional test input.
+6. A project-authored deterministic interaction fixture, isolated from real data
+   and labeled only as functional test input.
 7. A sparse binary user-item representation with bounded eligibility,
    cardinality, memory, and neighborhood limits.
 8. An explainable item-item cosine baseline with overlap support, self-edge
@@ -113,9 +115,9 @@ Stage 5 will deliver:
    revision, validity horizon, aggregate counts, checksums, and resource caps.
 10. Immutable build, validate, activate, rollback, invalidate, and retire
     behavior separate from the Stage 3 content artifact lifecycle.
-11. A pure collaborative scorer that consumes only stable game slugs and
-    bounded source context, never a user ID, credential, database session, or
-    mutable model object.
+11. A pure collaborative scorer that consumes only stable game slugs and bounded
+    source context, never a user ID, credential, database session, or mutable
+    model object.
 12. Honest cold-start behavior for unsupported users, sources, items, catalogs,
     or datasets, with no fabricated collaborative score.
 13. A versioned hybrid policy that combines independently exposed content,
@@ -123,14 +125,13 @@ Stage 5 will deliver:
     components before final top-K truncation.
 14. Exact Stage 4 score and order preservation whenever the collaborative
     component is absent, invalid, stale, unsupported, or gated off.
-15. Candidate union and exclusion rules that can admit supported
-    collaborative candidates while retaining selected-source exclusion,
-    dislike exclusion, and played adjustment semantics.
+15. Candidate union and exclusion rules that can admit supported collaborative
+    candidates while retaining selected-source exclusion, dislike exclusion, and
+    played adjustment semantics.
 16. Fixed-point component contributions and ordering evidence from which every
     returned hybrid score can be reconstructed.
-17. Component-level readiness that distinguishes the required content model
-    from the optional collaborative capability without taking content serving
-    down.
+17. Component-level readiness that distinguishes the required content model from
+    the optional collaborative capability without taking content serving down.
 18. A backward-compatible stateless endpoint and an explicitly evolved saved
     personalized response, event schema, and OpenAPI contract.
 19. Bounded Stage 5 recommendation-generation events that record exact model,
@@ -170,8 +171,8 @@ The following work is intentionally excluded from Stage 5:
   LLM-based ranking.
 - Online or per-request training, incremental mutation of a loaded artifact,
   background fitting, or automatic retraining on startup.
-- Exploration, contextual bandits, reinforcement learning, diversity
-  reranking, sponsored ranking, business-rule optimization, or A/B testing.
+- Exploration, contextual bandits, reinforcement learning, diversity reranking,
+  sponsored ranking, business-rule optimization, or A/B testing.
 - External game metadata, cover images, remote APIs, or an undocumented public
   interaction dataset.
 - Downloading a dataset as part of ordinary setup, tests, startup, or artifact
@@ -182,17 +183,17 @@ The following work is intentionally excluded from Stage 5:
   identity, artifact schema, or public ranking contract.
 - Removing Stage 4 feedback evidence or collapsing it invisibly into a single
   opaque hybrid number.
-- Making the optional collaborative artifact a prerequisite for catalog,
-  content recommendations, saved feedback, or data deletion.
+- Making the optional collaborative artifact a prerequisite for catalog, content
+  recommendations, saved feedback, or data deletion.
 - Persisting raw credentials, token digests, internal user IDs, stable
   pseudonymous user keys, IP addresses, headers, or device fingerprints in a
   snapshot or artifact.
-- Reusing expired, revoked, cleared, or deleted contributions in a new build,
-  or continuing to serve an artifact that the lifecycle contract invalidates.
+- Reusing expired, revoked, cleared, or deleted contributions in a new build, or
+  continuing to serve an artifact that the lifecycle contract invalidates.
 - Production schedulers, queues, caches, managed/external artifact-registry
-  services, monitoring, alerting, CI/CD, or deployment automation; those
-  remain Stage 7 concerns. The minimal PostgreSQL lineage tables required for
-  Stage 5 privacy invalidation are not a production registry service.
+  services, monitoring, alerting, CI/CD, or deployment automation; those remain
+  Stage 7 concerns. The minimal PostgreSQL lineage tables required for Stage 5
+  privacy invalidation are not a production registry service.
 - Inventing test counts, coverage, timings, artifact sizes, interaction counts,
   quality metrics, or completion evidence before the commands run.
 
@@ -223,10 +224,9 @@ serving inside the guarded disposable test/E2E environment.
 
 Only a current saved `game` preference with positive server-owned weight,
 explicit current like, or current rating meeting the frozen positive threshold
-when no dislike overrides it is a positive. These sources collapse to one
-binary edge. Dislikes are
-exclusions or possible future negative evidence; everything else remains
-unknown.
+when no dislike overrides it is a positive. These sources collapse to one binary
+edge. Dislikes are exclusions or possible future negative evidence; everything
+else remains unknown.
 
 ### 4.5 Baseline First
 
@@ -260,8 +260,8 @@ continues to work.
 
 ### 4.10 Independent Component Observability
 
-Content, platform, popularity, feedback affinity, collaborative similarity,
-and played adjustment retain separate raw scores, weights, contributions, and
+Content, platform, popularity, feedback affinity, collaborative similarity, and
+played adjustment retain separate raw scores, weights, contributions, and
 identities. Ranking signals are not probabilities.
 
 ### 4.11 No Hidden Double Counting
@@ -289,25 +289,24 @@ evidence-based comparison.
 
 ### 4.15 Incremental Delivery and Regression Safety
 
-Governance precedes extraction; extraction precedes fitting; artifact
-validation precedes serving; pure scoring precedes API changes; API contracts
-precede UI activation. Every phase has an executable exit criterion.
+Governance precedes extraction; extraction precedes fitting; artifact validation
+precedes serving; pure scoring precedes API changes; API contracts precede UI
+activation. Every phase has an executable exit criterion.
 
 ## 5. Proposed Technical Decisions
 
-These decisions are proposals to freeze in Phase 0. Section 21 must replace
-them with exact as-built choices; unresolved values cannot become silent
-defaults.
+These decisions are proposals to freeze in Phase 0. Section 21 must replace them
+with exact as-built choices; unresolved values cannot become silent defaults.
 
 ### 5.1 Stage 3 and Stage 4 Compatibility Boundary
 
 - `POST /api/v1/recommendations` stays content-only, cookie-agnostic,
   request-scoped, read-only, and contract-compatible.
-- `POST /api/v1/me/recommendations` is the only Stage 5 hybrid activation
-  point. It retains one commit-acknowledged generation event per HTTP 200.
+- `POST /api/v1/me/recommendations` is the only Stage 5 hybrid activation point.
+  It retains one commit-acknowledged generation event per HTTP 200.
 - Model `gamelens-content-tfidf/1.0.0`, artifact schema `1`, compatibility
-  `stage-3-v1`, and feedback policy
-  `gamelens-feedback-adjustment/1.0.0` remain unchanged.
+  `stage-3-v1`, and feedback policy `gamelens-feedback-adjustment/1.0.0` remain
+  unchanged.
 - Stage 5 will add a separate artifact and policy rather than changing content
   files in place.
 
@@ -317,41 +316,41 @@ The implemented external-source preflight runs before any build and emits
 machine-readable JSON or a human-readable summary. It records source kind,
 manifest fingerprint, exact file identity and gzip shape, aggregate schema
 quality, source-metadata alignment, candidate-profile fingerprint, matrix
-density, support distributions, thresholds, limits, and typed gate states.
-It has no database time, cutoff, consent policy, or data revision because it
-does not query live GameLens data.
+density, support distributions, thresholds, limits, and typed gate states. It
+has no database time, cutoff, consent policy, or data revision because it does
+not query live GameLens data.
 
 A future consent-qualified live audit must additionally record catalog
 fingerprint, PostgreSQL time and cutoff, consent policy, data revision, and
-eligible/excluded contributor and label counts by reason. It remains subject
-to the transaction, lifecycle, and identity-minimization contracts below.
+eligible/excluded contributor and label counts by reason. It remains subject to
+the transaction, lifecycle, and identity-minimization contracts below.
 
 `ready_for_functional_build` means only that the pipeline has sufficient
 approved support to construct a baseline. It does not mean the data is
-representative or that recommendations are good. The UCSD report instead
-exposes `source_level_support_passes`; its `ready_for_functional_build` and
+representative or that recommendations are good. The UCSD report instead exposes
+`source_level_support_passes`; its `ready_for_functional_build` and
 `approved_training_eligibility` fields remain false. Live-data activation
 requires approved consent and derived-data lifecycle gates. Project-authored
 fixture activation is reported separately.
 
 UCSD Steam Versions 1 and 2 are selected only for local read-only source
-preflight. They are not selected or approved for ingestion, training,
-artifact construction, or serving. The manifest records exact source URLs,
-attribution to the UCSD McAuley Lab, retrieval date, checksums, and source
-shape; it does not assert ownership or rights-holder status. The source page
-requests citation, but citation is not a license grant and this repository
-records no dataset license or redistribution grant. License/redistribution,
-ingestion provenance, Stage 5 label authority, GameLens catalog mapping,
-fixture activation, and live-data consent/lifecycle gates remain blocked.
+preflight. They are not selected or approved for ingestion, training, artifact
+construction, or serving. The manifest records exact source URLs, attribution to
+the UCSD McAuley Lab, retrieval date, checksums, and source shape; it does not
+assert ownership or rights-holder status. The source page requests citation, but
+citation is not a license grant and this repository records no dataset license
+or redistribution grant. License/redistribution, ingestion provenance, Stage 5
+label authority, GameLens catalog mapping, fixture activation, and live-data
+consent/lifecycle gates remain blocked.
 
 ### 5.3 Canonical Interaction Snapshot and Cutoff
 
-The live extractor uses one PostgreSQL `REPEATABLE READ, READ ONLY`
-transaction. Immediately after setting its mode, one initialization query
-calls `pg_current_snapshot()` to pin MVCC visibility and captures
-`clock_timestamp()` once as the inclusive cutoff. The helper completes both
-operations before returning to extraction, closing the transaction-start/
-first-snapshot race. Rows are interpreted as active at the cutoff when:
+The live extractor uses one PostgreSQL `REPEATABLE READ, READ ONLY` transaction.
+Immediately after setting its mode, one initialization query calls
+`pg_current_snapshot()` to pin MVCC visibility and captures `clock_timestamp()`
+once as the inclusive cutoff. The helper completes both operations before
+returning to extraction, closing the transaction-start/ first-snapshot race.
+Rows are interpreted as active at the cutoff when:
 
 ```text
 occurred_at <= cutoff
@@ -370,57 +369,57 @@ repeated rows; their identity is irrelevant to the item-item counts. Ephemeral
 zero-based cohort rows and the canonical fingerprint are therefore independent
 of database user-ID allocation. Neither the grouping map nor internal IDs are
 serialized. A live row-level snapshot is streamed through bounded build memory
-and is not retained after success or failure; only the aggregate audit and
-final item-level artifact may remain. Approved external or project-authored
-fixture snapshots, if materialized for reproducible tests, stay ignored and
-follow their documented source lifecycle.
+and is not retained after success or failure; only the aggregate audit and final
+item-level artifact may remain. Approved external or project-authored fixture
+snapshots, if materialized for reproducible tests, stay ignored and follow their
+documented source lifecycle.
 
 ### 5.4 Label Eligibility, Precedence, and Unknowns
 
 The proposed version-1 training policy is binary:
 
-| Current state at cutoff | Offline matrix value | Reason |
-| --- | ---: | --- |
-| Saved `game` preference with weight `> 0` | `1` | Explicit positive game selection |
-| Explicit `liked` reaction | `1` | Direct positive feedback |
-| No reaction and rating `>= 7` | `1` | Existing Stage 4 positive threshold |
-| Explicit `disliked` reaction | absent | Overrides a rating; not a positive |
-| Rating below `7` | absent | Not defined as a negative in version 1 |
-| `viewed`, `played`, or `wishlisted` alone | absent | Meaning is too ambiguous |
-| Recommendation event | absent | Generation audit record only |
-| No row | absent | Unknown, not negative |
+| Current state at cutoff                   | Offline matrix value | Reason                                 |
+| ----------------------------------------- | -------------------: | -------------------------------------- |
+| Saved `game` preference with weight `> 0` |                  `1` | Explicit positive game selection       |
+| Explicit `liked` reaction                 |                  `1` | Direct positive feedback               |
+| No reaction and rating `>= 7`             |                  `1` | Existing Stage 4 positive threshold    |
+| Explicit `disliked` reaction              |               absent | Overrides a rating; not a positive     |
+| Rating below `7`                          |               absent | Not defined as a negative in version 1 |
+| `viewed`, `played`, or `wishlisted` alone |               absent | Meaning is too ambiguous               |
+| Recommendation event                      |               absent | Generation audit record only           |
+| No row                                    |               absent | Unknown, not negative                  |
 
 At most one positive exists for a contributor/game pair after source collapse,
-reaction precedence, and deduplication. An active dislike dominates a saved
-game preference or rating for the same game. Ratings and duplicate positive
-sources are not magnitude-weighted in the first baseline. Superseded history
-is used only to reconstruct state at the cutoff, never as repeated confidence.
+reaction precedence, and deduplication. An active dislike dominates a saved game
+preference or rating for the same game. Ratings and duplicate positive sources
+are not magnitude-weighted in the first baseline. Superseded history is used
+only to reconstruct state at the cutoff, never as repeated confidence.
 
 ### 5.5 Consent, Revision, Expiry, and Derived-Data Invalidation
 
 Phase 0 should prefer a separate optional contribution-consent resource and
 copy, default off, rather than forcing training permission to use saved
-personalization. The database records its version and grant/withdrawal time;
-the browser explains aggregate offline use and fallback.
+personalization. The database records its version and grant/withdrawal time; the
+browser explains aggregate offline use and fallback.
 
 A small PostgreSQL build-lineage registry records the artifact/build identity,
-status, aggregate contributor count, and contributor membership. Membership
-uses the existing internal user foreign key with `ON DELETE CASCADE`; it stays
-inside PostgreSQL and never enters the artifact or response. A monotonic source
+status, aggregate contributor count, and contributor membership. Membership uses
+the existing internal user foreign key with `ON DELETE CASCADE`; it stays inside
+PostgreSQL and never enters the artifact or response. A monotonic source
 revision advances for relevant preference, interaction, consent, and lifecycle
 mutations. The builder captures it with the snapshot and verifies it again
 before promotion, preventing a mixed or already-obsolete build.
 
-After promotion, a new positive recorded after the cutoff does not invalidate
-an otherwise valid point-in-time artifact; the next explicit build may include
-it. A transaction that removes or changes an edge contained in a live build,
+After promotion, a new positive recorded after the cutoff does not invalidate an
+otherwise valid point-in-time artifact; the next explicit build may include it.
+A transaction that removes or changes an edge contained in a live build,
 withdraws contribution consent, revokes/deletes its contributor, or performs
 eligible retention must mark every affected registered build invalid before it
 commits. Contributor lineage makes that update targetable. Cascade/count and
 eligibility checks remain defenses if the artifact file still exists.
 
-A live-data artifact records its build ID, revision, expected contributor
-count, and earliest contributor expiry. Runtime use requires:
+A live-data artifact records its build ID, revision, expected contributor count,
+and earliest contributor expiry. Runtime use requires:
 
 - artifact revision equal to the matching registered build revision;
 - one active matching readiness row with the expected contributor count and
@@ -430,11 +429,11 @@ count, and earliest contributor expiry. Runtime use requires:
 - exact catalog fingerprint and artifact compatibility;
 - no explicit retirement marker.
 
-A mismatch immediately disables only the collaborative component. Rebuild
-from current eligible state is explicit. Obsolete live-data bundles must be
-retired and removed according to the Phase 0 deletion decision before another
-live artifact is promoted. If this end-to-end behavior cannot be implemented
-and tested, live-data build and activation remain blocked while the synthetic
+A mismatch immediately disables only the collaborative component. Rebuild from
+current eligible state is explicit. Obsolete live-data bundles must be retired
+and removed according to the Phase 0 deletion decision before another live
+artifact is promoted. If this end-to-end behavior cannot be implemented and
+tested, live-data build and activation remain blocked while the synthetic
 fixture path may still prove functionality.
 
 ### 5.6 Support Thresholds and Cold Start
@@ -480,12 +479,12 @@ neighbors; an unbounded dense catalog-square matrix is prohibited.
 Build arithmetic uses a frozen float dtype and rejects NaN, infinity, negative
 similarity, invalid indices, duplicates, and non-canonical CSR. Stored
 similarities are quantized with the existing scale `1_000_000` and
-round-half-up. Neighbor ordering is similarity units descending, overlap
-support descending, then neighbor slug ascending.
+round-half-up. Neighbor ordering is similarity units descending, overlap support
+descending, then neighbor slug ascending.
 
 Resource limits cover users, items, input nonzeros, retained neighbor nonzeros,
-member count, member bytes, total bytes, and JSON depth. Exceeding a limit
-fails safely before promotion.
+member count, member bytes, total bytes, and JSON depth. Exceeding a limit fails
+safely before promotion.
 
 ### 5.9 Collaborative Artifact Contract
 
@@ -505,13 +504,12 @@ The manifest includes source kind, model/schema/code identity, build software,
 catalog fingerprint, interaction fingerprint, cutoff, consent policy, dataset
 revision, validity horizon, label-policy identity, thresholds, matrix shape,
 aggregate counts, numeric configuration, and artifact-member checksums. It
-contains no user row, user ID, stable pseudonym, credential, preference
-payload, or recommendation event.
+contains no user row, user ID, stable pseudonym, credential, preference payload,
+or recommendation event.
 
-Build writes a temporary sibling, validates it with the production loader,
-then atomically promotes to a new immutable path. Validation never repairs or
-overwrites a bundle. Activation and rollback are explicit configuration
-changes.
+Build writes a temporary sibling, validates it with the production loader, then
+atomically promotes to a new immutable path. Validation never repairs or
+overwrites a bundle. Activation and rollback are explicit configuration changes.
 
 ### 5.10 Per-User Collaborative Candidate Scoring
 
@@ -546,8 +544,7 @@ method name is a Phase 0 implementation decision.
 The proposed policy identity is `gamelens-hybrid-ranking/1.0.0`. Its initial
 engineering weights are not learned and make no quality claim:
 
-- feedback affinity receives `10%` when a valid Stage 4 positive profile
-  exists;
+- feedback affinity receives `10%` when a valid Stage 4 positive profile exists;
 - collaborative similarity receives `10%` when the artifact and user context
   provide support;
 - the base Stage 3 score receives the remaining `80%`, `90%`, or `100%`.
@@ -560,12 +557,12 @@ exclusions before ordering and top-K.
 
 Supplemental gates and weights are chosen once per request, not independently
 per candidate. When the request has usable collaborative support, a content
-candidate with no retained source edge receives
-`collaborative_supported=false`, raw/contribution units of zero, and the same
-request-wide collaborative weight; its missing 10% is not reassigned to base.
-This is an explicit absence of positive collaborative support, not a dislike
-or a predicted negative probability. Stage 6 must measure the consequence
-before changing this versioned policy.
+candidate with no retained source edge receives `collaborative_supported=false`,
+raw/contribution units of zero, and the same request-wide collaborative weight;
+its missing 10% is not reassigned to base. This is an explicit absence of
+positive collaborative support, not a dislike or a predicted negative
+probability. Stage 6 must measure the consequence before changing this versioned
+policy.
 
 The candidate pool is the union of Stage 3/4 content-supported candidates and
 collaborative neighbors. A collaborative-only candidate may enter only when it
@@ -617,25 +614,25 @@ component block. A collaborative failure never changes a content-ready status
 into total outage. The personalized response reports `stage_4_fallback` or
 `hybrid` truthfully; it never returns an invented zero collaborative model.
 
-Phase 5 implements the additive status block and readiness states. The final
-sentence remains a Phase 6 public-response requirement: current personalized
-responses still expose the exact Stage 4 contract even when the internal
-decision is hybrid.
+Phase 5 implements the additive status block and readiness states. Phase 6
+implements the truthful public mode: hybrid decisions expose hybrid evidence,
+while every unavailable/no-support outcome exposes explicit `stage_4_fallback`
+with exact Stage 4 ranking.
 
 ### 5.15 Personalized Response and Event Contract
 
 The saved response retains existing fields for compatibility and adds optional
-hybrid-policy, collaborative-model, ranking-mode, fallback-reason, and
-per-item collaborative evidence. The stateless response does not change.
+hybrid-policy, collaborative-model, ranking-mode, fallback-reason, and per-item
+collaborative evidence. The stateless response does not change.
 
-A data-preserving migration may add all-or-none collaborative identity and
+A data-preserving migration adds all-or-none collaborative identity and
 feedback/hybrid policy fields to `recommendation_events`, with a new
 `stage-5-v1` constraint. Existing `legacy-v1` and `stage-4-v1` rows remain
 valid. For Stage 5 rows:
 
 - existing model columns continue to identify the content model;
-- explicit fields identify feedback policy, hybrid policy, collaborative
-  model, and interaction fingerprint when applied;
+- explicit fields identify feedback policy, hybrid policy, collaborative model,
+  and interaction fingerprint when applied;
 - request context records bounded mode and fallback reason;
 - result summaries store compact fixed-point component units and support;
 - no prose, raw state dump, identity, credential, or unbounded edge list is
@@ -648,38 +645,37 @@ snapshot query by construction.
 
 The browser remains a renderer of server order and evidence. It may show an
 “aggregate interaction signal” row only when the API applied it, with a short
-description of what was and was not used. Fallback remains useful and should
-not be presented as an error when content serving is ready.
+description of what was and was not used. Fallback remains useful and should not
+be presented as an error when content serving is ready.
 
 If separate contribution consent is implemented, it is unchecked by default,
 independent from saved personalization, keyboard operable, versioned, and
-withdrawable. Copy must explain that withdrawal stops future eligible builds
-and triggers the documented artifact invalidation path. Loading, stale,
-unsupported, failure, consent, withdrawal, and clear-data states require
-visible text and accessible announcements.
+withdrawable. Copy must explain that withdrawal stops future eligible builds and
+triggers the documented artifact invalidation path. Loading, stale, unsupported,
+failure, consent, withdrawal, and clear-data states require visible text and
+accessible announcements.
 
 ### 5.17 Docker, Commands, and Branch Topology
 
-The existing content model profile and commands keep their meaning. Stage 5
-adds separate collaborative audit/build/validate operations, a separate
-artifact path, and a disposable fixture path. The API mounts both configured
-artifacts read-only. No request or service startup fits either model.
+The existing content model profile and commands keep their meaning. Stage 5 adds
+separate collaborative audit/build/validate operations, a separate artifact
+path, and a disposable fixture path. The API mounts both configured artifacts
+read-only. No request or service startup fits either model.
 
 Development and E2E builds use new immutable disposable paths. Lifecycle tests
 may delete only guarded disposable artifacts and databases. Production
-scheduling and managed/external artifact registry services remain Stage 7
-work; the minimal Stage 5 PostgreSQL build-lineage rows are part of the privacy
+scheduling and managed/external artifact registry services remain Stage 7 work;
+the minimal Stage 5 PostgreSQL build-lineage rows are part of the privacy
 contract.
 
-An artifact with `source_kind=fixture` is loadable only when
-`ENVIRONMENT=test` and an explicit test-only fixture flag are both present.
-Development and production reject it with `fixture_not_allowed`; no ordinary
-user-facing response may present synthetic co-occurrence as an aggregate
-interaction signal.
+An artifact with `source_kind=fixture` is loadable only when `ENVIRONMENT=test`
+and an explicit test-only fixture flag are both present. Development and
+production reject it with `fixture_not_allowed`; no ordinary user-facing
+response may present synthetic co-occurrence as an aggregate interaction signal.
 
 ## 6. Target Repository Structure
 
-Phase 0–5 names marked `(+ implemented)` are as built. Later-phase illustrative
+Phase 0–6 names marked `(+ implemented)` are as built. Later-phase illustrative
 entries remain `(+ planned)`; generated snapshots and artifacts remain ignored.
 
 ```text
@@ -709,11 +705,11 @@ entries remain `(+ planned)`; generated snapshots and artifacts remain ignored.
 |   |   |   |       `-- status.py                      (+ implemented)
 |   |   |   `-- schemas/
 |   |   |       |-- model_status.py                    (+ implemented)
-|   |   |       `-- personalized_recommendations.py    (* Phase 6 planned)
+|   |   |       `-- personalized_recommendations.py    (+ implemented)
 |   |   `-- tests/                                      (* changed)
 |   `-- web/
-|       |-- src/lib/api/generated.ts                    (+ Phase 5 status type)
-|       |-- src/features/recommendations/               (* Phase 6 planned)
+|       |-- src/lib/api/generated.ts                    (+ Phase 6 contract)
+|       |-- src/features/recommendations/               (+ Phase 6 results)
 |       `-- e2e/                                        (* Phase 8 planned)
 |-- data/
 |   |-- catalog/games.json                              (existing)
@@ -746,8 +742,8 @@ entries remain `(+ planned)`; generated snapshots and artifacts remain ignored.
 
 The SQLAlchemy repository owns consent-aware PostgreSQL extraction. The ML
 package owns canonical interaction schemas after extraction, sparse fitting,
-artifact validation, pure scoring, and hybrid math. API services own
-transaction boundaries and HTTP mapping. The browser owns presentation only.
+artifact validation, pure scoring, and hybrid math. API services own transaction
+boundaries and HTTP mapping. The browser owns presentation only.
 
 ## 7. Implementation Phase 0: Preflight, Data Suitability, and Contract Baseline
 
@@ -823,15 +819,15 @@ produce an honest suitability result.
 - Superseded, disliked, expired, revoked, non-contributing, post-cutoff, and
   deleted state is excluded by tests.
 - Recommendation events, views, played-only, wishlist-only, taxonomy
-  preferences, and non-game preferences never appear as offline positives;
-  saved positive `game` preferences follow the explicit versioned label rule.
+  preferences, and non-game preferences never appear as offline positives; saved
+  positive `game` preferences follow the explicit versioned label rule.
 - Audit output contains bounded aggregates and no user ID, token material, raw
   per-user row, or credential; identity-bearing lineage remains only in the
   protected relational database.
 - Success, refusal, and injected build failure leave no live row-level snapshot
   or cohort mapping on disk.
-- Concurrent feedback mutation either precedes or follows the captured
-  snapshot; it cannot produce a mixed revision.
+- Concurrent feedback mutation either precedes or follows the captured snapshot;
+  it cannot produce a mixed revision.
 
 ### Exit Criteria
 
@@ -844,41 +840,41 @@ produce an honest suitability result.
 
 The following bounded slice is implemented and verified:
 
-- `gamelens_recommender.ucsd_steam` provides read-only `verify`, `prepare`,
-  and `audit` commands plus JSON and summary output. Expected blocked
-  integration is a successful command state; malformed, missing, mismatched,
-  unsafe, or over-limit input exits with a typed error.
-- The implementation uses only the Python 3.12 standard library. It verifies
-  all three compressed members before parsing, rejects symlinks/path escape,
-  bounds each exact compressed read, caps a line at 2 MiB and each expanded
-  member at 2 GB, uses bounded `ast.literal_eval` rather than `eval`, and
-  rechecks all compressed identities after scanning or parsing.
+- `gamelens_recommender.ucsd_steam` provides read-only `verify`, `prepare`, and
+  `audit` commands plus JSON and summary output. Expected blocked integration is
+  a successful command state; malformed, missing, mismatched, unsafe, or
+  over-limit input exits with a typed error.
+- The implementation uses only the Python 3.12 standard library. It verifies all
+  three compressed members before parsing, rejects symlinks/path escape, bounds
+  each exact compressed read, caps a line at 2 MiB and each expanded member at 2
+  GB, uses bounded `ast.literal_eval` rather than `eval`, and rechecks all
+  compressed identities after scanning or parsing.
 - Manifest schema 1 freezes exact compressed/expanded sizes, SHA-256 values,
   line counts, maximum line sizes, fail-closed gate states, and source status
   `local-raw-sources-verified-not-integrated`. Its canonical SHA-256 is
   `a55b2b2cc5b96a04bb58f29e789cc80467997128da6f73e806a56000585095ca`.
 - Preparation policy `ucsd-steam-review-recommend-preparation-v1` treats only
-  source-native `recommend=true` as a candidate, collapses duplicate
-  user/item pairs, excludes conflicts, ownership, playtime, and false reviews,
-  and performs only unambiguous v1-to-v2 source metadata alignment. This is
-  not an approved Stage 5 label or a GameLens catalog mapping.
+  source-native `recommend=true` as a candidate, collapses duplicate user/item
+  pairs, excludes conflicts, ownership, playtime, and false reviews, and
+  performs only unambiguous v1-to-v2 source metadata alignment. This is not an
+  approved Stage 5 label or a GameLens catalog mapping.
 - The canonical candidate fingerprint hashes the sorted multiset of sorted
   source-item profiles without serializing a source user key. The verified
   fingerprint is
   `eafce3dcdd6cde57ec5eacf1746b83f0a3e269c0fc9069b2da2bf5d78ecd9f66`.
-- The verified audit contains 59,305 review rows, 58,431 deduplicated
-  user/item pairs, 51,692 unambiguous true candidate pairs, and 47,492 pairs
-  aligned to one unambiguous v2 metadata ID. Three deterministic queue-based
-  bipartite fixed-point passes leave 9,792 profiles, 33,049 edges, 1,516
-  items, and 6,481 item pairs with support of at least two. These are
-  structural diagnostics only.
+- The verified audit contains 59,305 review rows, 58,431 deduplicated user/item
+  pairs, 51,692 unambiguous true candidate pairs, and 47,492 pairs aligned to
+  one unambiguous v2 metadata ID. Three deterministic queue-based bipartite
+  fixed-point passes leave 9,792 profiles, 33,049 edges, 1,516 items, and 6,481
+  item pairs with support of at least two. These are structural diagnostics
+  only.
 - The aggregate report emits no source user identifier or row-level snapshot,
   writes no processed data, and fits no model. Thirty-five focused UCSD cases
   and all 105 ML tests pass. Focused coverage includes exact verification,
   fail-before-parse and post-parse checks, bounded reads, safe literal and gzip
   errors, aggregate-only output, duplicate/conflict policy, canonical
-  fingerprints, fixed-point pruning, ambiguous metadata, insufficiency
-  reasons, fail-closed gates, and strict CLI/report semantics.
+  fingerprints, fixed-point pruning, ambiguous metadata, insufficiency reasons,
+  fail-closed gates, and strict CLI/report semantics.
 - A fresh full-source `audit --check-report` run matches the committed JSON by
   canonical JSON type and value.
 
@@ -891,46 +887,45 @@ independent from the first-party interaction path below.
   head to `0006_stage_5_collab_contract`. It adds one optional, versioned
   contribution-consent row per user and one monotonic singleton data revision.
   The populated upgrade grants no consent to existing users.
-- Statement triggers advance the revision after mutations to users,
-  contribution consent, preferences, interactions, catalog rows, taxonomies,
-  and catalog associations. Recommendation events are deliberately not a
-  revision source and are never queried as labels.
+- Statement triggers advance the revision after mutations to users, contribution
+  consent, preferences, interactions, catalog rows, taxonomies, and catalog
+  associations. Recommendation events are deliberately not a revision source and
+  are never queried as labels.
 - User deletion cascades the contribution-consent row and existing user-owned
   source state; the source mutation advances the revision. Phase 0–1 writes no
-  live row snapshot or artifact, so there is no derived file to delete.
-  Any live promotion must compare the captured revision and use protected
+  live row snapshot or artifact, so there is no derived file to delete. Any live
+  promotion must compare the captured revision and use protected
   build/contributor lineage before a bundle can become serveable; Phase 5 now
   supplies that lineage/readiness boundary, while the promotion command remains
   later work.
-- The live extractor requires PostgreSQL, establishes one `REPEATABLE READ,
-  READ ONLY` transaction, pins `pg_current_snapshot()`, and captures one
-  `clock_timestamp()` cutoff before returning to extraction. It applies
-  consent/expiry/revocation/withdrawal and as-of temporal filters, uses the
-  exact current content-catalog fingerprint, groups only transient internal
+- The live extractor requires PostgreSQL, establishes one
+  `REPEATABLE READ, READ ONLY` transaction, pins `pg_current_snapshot()`, and
+  captures one `clock_timestamp()` cutoff before returning to extraction. It
+  applies consent/expiry/revocation/withdrawal and as-of temporal filters, uses
+  the exact current content-catalog fingerprint, groups only transient internal
   IDs, and returns sorted stable-slug profiles with aggregate exclusions.
   Preference/interaction queries join one reusable eligible-user subquery and
   stream 1,000 rows per batch without per-user bind expansion.
 - Label policy `gamelens-collaborative-labels/1.0.0` freezes dislike dominance,
-  active likes, ratings of at least 7, and saved positive game preferences.
-  Low ratings, viewed/played/wishlist-only state, superseded and post-cutoff
-  rows, non-game preferences, ineligible contributors, and recommendation
-  events are absent from positives.
-- Canonical profile serialization retains the sorted profile multiset and
-  hashes it with the label-policy identity. The bounded audit emits only
-  aggregates, typed insufficiency/refusal errors, the exact catalog and
-  interaction fingerprints, cutoff, and revision; no ID or cohort mapping is
-  written.
-- The strict project-authored fixture contains 12 synthetic profiles,
-  36 expected positives, 6 supported items, explicit exclusions, and cold-start
+  active likes, ratings of at least 7, and saved positive game preferences. Low
+  ratings, viewed/played/wishlist-only state, superseded and post-cutoff rows,
+  non-game preferences, ineligible contributors, and recommendation events are
+  absent from positives.
+- Canonical profile serialization retains the sorted profile multiset and hashes
+  it with the label-policy identity. The bounded audit emits only aggregates,
+  typed insufficiency/refusal errors, the exact catalog and interaction
+  fingerprints, cutoff, and revision; no ID or cohort mapping is written.
+- The strict project-authored fixture contains 12 synthetic profiles, 36
+  expected positives, 6 supported items, explicit exclusions, and cold-start
   cases. It is accepted only with `ENVIRONMENT=test` plus
-  `COLLABORATIVE_ALLOW_TEST_FIXTURE=true`. Its read is capped at 1,000,000 bytes,
-  and duplicate/unrecognized keys, non-finite constants, and JSON type aliases
-  fail closed. It passes functional thresholds but
-  explicitly remains non-representative and non-quality evidence.
+  `COLLABORATIVE_ALLOW_TEST_FIXTURE=true`. Its read is capped at 1,000,000
+  bytes, and duplicate/unrecognized keys, non-finite constants, and JSON type
+  aliases fail closed. It passes functional thresholds but explicitly remains
+  non-representative and non-quality evidence.
 - `COLLABORATIVE_LIVE_DATA_ENABLED=false` and an unset contribution-consent
   version are the defaults. `make collaborative-audit` returns
-  `integration_blocked` without creating a database engine. No Phase 0–1
-  command builds, promotes, loads, or serves a collaborative artifact.
+  `integration_blocked` without creating a database engine. No Phase 0–1 command
+  builds, promotes, loads, or serves a collaborative artifact.
 - Verification passes 193 fast API tests, 105 ML tests, 54 disposable-
   PostgreSQL tests, 76 web tests, the 38-case exact-host browser matrix, all
   three Compose configurations, Ruff over 124 Python files, OpenAPI drift, and
@@ -955,16 +950,16 @@ without introducing identity or opaque executable serialization.
 
 ### Work
 
-1. Build canonical binary CSR from eligible triples and validate shape,
-   indices, duplicates, values, and resource limits.
+1. Build canonical binary CSR from eligible triples and validate shape, indices,
+   duplicates, values, and resource limits.
 2. Apply user, item, and pair support thresholds in a documented order.
 3. Compute cosine similarity with sparse/bounded operations, remove self-edges,
    quantize, sort, and prune neighborhoods deterministically.
 4. Serialize manifest, item/support metadata, sparse neighbors, similarity
    units, and pair support without pickle.
 5. Add complete member checksums, exact member set, schema/code identity,
-   aggregate diagnostics, build/lineage identity, data revision, consent
-   policy, and validity horizon.
+   aggregate diagnostics, build/lineage identity, data revision, consent policy,
+   and validity horizon.
 6. Validate a temporary sibling with the production loader before atomic
    promotion to an unused immutable path.
 7. Add inspection output that reports artifact identity and aggregates without
@@ -997,8 +992,8 @@ remain later phases.
 ### Objective
 
 Convert bounded source-game context and the validated artifact into
-deterministic collaborative candidates and reconstructible evidence. Deliver
-the work as independently testable slices so source selection, CSR lookup,
+deterministic collaborative candidates and reconstructible evidence. Deliver the
+work as independently testable slices so source selection, CSR lookup,
 aggregation, exclusions, and Stage 3/4 materialization regressions can be
 isolated without involving HTTP, PostgreSQL, lifecycle readiness, or hybrid
 weights.
@@ -1022,25 +1017,25 @@ The implementation is split along the following dependency graph:
 ```
 
 After 3A, the scoring branch (3B–3D) and materialization branch (3E–3F) could be
-implemented in parallel while work within each branch remained sequential.
-Phase 4 started only after 3G passed, and no slice hid a failing earlier-slice
-test behind orchestration fallback.
+implemented in parallel while work within each branch remained sequential. Phase
+4 started only after 3G passed, and no slice hid a failing earlier-slice test
+behind orchestration fallback.
 
 ### Completed Slice Record
 
-| Slice | Implemented boundary | Commit |
-| --- | --- | --- |
-| 3A | Frozen scoring contracts and Stage 3/4 characterization goldens | `73b4528` |
-| 3B | Canonical immutable query-source selection | `7a57dcd` |
-| 3C | Bounded sparse CSR neighborhood lookup | `5e25a64` |
-| 3D | Pure aggregation, exclusions, evidence, diagnostics, and typed outcomes | `844c695` |
-| 3E | Exact-row base/content/platform/popularity materialization | `a5b755c` |
-| 3F | Exact-row feedback-affinity materialization | `d0b6676` |
-| 3G | Public handoff boundary, end-to-end fixture trace, and hardening | `fa0ebd0` |
+| Slice | Implemented boundary                                                    | Commit    |
+| ----- | ----------------------------------------------------------------------- | --------- |
+| 3A    | Frozen scoring contracts and Stage 3/4 characterization goldens         | `73b4528` |
+| 3B    | Canonical immutable query-source selection                              | `7a57dcd` |
+| 3C    | Bounded sparse CSR neighborhood lookup                                  | `5e25a64` |
+| 3D    | Pure aggregation, exclusions, evidence, diagnostics, and typed outcomes | `844c695` |
+| 3E    | Exact-row base/content/platform/popularity materialization              | `a5b755c` |
+| 3F    | Exact-row feedback-affinity materialization                             | `d0b6676` |
+| 3G    | Public handoff boundary, end-to-end fixture trace, and hardening        | `fa0ebd0` |
 
-The final focused Phase 3 regression set passes 154 tests. The complete ML
-suite passes 256 tests with one symbolic-link capability skip on the current
-Windows host. Ruff lint, Ruff format check, privacy-string review, mutation and
+The final focused Phase 3 regression set passes 154 tests. The complete ML suite
+passes 256 tests with one symbolic-link capability skip on the current Windows
+host. Ruff lint, Ruff format check, privacy-string review, mutation and
 permutation cases, resource bounds, and `git diff --check` pass. No dependency,
 artifact format, API, database, event, response, fallback, or UI contract
 changed in Phase 3.
@@ -1058,8 +1053,8 @@ defaults protected by the Phase 3 tests rather than incidental behavior:
    games have no runtime recency contract, are ordered by slug, and retain the
    existing five-game limit. After cross-kind collapse, the total scorer input
    is therefore bounded by ten sources.
-3. A source absent from the artifact item axis is unsupported. A retained
-   source row with no neighbor edges is supported but has no edge. Neither case
+3. A source absent from the artifact item axis is unsupported. A retained source
+   row with no neighbor edges is supported but has no edge. Neither case
    fabricates a zero-similarity edge.
 4. A candidate score is the round-half-up integer mean of all available stored
    `similarity_units` from supported query sources. The calculation uses integer
@@ -1068,21 +1063,21 @@ defaults protected by the Phase 3 tests rather than incidental behavior:
 5. Every contributing edge is returned because the source count is already
    bounded. Edge evidence is ordered by similarity units descending, pair
    support descending, then source slug ascending. This preserves exact score
-   reconstruction and avoids a separate lossy evidence cap; Phase 6 may present
-   a smaller display-only subset without changing scorer evidence.
+   reconstruction and avoids a separate lossy evidence cap; Phase 6 preserves
+   the bounded returned edge set in the conditional UI evidence.
 6. Query-source candidates are excluded first, then explicit dislikes. The
    scorer does not apply content eligibility, played state, wishlist state,
    hybrid weights, or top-K.
 7. Candidate ordering is collaborative score units descending, then stable slug
    ascending. Artifact row/index order is never an ordering contract. With at
-   most ten sources and one hundred retained neighbors per source, visited
-   edges and returned candidates are each bounded by 1,000 before deduplication
-   and exclusions.
-8. Expected support outcomes are typed result reasons:
-   `recommendations`, `no_query_sources`, `no_supported_sources`,
-   `no_candidate_edges`, and `no_eligible_candidates`. Invalid input or an
-   incompatible supposedly validated artifact is a typed contract error and
-   returns no partial candidates. The scorer never performs fallback itself.
+   most ten sources and one hundred retained neighbors per source, visited edges
+   and returned candidates are each bounded by 1,000 before deduplication and
+   exclusions.
+8. Expected support outcomes are typed result reasons: `recommendations`,
+   `no_query_sources`, `no_supported_sources`, `no_candidate_edges`, and
+   `no_eligible_candidates`. Invalid input or an incompatible supposedly
+   validated artifact is a typed contract error and returns no partial
+   candidates. The scorer never performs fallback itself.
 9. Frozen output records include canonical query sources, supported and
    unsupported source slugs, each candidate's score and item support, every
    contributing source edge with pair support, and bounded aggregate counters
@@ -1125,8 +1120,8 @@ numeric policy, and ordering before 3B.
 
 #### Work
 
-1. Implement one pure source-selection function over immutable positive
-   feedback sources, saved-game slugs, and disliked slugs.
+1. Implement one pure source-selection function over immutable positive feedback
+   sources, saved-game slugs, and disliked slugs.
 2. Apply precedence, recency, per-kind caps, cross-kind deduplication, and the
    final stable order exactly once. The scorer consumes this canonical result
    rather than reimplementing source policy.
@@ -1274,15 +1269,15 @@ numeric policy, and ordering before 3B.
 
 #### Work
 
-1. Add one integration test that builds and production-loads the Phase 2
-   fixture artifact, selects sources, scores collaborative candidates, checks
-   catalog-fingerprint compatibility with the content artifact, and
-   materializes the resulting exact slugs through 3E and 3F.
-2. Prove a collaborative-only candidate can reach the Phase 4 handoff with
-   exact collaborative, content, platform, popularity, base, and affinity units
-   plus explicit empty content evidence where appropriate. Phase 4, not the
-   scorer, owns candidate-union origin, weights, played adjustment, final rank,
-   and fallback.
+1. Add one integration test that builds and production-loads the Phase 2 fixture
+   artifact, selects sources, scores collaborative candidates, checks
+   catalog-fingerprint compatibility with the content artifact, and materializes
+   the resulting exact slugs through 3E and 3F.
+2. Prove a collaborative-only candidate can reach the Phase 4 handoff with exact
+   collaborative, content, platform, popularity, base, and affinity units plus
+   explicit empty content evidence where appropriate. Phase 4, not the scorer,
+   owns candidate-union origin, weights, played adjustment, final rank, and
+   fallback.
 3. Export only the stable public Phase 3 types/functions, document their
    complexity and purity boundary, and keep internal CSR helpers private.
 4. Run mutation, permutation, privacy-string, resource-bound, full ML, Ruff,
@@ -1299,14 +1294,14 @@ numeric policy, and ordering before 3B.
 
 ### Debugging Ownership
 
-| Symptom | Owning slice and first evidence to inspect |
-| --- | --- |
-| Wrong source present, missing, or capped | 3B canonical source tuple and precedence tests |
-| Wrong neighbor, similarity, or pair support | 3C source index, `indptr` slice, and raw edge list |
+| Symptom                                        | Owning slice and first evidence to inspect                  |
+| ---------------------------------------------- | ----------------------------------------------------------- |
+| Wrong source present, missing, or capped       | 3B canonical source tuple and precedence tests              |
+| Wrong neighbor, similarity, or pair support    | 3C source index, `indptr` slice, and raw edge list          |
 | Wrong collaborative units, order, or exclusion | 3D edge sum/count, exclusion counters, and candidate golden |
-| Existing content result changed | 3E Stage 3 characterization diff |
-| Existing personalized result changed | 3F Stage 4 characterization diff |
-| Collaborative-only slug cannot be joined | 3G catalog fingerprint and exact-row handoff test |
+| Existing content result changed                | 3E Stage 3 characterization diff                            |
+| Existing personalized result changed           | 3F Stage 4 characterization diff                            |
+| Collaborative-only slug cannot be joined       | 3G catalog fingerprint and exact-row handoff test           |
 
 Pure code returns typed reasons and bounded counters but emits no log itself.
 Later API orchestration may log only those aggregate fields. It must not dump
@@ -1334,8 +1329,8 @@ diagnosing a failure.
   second source.
 - A collaborative-only candidate reaches the Phase 4 handoff with zero/empty
   content evidence where appropriate plus exact platform, popularity, base,
-  affinity, and origin-ready membership; Phase 4 alone assigns union origin.
-  The existing ranker wrappers remain unchanged.
+  affinity, and origin-ready membership; Phase 4 alone assigns union origin. The
+  existing ranker wrappers remain unchanged.
 - Empty/unsupported context returns a typed no-support result without mutating
   the artifact or falling back inside the scorer.
 - Stored similarity units are never round-tripped through float, every sparse
@@ -1358,21 +1353,21 @@ diagnosing a failure.
 
 **Implementation status:** Complete and verified on 2026-08-29 through slices
 4A–4G. The implementation remains pure inside the ML package. Phase 5 now
-provides lifecycle-backed readiness and internal API orchestration; Phase 6 must
-provide the synchronized public response/event contract before hybrid output
-can be exposed.
+provides lifecycle-backed readiness and internal API orchestration; Phase 6 now
+provides the synchronized public response/event contract required to expose
+hybrid output safely.
 
 ### Completed Slice Record
 
-| Slice | Commit | Verified outcome |
-| --- | --- | --- |
-| 4A | `23132a0` | Frozen hybrid identities, modes, origins, weights, tie-breaks, fallback taxonomy, and typed contracts |
-| 4B | `2447e26` | Reusable immutable Stage 4 ranking context with unchanged public Stage 4 behavior |
-| 4C | `d547e3f` | Stable-slug content/collaborative candidate union before final top-K |
-| 4D | `6e3e181` | Fixed-point hybrid contributions, played adjustment, exclusions, and deterministic ordering |
-| 4E | `18e6ad4` | Reconstructible recommendation evidence and deterministic cautious prose |
-| 4F | `8556744` | Public `HybridRanker` orchestration and exact Stage 4 fallback matrix |
-| 4G | `10a5c79` | Production-loaded fixture handoff, frozen functional golden, determinism, immutability, and privacy hardening |
+| Slice | Commit    | Verified outcome                                                                                              |
+| ----- | --------- | ------------------------------------------------------------------------------------------------------------- |
+| 4A    | `23132a0` | Frozen hybrid identities, modes, origins, weights, tie-breaks, fallback taxonomy, and typed contracts         |
+| 4B    | `2447e26` | Reusable immutable Stage 4 ranking context with unchanged public Stage 4 behavior                             |
+| 4C    | `d547e3f` | Stable-slug content/collaborative candidate union before final top-K                                          |
+| 4D    | `6e3e181` | Fixed-point hybrid contributions, played adjustment, exclusions, and deterministic ordering                   |
+| 4E    | `18e6ad4` | Reconstructible recommendation evidence and deterministic cautious prose                                      |
+| 4F    | `8556744` | Public `HybridRanker` orchestration and exact Stage 4 fallback matrix                                         |
+| 4G    | `10a5c79` | Production-loaded fixture handoff, frozen functional golden, determinism, immutability, and privacy hardening |
 
 ### Objective
 
@@ -1398,8 +1393,8 @@ and with exact Stage 4 fallback.
 
 ### Verification
 
-- No collaborative artifact, invalid artifact, stale artifact, unsupported
-  user, and no-edge user each match Stage 4 items, scores, order, and evidence.
+- No collaborative artifact, invalid artifact, stale artifact, unsupported user,
+  and no-edge user each match Stage 4 items, scores, order, and evidence.
 - Hybrid contributions sum exactly to pre-played units, and played delta sums
   exactly to final units.
 - Collaborative-only candidates enter only through valid retained edges and
@@ -1425,10 +1420,10 @@ failure.
 
 1. Add an optional collaborative artifact setting without changing
    `MODEL_ARTIFACT_PATH` or the existing content loader.
-2. Load and validate the collaborative bundle once at service construction;
-   do not hot-reload or mutate it.
-3. Add content and collaborative component services behind explicit
-   interfaces, then inject them into personalized orchestration.
+2. Load and validate the collaborative bundle once at service construction; do
+   not hot-reload or mutate it.
+3. Add content and collaborative component services behind explicit interfaces,
+   then inject them into personalized orchestration.
 4. Verify build identity, registry status, contributor count, consent policy,
    registered revision, invalidation epoch/status, catalog fingerprint, and
    validity horizon from one bounded readiness row in the same consistent
@@ -1450,10 +1445,10 @@ failure.
 - Deleting a registered contributor, withdrawing contribution consent,
   removing/changing an included positive edge, advancing beyond validity, or
   changing the catalog invalidates collaborative use before the next committed
-  response. A new post-cutoff positive remains future snapshot input rather
-  than silently changing the loaded artifact.
-- Repointing configuration to a retired artifact cannot bypass database
-  lineage or revision checks.
+  response. A new post-cutoff positive remains future snapshot input rather than
+  silently changing the loaded artifact.
+- Repointing configuration to a retired artifact cannot bypass database lineage
+  or revision checks.
 - The stateless route never queries collaborative lineage or changes behavior.
 
 ### Exit Criteria
@@ -1464,16 +1459,16 @@ failure.
 
 ### As-Built Phase 5 Slice Record
 
-| Slice | Commit | Independently completed boundary |
-| --- | --- | --- |
-| 5A | `0eab24f` | Load and freeze the optional collaborative artifact once; reject fixture use outside the explicit test gate. |
-| 5B | `189ce4c` | Map immutable artifact and supplied lifecycle facts to one pure bounded readiness decision. |
-| 5C | `a6d7a34` | Add live build/contributor registry, aggregate count maintenance, and one-row readiness query. |
-| 5D | `fb7251f` | Enforce contributor authority and invalidate affected active builds transactionally on authority loss. |
-| 5E | `4f52547` | Invalidate affected builds when an included positive label is removed or changes, while leaving post-cutoff additions for a future build. |
-| 5F | `7e10882` | Extend model status additively with content/collaborative component state and regenerate the owned browser type. |
-| 5G | `aefb425` | Orchestrate readiness, collaborative scoring, hybrid ranking, and every exact Stage 4 fallback reason. |
-| 5H | `66af706` | Resolve one internal saved-ranking decision in the existing repeatable-read transaction while retaining the Stage 4 public response/event handoff. |
+| Slice | Commit    | Independently completed boundary                                                                                                                   |
+| ----- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 5A    | `0eab24f` | Load and freeze the optional collaborative artifact once; reject fixture use outside the explicit test gate.                                       |
+| 5B    | `189ce4c` | Map immutable artifact and supplied lifecycle facts to one pure bounded readiness decision.                                                        |
+| 5C    | `a6d7a34` | Add live build/contributor registry, aggregate count maintenance, and one-row readiness query.                                                     |
+| 5D    | `fb7251f` | Enforce contributor authority and invalidate affected active builds transactionally on authority loss.                                             |
+| 5E    | `4f52547` | Invalidate affected builds when an included positive label is removed or changes, while leaving post-cutoff additions for a future build.          |
+| 5F    | `7e10882` | Extend model status additively with content/collaborative component state and regenerate the owned browser type.                                   |
+| 5G    | `aefb425` | Orchestrate readiness, collaborative scoring, hybrid ranking, and every exact Stage 4 fallback reason.                                             |
+| 5H    | `66af706` | Resolve one internal saved-ranking decision in the existing repeatable-read transaction while retaining the Stage 4 public response/event handoff. |
 
 The implemented readiness states are `not_configured`, `fixture_only`,
 `insufficient_data`, `unavailable`, `stale`, and `ready`. Lifecycle reasons are
@@ -1483,28 +1478,28 @@ The implemented readiness states are `not_configured`, `fixture_only`,
 `artifact_retired`. Scorer no-support reasons remain `no_query_sources`,
 `no_supported_sources`, `no_candidate_edges`, and `no_eligible_candidates`.
 
-The handoff gate passes 311 API unit tests, 98 disposable-PostgreSQL
-integration tests, and 331 ML tests with one Windows symbolic-link capability
-skip. Ruff lint and format pass across 165 Python files, generated OpenAPI types
-have no drift, and Docker test resources are removed. Same-snapshot integration
-proves that an in-flight request sees its original ready lineage, the next
-request observes `privacy_invalid` or `artifact_retired`, and a readiness SQL
-failure falls back as `artifact_incompatible` without aborting the exact Stage 4
-event commit.
+The handoff gate passes 311 API unit tests, 98 disposable-PostgreSQL integration
+tests, and 331 ML tests with one Windows symbolic-link capability skip. Ruff
+lint and format pass across 165 Python files, generated OpenAPI types have no
+drift, and Docker test resources are removed. Same-snapshot integration proves
+that an in-flight request sees its original ready lineage, the next request
+observes `privacy_invalid` or `artifact_retired`, and a readiness SQL failure
+falls back as `artifact_incompatible` without aborting the exact Stage 4 event
+commit.
 
-The exit criteria are satisfied at the internal serving boundary. The public
-saved response and recommendation event intentionally remain Stage 4; exposing
-hybrid fields before their synchronized Phase 6 contract would create an
-incorrect event/API claim.
+At the Phase 5 exit boundary, the public saved response and recommendation event
+intentionally remained Stage 4; exposing hybrid fields before their synchronized
+contract would have created an incorrect event/API claim. Phase 6 now supersedes
+that temporary public boundary.
 
 ## 13. Implementation Phase 6: Response, Event, OpenAPI, and Product Integration
 
-**Status:** Next implementation phase; not started.
+**Status:** Complete and verified 2026-09-01 through slices 6A–6G.
 
 ### Objective
 
-Expose the hybrid contract through the saved endpoint, preserve generated
-client ownership, and present evidence without overstating meaning.
+Expose the hybrid contract through the saved endpoint, preserve generated client
+ownership, and present evidence without overstating meaning.
 
 ### Work
 
@@ -1522,8 +1517,8 @@ client ownership, and present evidence without overstating meaning.
    preserving API order.
 7. If approved, add separate contribution-consent, re-consent, withdrawal,
    invalidation, and fallback copy with accessible controls and announcements.
-8. Keep model fingerprints and database lineage details out of ordinary UI
-   prose even when they remain available in technical API identity.
+8. Keep model fingerprints and database lineage details out of ordinary UI prose
+   even when they remain available in technical API identity.
 
 ### Phase 6 Implementation Handoff and Slice Order
 
@@ -1537,28 +1532,36 @@ guarded fixture proves the response/event contract.
 Each slice below should be independently reviewable, testable, and complete in
 one commit:
 
-| Slice | Complete implementation boundary | Independent verification |
-| --- | --- | --- |
-| 6A | Freeze additive personalized response schemas for mode, fallback, hybrid policy/component identity, candidate origin, support, source edges, weights, contributions, and explanation evidence. Add pure schema/mapping characterization without activating the route. | Pydantic bounds, exact fixed-point serialization, hybrid/fallback goldens, no identity/prose leakage, and unchanged Stage 4/stateless schemas. |
-| 6B | Add the data-preserving event migration/model/repository contract for `stage-5-v1`, including all-or-none mode/component identity and bounded compact result fields while retaining `legacy-v1` and `stage-4-v1` rows. | Empty/populated upgrade, downgrade/re-upgrade, constraints, retention/cascade compatibility, old-row readability, and no event-as-label/revision behavior. |
-| 6C | Implement one pure decision projector that derives both response data and compact event data from the same `PersonalizedRankingDecision` and fixed-point records. | Response/event equality and reconstruction for real hybrid plus all 15 fallback reasons; top-K/JSON bounds; deterministic ordering; no duplicate ranking call. |
-| 6D | Activate the projector in `POST /api/v1/me/recommendations`, insert `stage-5-v1`, and preserve Stage 4 commit/ambiguous-outcome semantics. | One event per committed 200, zero event on every pre-commit failure, exact generation correlation, savepoint/fallback behavior, concurrent invalidation snapshot, and unchanged stateless endpoint. |
-| 6E | Regenerate OpenAPI and the project-owned TypeScript contract, then update client runtime parsing without adding handwritten parallel interfaces. | OpenAPI drift, strict TypeScript, malformed/unknown-field client cases, backward-compatible model status, and unchanged public request-only client behavior. |
-| 6F | Render server-provided mode, neutral fallback, and conditional aggregate collaborative evidence in saved results without client sorting or score recomputation. | Component tests for hybrid/fallback/loading/empty/error states, cautious copy, keyboard/focus/live-region behavior, and responsive/axe checks. |
-| 6G | Run the complete Phase 6 API/PostgreSQL/web contract matrix and record the handoff into lifecycle-command and full-stack phases. | Full unit/integration/static/build/OpenAPI checks, focused privacy scan, deterministic replay, and only measured counts; browser E2E remains Phase 8 unless explicitly brought forward. |
+| Slice | Complete implementation boundary                                                                                                                                                                                                                                      | Independent verification                                                                                                                                                                            |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 6A    | Freeze additive personalized response schemas for mode, fallback, hybrid policy/component identity, candidate origin, support, source edges, weights, contributions, and explanation evidence. Add pure schema/mapping characterization without activating the route. | Pydantic bounds, exact fixed-point serialization, hybrid/fallback goldens, no identity/prose leakage, and unchanged Stage 4/stateless schemas.                                                      |
+| 6B    | Add the data-preserving event migration/model/repository contract for `stage-5-v1`, including all-or-none mode/component identity and bounded compact result fields while retaining `legacy-v1` and `stage-4-v1` rows.                                                | Empty/populated upgrade, downgrade/re-upgrade, constraints, retention/cascade compatibility, old-row readability, and no event-as-label/revision behavior.                                          |
+| 6C    | Implement one pure decision projector that derives both response data and compact event data from the same `PersonalizedRankingDecision` and fixed-point records.                                                                                                     | Response/event equality and reconstruction for real hybrid plus all 15 fallback reasons; top-K/JSON bounds; deterministic ordering; no duplicate ranking call.                                      |
+| 6D    | Activate the projector in `POST /api/v1/me/recommendations`, insert `stage-5-v1`, and preserve Stage 4 commit/ambiguous-outcome semantics.                                                                                                                            | One event per committed 200, zero event on every pre-commit failure, exact generation correlation, savepoint/fallback behavior, concurrent invalidation snapshot, and unchanged stateless endpoint. |
+| 6E    | Regenerate OpenAPI and the project-owned TypeScript contract, then update client runtime parsing without adding handwritten parallel interfaces.                                                                                                                      | OpenAPI drift, strict TypeScript, malformed/unknown-field client cases, backward-compatible model status, and unchanged public request-only client behavior.                                        |
+| 6F    | Render server-provided mode, neutral fallback, and conditional aggregate collaborative evidence in saved results without client sorting or score recomputation.                                                                                                       | Component tests for hybrid/fallback/loading/empty/error states, cautious copy, keyboard/focus/live-region behavior, and responsive/axe checks.                                                      |
+| 6G    | Run the complete Phase 6 API/PostgreSQL/web contract matrix and record the handoff into lifecycle-command and full-stack phases.                                                                                                                                      | Full unit/integration/static/build/OpenAPI checks, focused privacy scan, deterministic replay, and only measured counts; browser E2E remains Phase 8 unless explicitly brought forward.             |
 
-Suggested commit subjects are `feat(api): add stage 5 personalized response
-contract`, `feat(api): persist stage 5 recommendation events`, `feat(api): map
-stage 5 ranking decisions`, `feat(api): activate stage 5 saved responses`,
-`feat(web): consume stage 5 recommendation contract`, `feat(web): present
-hybrid recommendation evidence`, and `test: verify phase 6 contract handoff`.
+Implemented slice commits are `8c1c4f9`, `fe784e2`, `c2ddd2d`, `0bbdc58`,
+`9ab9f68`, and `51664b5` for 6A–6F. Slice 6G is this verification and
+documentation handoff. Public contribution-consent routes remain deferred
+because no separate product/privacy approval was introduced.
+
+Suggested commit subjects are
+`feat(api): add stage 5 personalized response contract`,
+`feat(api): persist stage 5 recommendation events`,
+`feat(api): map stage 5 ranking decisions`,
+`feat(api): activate stage 5 saved responses`,
+`feat(web): consume stage 5 recommendation contract`,
+`feat(web): present hybrid recommendation evidence`, and
+`test: verify phase 6 contract handoff`.
 
 ### Verification
 
 - OpenAPI drift fails when server and generated browser contracts diverge.
-- A hybrid HTTP 200 commits exactly one matching `stage-5-v1` event; every
-  known pre-commit failure commits none; ambiguous acknowledgement is not
-  reported as success.
+- A hybrid HTTP 200 commits exactly one matching `stage-5-v1` event; every known
+  pre-commit failure commits none; ambiguous acknowledgement is not reported as
+  success.
 - Fallback events record content/feedback identity, mode, and bounded reason
   without pretending that a collaborative model contributed.
 - Response and event units reconstruct the same score and rank.
@@ -1575,6 +1578,32 @@ hybrid recommendation evidence`, and `test: verify phase 6 contract handoff`.
 
 ## 14. Implementation Phase 7: Derived-Data Lifecycle and Safe Commands
 
+**Status:** Next implementation phase; not started.
+
+### Phase 7 Entry Handoff
+
+Phase 7 starts from Alembic head `0010_stage_5_event_contract`, the immutable
+Phase 2 artifact format, Phase 5 registry/invalidation/readiness contracts, and
+the Phase 6 synchronized saved response/event boundary. It must not reopen
+ranking math, generated-client ownership, event meaning, or browser-side order.
+
+The entry state is intentionally fail-closed:
+
+1. No public route grants collaborative contribution consent and no existing
+   personalization consent may be reused for that purpose.
+2. The guarded fixture build/validate/inspect path exists, but no approved live
+   registration/promotion transaction or rollback target-selection command
+   exists.
+3. PostgreSQL can invalidate affected live lineage transactionally, but operator
+   preview/confirm, retirement, crash recovery, and physical bundle cleanup are
+   not implemented.
+4. Phase 7 command tests must use exact disposable database/artifact targets;
+   ordinary startup, migration, seed, broad tests, and Compose teardown remain
+   non-mutating with respect to derived artifacts.
+5. Full guarded two-artifact browser lifecycle remains Phase 8; Phase 7 should
+   expose deterministic machine-readable command outcomes that Phase 8 can
+   orchestrate without hidden fitting or deletion.
+
 ### Objective
 
 Make audit, build, activation, invalidation, retirement, and cleanup explicit,
@@ -1584,16 +1613,16 @@ reviewable operations with no hidden destructive side effect.
 
 1. Implement separate `audit`, `build`, `validate`, and `inspect` subcommands
    with machine-readable output and stable exit codes.
-2. Register a validated live-data build and its contributor lineage only
-   through a deliberate promotion transaction.
+2. Register a validated live-data build and its contributor lineage only through
+   a deliberate promotion transaction.
 3. Define crash recovery for the filesystem/registry boundary so neither an
    orphan registry row nor orphan bundle becomes serveable.
 4. Mark affected builds invalid in the same transaction as label removal,
    consent withdrawal, revocation, or user deletion when application control
    exists; retain the cascade-maintained readiness state and source/build
    revision checks as defense in depth.
-5. Add an artifact-retirement preview listing exact non-active paths and
-   reasons without reading or displaying contributor identities.
+5. Add an artifact-retirement preview listing exact non-active paths and reasons
+   without reading or displaying contributor identities.
 6. Require a database/artifact-set fingerprint and explicit confirmation to
    remove obsolete bundles; protect the current configured content artifact,
    active collaborative artifact, repository root, and development database.
@@ -1608,10 +1637,10 @@ reviewable operations with no hidden destructive side effect.
 - Build refuses an existing target; validation never repairs a bundle.
 - Promotion failure leaves no ready half-state, and retry has deterministic
   behavior.
-- Preview/confirmation mismatch, path escape, active path, unregistered path,
-  or non-disposable test target fails closed.
-- Disposable tests prove withdrawal/deletion invalidation and confirmed
-  cleanup without touching content artifacts or persistent development data.
+- Preview/confirmation mismatch, path escape, active path, unregistered path, or
+  non-disposable test target fails closed.
+- Disposable tests prove withdrawal/deletion invalidation and confirmed cleanup
+  without touching content artifacts or persistent development data.
 
 ### Exit Criteria
 
@@ -1673,8 +1702,8 @@ and regression safety without performing Stage 6 quality evaluation.
 
 1. Build focused suites for every contract below and keep fixtures small enough
    for exact expected values.
-2. Run diagnostic coverage only to find untested branches; do not optimize for
-   a number at the expense of behavior.
+2. Run diagnostic coverage only to find untested branches; do not optimize for a
+   number at the expense of behavior.
 3. Run the complete Stage 1–4 matrix after the Stage 5 suites.
 4. Record commands, versions, counts, coverage, durations, artifact diagnostics,
    platform, and limitations only from actual results.
@@ -1687,16 +1716,15 @@ and regression safety without performing Stage 6 quality evaluation.
   preference, rating threshold, source collapse, and stable canonical ordering.
 - Current contribution consent, withdrawal, revocation, expiry, safety horizon,
   deletion, post-cutoff mutation, and dataset revision.
-- Explicit proof that recommendation events, views, played-only,
-  wishlist-only, and unknown rows are never positives.
+- Explicit proof that recommendation events, views, played-only, wishlist-only,
+  and unknown rows are never positives.
 - Aggregate-only audit, insufficiency reasons, catalog alignment, and no
   identity in output.
 
 ### Collaborative ML suite
 
-- Hand-calculated binary CSR, item support, pair support, cosine,
-  quantization, diagonal removal, threshold order, top-neighbor pruning, and
-  stable ties.
+- Hand-calculated binary CSR, item support, pair support, cosine, quantization,
+  diagonal removal, threshold order, top-neighbor pruning, and stable ties.
 - Empty, single-user, single-item, unsupported, duplicate, invalid, oversized,
   and non-finite inputs.
 - Reproducible semantic artifact from equivalent canonical input.
@@ -1709,14 +1737,14 @@ and regression safety without performing Stage 6 quality evaluation.
   fixed-point reconstruction.
 - Cold user, cold source, cold item, mixed support, empty result, tie, and top-K
   boundaries.
-- Request-wide missing-edge behavior and collaborative-only materialization
-  with zero/empty content evidence and exact remaining base components.
+- Request-wide missing-edge behavior and collaborative-only materialization with
+  zero/empty content evidence and exact remaining base components.
 
 ### Artifact and lifecycle suite
 
-- Exact members, checksums, dtypes, shapes, canonical CSR, limits, compatibility,
-  catalog fingerprint, interaction fingerprint, build ID, revision, lineage,
-  validity horizon, immutable arrays, and path safety.
+- Exact members, checksums, dtypes, shapes, canonical CSR, limits,
+  compatibility, catalog fingerprint, interaction fingerprint, build ID,
+  revision, lineage, validity horizon, immutable arrays, and path safety.
 - Missing, corrupt, extra, stale, retired, contributor-deleted, consent-invalid,
   and expired artifact rejection.
 - Crash-safe promotion, read-only validation/preview, guarded cleanup, and
@@ -1784,8 +1812,8 @@ limitations, and leave a precise Stage 6 input contract.
    recommendation-design, roadmap, environment, command, and plan documents.
 2. Replace Section 21 proposals with exact as-built identities, thresholds,
    schemas, weights, commands, migrations, counts, and deviations.
-3. Convert Section 22 from provisional to verified handoff and populate
-   Section 23 only from passing evidence.
+3. Convert Section 22 from provisional to verified handoff and populate Section
+   23 only from passing evidence.
 4. Document data source/provenance, consent authority, label limitations,
    lifecycle, artifact members, readiness states, fallback, rollback, and
    cleanup.
@@ -1802,8 +1830,7 @@ limitations, and leave a precise Stage 6 input contract.
   observe hybrid and fallback, and tear it down from documented commands.
 - Every documented command and field exists; every planned-only item is still
   labeled planned.
-- Completion evidence matches logs and does not extrapolate from synthetic
-  data.
+- Completion evidence matches logs and does not extrapolate from synthetic data.
 
 ### Suggested Commit Structure
 
@@ -1829,31 +1856,31 @@ The external-source, Phase 0–1 audit, and guarded Phase 2 fixture-artifact
 command names are frozen as implemented. Live build and artifact retirement
 remain forward-looking until their lifecycle phases are implemented.
 
-| Capability | Optional Make wrapper | Required direct equivalent |
-| --- | --- | --- |
-| Verify local UCSD source identity | `make ucsd-steam-verify` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam verify --root /workspace --format json` |
-| Profile UCSD ingestion preparation | `make ucsd-steam-prepare` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam prepare --root /workspace --format json` |
-| Audit UCSD source-level support | `make ucsd-steam-audit` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --format json` |
-| Check committed UCSD aggregate report | `make ucsd-steam-audit-check` | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/external/ucsd-steam/suitability-audit.json --format summary` |
-| Report the default-off live interaction gate or audit explicitly enabled eligible live data | `make collaborative-audit` | `python -m app.commands.collaborative_snapshot audit --source live --format json` |
-| Audit the project-authored test fixture | `make collaborative-fixture-audit` | `ENVIRONMENT=test COLLABORATIVE_ALLOW_TEST_FIXTURE=true python -m app.commands.collaborative_snapshot audit --source fixture --format json` |
-| Build a new guarded fixture bundle | `make collaborative-build` | `docker compose --profile quality run --build --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact build --source fixture` |
-| Validate the configured guarded fixture bundle | `make collaborative-validate` | `docker compose --profile quality run --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact validate` |
-| Inspect guarded fixture-bundle metadata | none required | `docker compose --profile quality run --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact inspect` |
-| Preview obsolete-bundle retirement | `make collaborative-retirement-preview` | `python -m app.commands.collaborative_artifact retire` without confirmation |
-| Confirm disposable/obsolete cleanup | no broad wrapper | Same retire command with exact emitted confirmation |
-| Build existing content artifact | `make model-build` | Existing `recommendation_artifact build` command |
-| Validate existing content artifact | `make model-validate` | Existing `recommendation_artifact validate` command |
-| Inspect component status | none required | `GET /api/v1/models/status` |
-| Run focused ML tests | `make test-ml` | Existing documented pytest command |
-| Run API and PostgreSQL gates | `make test`, `make test-integration` | Existing documented direct commands |
-| Run web and browser gates | `make test-web`, `make test-web-e2e` | Existing documented npm/Compose commands |
-| Validate all Compose files | `make config` | Existing direct `docker compose ... config --quiet` commands |
+| Capability                                                                                  | Optional Make wrapper                   | Required direct equivalent                                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verify local UCSD source identity                                                           | `make ucsd-steam-verify`                | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam verify --root /workspace --format json`                                                                  |
+| Profile UCSD ingestion preparation                                                          | `make ucsd-steam-prepare`               | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam prepare --root /workspace --format json`                                                                 |
+| Audit UCSD source-level support                                                             | `make ucsd-steam-audit`                 | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --format json`                                                                   |
+| Check committed UCSD aggregate report                                                       | `make ucsd-steam-audit-check`           | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/external/ucsd-steam/suitability-audit.json --format summary` |
+| Report the default-off live interaction gate or audit explicitly enabled eligible live data | `make collaborative-audit`              | `python -m app.commands.collaborative_snapshot audit --source live --format json`                                                                                                                                                      |
+| Audit the project-authored test fixture                                                     | `make collaborative-fixture-audit`      | `ENVIRONMENT=test COLLABORATIVE_ALLOW_TEST_FIXTURE=true python -m app.commands.collaborative_snapshot audit --source fixture --format json`                                                                                            |
+| Build a new guarded fixture bundle                                                          | `make collaborative-build`              | `docker compose --profile quality run --build --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact build --source fixture`                                                    |
+| Validate the configured guarded fixture bundle                                              | `make collaborative-validate`           | `docker compose --profile quality run --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact validate`                                                                          |
+| Inspect guarded fixture-bundle metadata                                                     | none required                           | `docker compose --profile quality run --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact inspect`                                                                           |
+| Preview obsolete-bundle retirement                                                          | `make collaborative-retirement-preview` | `python -m app.commands.collaborative_artifact retire` without confirmation                                                                                                                                                            |
+| Confirm disposable/obsolete cleanup                                                         | no broad wrapper                        | Same retire command with exact emitted confirmation                                                                                                                                                                                    |
+| Build existing content artifact                                                             | `make model-build`                      | Existing `recommendation_artifact build` command                                                                                                                                                                                       |
+| Validate existing content artifact                                                          | `make model-validate`                   | Existing `recommendation_artifact validate` command                                                                                                                                                                                    |
+| Inspect component status                                                                    | none required                           | `GET /api/v1/models/status`                                                                                                                                                                                                            |
+| Run focused ML tests                                                                        | `make test-ml`                          | Existing documented pytest command                                                                                                                                                                                                     |
+| Run API and PostgreSQL gates                                                                | `make test`, `make test-integration`    | Existing documented direct commands                                                                                                                                                                                                    |
+| Run web and browser gates                                                                   | `make test-web`, `make test-web-e2e`    | Existing documented npm/Compose commands                                                                                                                                                                                               |
+| Validate all Compose files                                                                  | `make config`                           | Existing direct `docker compose ... config --quiet` commands                                                                                                                                                                           |
 
-Existing command meanings must not change. No startup, request, migration,
-seed, broad test, or teardown command may fit a model, install an unpinned
-dependency, purge user data, retire an artifact, or silently rebuild a bundle.
-Mutable commands require exact targets and fail safely on ambiguity.
+Existing command meanings must not change. No startup, request, migration, seed,
+broad test, or teardown command may fit a model, install an unpinned dependency,
+purge user data, retire an artifact, or silently rebuild a bundle. Mutable
+commands require exact targets and fail safely on ambiguity.
 
 ## 19. Acceptance Criteria
 
@@ -1864,8 +1891,8 @@ Stage 5 is complete only when all applicable criteria below pass:
   remain green.
 - `POST /api/v1/recommendations` remains cookie-agnostic, content-only,
   request-scoped, read-only, and contract-compatible.
-- Data source, purpose, authority, cutoff, catalog mapping, consent,
-  retention, deletion, provenance, and limitations are documented.
+- Data source, purpose, authority, cutoff, catalog mapping, consent, retention,
+  deletion, provenance, and limitations are documented.
 - Existing Stage 4 consent is not silently reused for aggregate training.
 - Declining contribution does not create training eligibility; the documented
   request-only or saved-personalization fallback remains usable.
@@ -1885,8 +1912,8 @@ Stage 5 is complete only when all applicable criteria below pass:
   reusable snapshot file after build success or failure.
 - Any identity-bearing contributor lineage stays protected in PostgreSQL and
   exists only to enforce lifecycle invalidation.
-- Cleared, withdrawn, revoked, expired, or deleted contributions cannot enter
-  a new build or continue through a serveable old artifact.
+- Cleared, withdrawn, revoked, expired, or deleted contributions cannot enter a
+  new build or continue through a serveable old artifact.
 - Artifact/registry revision identity, bounded readiness/invalidation state,
   expected contributor count, consent version, validity horizon, and catalog
   fingerprint are checked before use without a per-request contributor scan;
@@ -1896,8 +1923,8 @@ Stage 5 is complete only when all applicable criteria below pass:
   development data, and never presented as a real-user or quality dataset.
 - A fixture artifact is serveable only in guarded disposable test/E2E mode and
   is rejected by ordinary development and production configuration.
-- Structural and activation thresholds fail with `insufficient_data` rather
-  than promoting a trivial live artifact.
+- Structural and activation thresholds fail with `insufficient_data` rather than
+  promoting a trivial live artifact.
 - Fitting and serving use bounded sparse operations and never persist an
   unbounded dense user-item or item-item matrix.
 - Hand-calculated item support, pair support, raw cosine, quantization,
@@ -1909,14 +1936,14 @@ Stage 5 is complete only when all applicable criteria below pass:
   stable pseudonym, credential, or raw interaction payload.
 - Missing, corrupt, incompatible, oversized, stale, expired, privacy-invalid,
   retired, or catalog-mismatched bundles never become collaborative-ready.
-- Build targets are immutable; validation is read-only; promotion is
-  crash-safe; rollback accepts only a still-valid registered artifact.
-- The collaborative scorer is pure, bounded, identity-free, deterministic,
-  and excludes all source and disliked games.
+- Build targets are immutable; validation is read-only; promotion is crash-safe;
+  rollback accepts only a still-valid registered artifact.
+- The collaborative scorer is pure, bounded, identity-free, deterministic, and
+  excludes all source and disliked games.
 - Unsupported users, sources, items, or pairs receive no fabricated
   collaborative score.
-- Candidate union allows a valid collaborative-only candidate before
-  exclusions and top-K.
+- Candidate union allows a valid collaborative-only candidate before exclusions
+  and top-K.
 - A collaborative-only candidate receives explicitly materialized
   content/platform/popularity/base/affinity evidence without weakening the
   existing Stage 3 zero-content eligibility contract.
@@ -1926,8 +1953,8 @@ Stage 5 is complete only when all applicable criteria below pass:
   unsupported/zero collaborative evidence and no candidate-level weight
   reallocation; this behavior is golden-tested and deferred to Stage 6 for
   evaluation.
-- A reproducible fixture comparison records baseline candidates, components,
-  and ranks while making no recommendation-quality claim.
+- A reproducible fixture comparison records baseline candidates, components, and
+  ranks while making no recommendation-quality claim.
 - Base, platform, popularity, feedback affinity, collaborative, played, and
   final values remain independently observable and reconstructible.
 - Each named signal is weighted once; component contributions sum exactly in
@@ -1936,8 +1963,8 @@ Stage 5 is complete only when all applicable criteria below pass:
   remain hard exclusions, and wishlist remains neutral.
 - Every collaborative-unavailable or unsupported path matches Stage 4 scores,
   order, response reason, and evidence exactly.
-- Content readiness survives optional collaborative failure, while model
-  status and personalized output expose truthful mode and bounded reason.
+- Content readiness survives optional collaborative failure, while model status
+  and personalized output expose truthful mode and bounded reason.
 - The saved response, `stage-5-v1` event, and generated browser type share the
   same model/data/policy identity and component units.
 - Every commit-acknowledged personalized HTTP 200 has exactly one matching
@@ -1946,8 +1973,8 @@ Stage 5 is complete only when all applicable criteria below pass:
 - Event payloads contain no prose, credentials, identities, unbounded source
   lists, or state dump, and never become training labels.
 - Browser code preserves server order and performs no ranking math.
-- Collaborative explanation appears only for a positive applied contribution
-  and makes no “users like you” or quality claim.
+- Collaborative explanation appears only for a positive applied contribution and
+  makes no “users like you” or quality claim.
 - Consent, withdrawal, fallback, loading, empty, failure, keyboard, focus,
   announcement, accessibility, and responsive states pass their gates.
 - Commands have direct equivalents, immutable paths, stable exit behavior,
@@ -1959,8 +1986,8 @@ Stage 5 is complete only when all applicable criteria below pass:
 - Documentation distinguishes current Stage 4 behavior, implemented Stage 5
   evidence, provisional policy defaults, and deferred Stage 6 evaluation.
 - No Precision/Recall/NDCG or other formal quality result, superiority claim,
-  real-user claim, invented count, timing, or artifact size appears without
-  the appropriate later evidence.
+  real-user claim, invented count, timing, or artifact size appears without the
+  appropriate later evidence.
 
 ## 20. Risks and Mitigations
 
@@ -2012,8 +2039,8 @@ resource caps, deterministic top-neighbor retention, and fail before promotion.
 **Mitigation:** Require pair support, expose aggregate support, use neutral
 language, and never describe scores as probabilities or quality.
 
-**Risk:** Collaborative candidates are limited to the content shortlist and
-the implementation is hybrid in name only.
+**Risk:** Collaborative candidates are limited to the content shortlist and the
+implementation is hybrid in name only.
 
 **Mitigation:** Form the content/collaborative candidate union before
 exclusions, ordering, and top-K; test a valid collaborative-only candidate.
@@ -2058,10 +2085,10 @@ infrastructure docs explicit until Section 23 is populated from passing gates.
 
 ## 21. Implementation-Time Decisions
 
-Phase 0–5 source preflight, first-party snapshot, consent/revision, fixture,
+Phase 0–6 source preflight, first-party snapshot, consent/revision, fixture,
 aggregate audit, sparse trainer, offline artifact, pure scoring, hybrid policy,
-lifecycle readiness, and internal API orchestration decisions are implemented.
-They do not activate a public hybrid response/event, approved live build, or a
+lifecycle readiness, saved API/event projection, and browser-presentation
+decisions are implemented. They do not activate an approved live build or a
 product contribution flow.
 
 ### As-Built Phase 0–1 First-Party Decisions
@@ -2075,21 +2102,22 @@ product contribution flow.
    eligibility, labels, or exact catalog identity; recommendation events are
    excluded. A missing singleton produces a typed fail-closed audit error; the
    next source mutation after a test-only truncate recreates it atomically.
-3. Source deletion is immediate relational state removal. User deletion
-   cascades consent/preferences/interactions and advances the revision.
-   Withdrawal, revocation, expiry changes, feedback changes, and catalog
-   changes likewise invalidate the captured revision. No Phase 0–1 live
-   row-level derived file exists.
-4. Live extraction initializes a verified PostgreSQL `REPEATABLE READ,
-   READ ONLY` transaction by pinning `pg_current_snapshot()` and capturing one
-   `clock_timestamp()` cutoff before returning to extraction. A fresh
-   transaction verifies the captured revision before an aggregate report is
-   emitted. Eligible users require current base consent, unexpired/unrevoked state, and the configured
-   contribution version granted and not withdrawn by the cutoff.
+3. Source deletion is immediate relational state removal. User deletion cascades
+   consent/preferences/interactions and advances the revision. Withdrawal,
+   revocation, expiry changes, feedback changes, and catalog changes likewise
+   invalidate the captured revision. No Phase 0–1 live row-level derived file
+   exists.
+4. Live extraction initializes a verified PostgreSQL
+   `REPEATABLE READ, READ ONLY` transaction by pinning `pg_current_snapshot()`
+   and capturing one `clock_timestamp()` cutoff before returning to extraction.
+   A fresh transaction verifies the captured revision before an aggregate report
+   is emitted. Eligible users require current base consent, unexpired/unrevoked
+   state, and the configured contribution version granted and not withdrawn by
+   the cutoff.
 5. Temporal state includes `occurred_at <= cutoff` and
    `superseded_at IS NULL OR superseded_at > cutoff`. Stable GameLens slugs and
-   the exact content-catalog fingerprint cross the ML boundary; internal IDs
-   and per-user mapping do not.
+   the exact content-catalog fingerprint cross the ML boundary; internal IDs and
+   per-user mapping do not.
 6. Label policy `gamelens-collaborative-labels/1.0.0` is binary. Dislike
    dominates; like, rating >= 7, then saved positive game preference are
    positive. Ratings below 7 and viewed/played/wishlist-only rows are absent.
@@ -2116,8 +2144,8 @@ product contribution flow.
 1. The existing deterministic support fixed point is now a reusable public
    boundary. Only profiles with at least two items and items with at least two
    profiles survive; canonical profile ordering and the Phase 1 interaction
-   fingerprint remain unchanged. The resulting binary CSR is canonical and
-   uses `int64` arithmetic so the allowed 256-contributor case cannot overflow.
+   fingerprint remain unchanged. The resulting binary CSR is canonical and uses
+   `int64` arithmetic so the allowed 256-contributor case cannot overflow.
 2. Sparse `X.T @ X` produces bounded pair support without materializing a dense
    item-item matrix. Self-edges and pairs supported by fewer than two profiles
    are removed. Cosine uses `float64`; round-half-up at scale 1,000,000 produces
@@ -2137,13 +2165,13 @@ product contribution flow.
    cutoff, consent version, and data revision; live metadata requires them.
 5. The loader reads every member once under per-member and total byte caps,
    rejects symlinks and path traversal, parses strict duplicate-free/non-finite-
-   free canonical JSON, validates bounded NPY headers/dtype/shape/trailing bytes,
-   and recomputes graph support/cosine coherence. Catalog mismatch, expected
-   revision or consent mismatch, and `now >= valid_until` fail closed with typed
-   reason codes. Returned arrays have immutable byte backing.
-6. The builder creates an exclusive promotion lock and temporary sibling,
-   fsyncs members, writes the manifest last, loads the temporary bundle through
-   the production validator, optionally performs the mandatory last-moment live
+   free canonical JSON, validates bounded NPY headers/dtype/shape/trailing
+   bytes, and recomputes graph support/cosine coherence. Catalog mismatch,
+   expected revision or consent mismatch, and `now >= valid_until` fail closed
+   with typed reason codes. Returned arrays have immutable byte backing.
+6. The builder creates an exclusive promotion lock and temporary sibling, fsyncs
+   members, writes the manifest last, loads the temporary bundle through the
+   production validator, optionally performs the mandatory last-moment live
    revision callback, and atomically renames only to an unused immutable target.
    Failure cleans the temporary directory and never overwrites a target.
 7. The operator CLI exposes `build`, `validate`, and `inspect`. Fixture builds
@@ -2155,11 +2183,11 @@ product contribution flow.
    without item slugs or profile rows. Scans of deterministic fixture bundles
    find no internal ID, profile key, credential, stable user key, contributor
    matrix, raw interaction, or recommendation event.
-9. The project-authored fixture deterministically produces 12 contributors,
-   6 retained items, 36 positive edges, and 20 directed neighbors. Equivalent
-   reordered input produces byte-identical semantic members and immutable
-   loaded arrays. Hand-calculated cosine quantization includes the `707107`
-   golden case and pair-support-one exclusion.
+9. The project-authored fixture deterministically produces 12 contributors, 6
+   retained items, 36 positive edges, and 20 directed neighbors. Equivalent
+   reordered input produces byte-identical semantic members and immutable loaded
+   arrays. Hand-calculated cosine quantization includes the `707107` golden case
+   and pair-support-one exclusion.
 10. Verification covers support cascades, duplicate profiles, overflow, top-K
     ties, caps, corruption, missing/extra members, traversal, JSON/NPY safety,
     dtype/shape/CSR/cosine coherence, catalog/revision/consent mismatch, expiry,
@@ -2171,24 +2199,24 @@ product contribution flow.
 
 ### As-Built Phase 3 Pure Scoring Decisions
 
-1. Query sources are immutable stable-slug records with kinds `liked`,
-   `rating`, and `saved_game`. Dislikes dominate all positive forms;
-   liked-over-rating and feedback-over-saved precedence, recency/slug ordering,
-   and five-positive plus five-saved caps are applied once by
+1. Query sources are immutable stable-slug records with kinds `liked`, `rating`,
+   and `saved_game`. Dislikes dominate all positive forms; liked-over-rating and
+   feedback-over-saved precedence, recency/slug ordering, and five-positive plus
+   five-saved caps are applied once by
    `canonicalize_collaborative_query_sources()`.
-2. Sparse lookup resolves only canonical source rows through `slug_to_index`
-   and exact `neighbor_indptr` slices. Unsupported sources and supported
-   zero-degree rows remain distinct. At most 10 source rows, 100 neighbors per
-   row, 1,000 visited edges, and 1,000 returned candidates are permitted.
+2. Sparse lookup resolves only canonical source rows through `slug_to_index` and
+   exact `neighbor_indptr` slices. Unsupported sources and supported zero-degree
+   rows remain distinct. At most 10 source rows, 100 neighbors per row, 1,000
+   visited edges, and 1,000 returned candidates are permitted.
 3. `CollaborativeScorer` computes each candidate as the round-half-up integer
    mean of all present stored `similarity_units`. Missing edges do not enter the
    numerator or denominator. Source and dislike exclusions precede return;
    candidates order by collaborative units descending then slug ascending.
 4. Results carry policy identity, canonical source partitions, exact candidate
    units/item support, every contributing edge with pair support, bounded
-   diagnostics, and typed reasons for recommendations, empty input,
-   unsupported sources, no edges, and all-excluded candidates. Contract errors
-   return no partial result and the scorer performs no fallback.
+   diagnostics, and typed reasons for recommendations, empty input, unsupported
+   sources, no edges, and all-excluded candidates. Contract errors return no
+   partial result and the scorer performs no fallback.
 5. `ContentRanker.materialize_base_candidates()` scores at most 1,000 exact
    catalog rows and preserves zero-content candidates with exact platform,
    popularity, and base units. Existing `score_candidates()` eligibility,
@@ -2196,15 +2224,14 @@ product contribution flow.
 6. `FeedbackRanker.materialize_affinity_candidates()` returns exact affinity
    units and profile-active state for the same bounded slug seam. The existing
    Stage 4 `rank()` path delegates to the shared calculation without changing
-   items, ordering, played adjustment, explanations, policy identity, or
-   result reasons.
+   items, ordering, played adjustment, explanations, policy identity, or result
+   reasons.
 7. The production-loaded fixture trace uses source `emberfall-tactics`, exact
    CSR offset range `[4, 8)`, and four deterministic candidates. The
    collaborative-only `starbound-couriers` handoff has collaborative/content/
-   platform/popularity/base/affinity units
-   `428571/0/1000000/599117/159912/0` plus empty genre, tag, and selected-game
-   content evidence. Catalog fingerprints match before outputs are joined by
-   stable slug.
+   platform/popularity/base/affinity units `428571/0/1000000/599117/159912/0`
+   plus empty genre, tag, and selected-game content evidence. Catalog
+   fingerprints match before outputs are joined by stable slug.
 8. Stable Phase 3 contracts are exported from the package root. Internal CSR
    lookup helpers are not root exports. Complexity and purity boundaries are
    recorded in code; `collaborative.py` imports neither content nor feedback
@@ -2213,8 +2240,8 @@ product contribution flow.
 9. Slice commits are `73b4528`, `7a57dcd`, `5e25a64`, `844c695`, `a5b755c`,
    `d0b6676`, and `fa0ebd0`. The focused Phase 3 set passes 154 tests; the full
    ML suite passes 256 with one Windows symbolic-link capability skip. Ruff
-   lint/format, mutation, permutation, privacy-string, resource-bound, and
-   Stage 3/4 characterization gates pass with no new dependency.
+   lint/format, mutation, permutation, privacy-string, resource-bound, and Stage
+   3/4 characterization gates pass with no new dependency.
 10. Candidate union origin, hybrid weights, played application after hybrid
     blending, final rank, serving fallback, readiness, lifecycle validation,
     API/event schemas, UI evidence, and ranking-quality claims remain outside
@@ -2260,13 +2287,13 @@ product contribution flow.
    package root. Candidate-union, scoring, and recommendation-materialization
    stage records/functions remain internal so callers cannot assemble partial
    policy results.
-9. The production-built and production-loaded Phase 2 fixture reaches the
-   public hybrid policy deterministically. Its collaborative-only
-   `starbound-couriers` row has base/affinity/collaborative units
-   `159912/0/428571`, weighted contributions `127930/0/42857`, and final units
-   `170787`. Repeated runs preserve output and artifact bytes; privacy-string
-   checks find no fixture profile key or user/credential field. This is a
-   functional diagnostic, not recommendation-quality evidence.
+9. The production-built and production-loaded Phase 2 fixture reaches the public
+   hybrid policy deterministically. Its collaborative-only `starbound-couriers`
+   row has base/affinity/collaborative units `159912/0/428571`, weighted
+   contributions `127930/0/42857`, and final units `170787`. Repeated runs
+   preserve output and artifact bytes; privacy-string checks find no fixture
+   profile key or user/credential field. This is a functional diagnostic, not
+   recommendation-quality evidence.
 10. Slice commits are `23132a0`, `2447e26`, `d547e3f`, `6e3e181`, `18e6ad4`,
     `8556744`, and `10a5c79`. The focused Phase 3/4 handoff and hybrid suite
     passes 68 tests; the full ML suite passes 331 with one Windows symbolic-link
@@ -2318,15 +2345,16 @@ product contribution flow.
 8. `PersonalizedRankingDecisionService` resolves database time and, for a live
    artifact, one registry row inside the saved request's existing repeatable-
    read transaction. A nested savepoint converts readiness SQL failure to
-   `artifact_incompatible` without poisoning the required event transaction.
-   It returns the typed hybrid/fallback result, readiness, and one exact legacy
+   `artifact_incompatible` without poisoning the required event transaction. It
+   returns the typed hybrid/fallback result, readiness, and one exact legacy
    Stage 4 result.
-9. The public saved mapping deliberately uses that legacy Stage 4 result and
-   commits a `stage-4-v1` event. For a true hybrid result, the legacy result is
-   computed and retained separately; for fallback, it is the exact object
-   carried by `Stage4FallbackResult`. Therefore Phase 5 emits neither a hybrid
-   HTTP 200 nor a mislabeled event. Phase 6 must map one internal decision to
-   both public contracts from the same fixed-point values.
+9. At the Phase 5 handoff, the public saved mapping deliberately used that
+   legacy Stage 4 result and committed a `stage-4-v1` event. For a true hybrid
+   result, the legacy result was computed and retained separately; for fallback,
+   it was the exact object carried by `Stage4FallbackResult`. Therefore Phase 5
+   emitted neither a hybrid HTTP 200 nor a mislabeled event. Phase 6
+   subsequently maps that internal decision to both public contracts from the
+   same fixed-point values.
 10. Slice commits are `0eab24f`, `189ce4c`, `a6d7a34`, `fb7251f`, `4f52547`,
     `7e10882`, `aefb425`, and `66af706`. Verification passes 311 API unit, 98
     disposable-PostgreSQL, and 331 ML tests with one Windows symbolic-link
@@ -2334,10 +2362,66 @@ product contribution flow.
     OpenAPI types have no drift, and the Docker test stack is removed. No Phase
     6 response/event/browser result or recommendation-quality metric is claimed.
 
+### As-Built Phase 6 Response, Event, and Product Decisions
+
+1. The saved personalized response is additive. It preserves Stage 4 model,
+   data, feedback-policy, base, affinity, played, evidence, and generation
+   fields while adding `ranking_mode`, one of 15 bounded fallback reasons,
+   hybrid/collaborative identity, candidate origin, aggregate support/source
+   edges, component weights, and exact contributions. The stateless Stage 3
+   response remains unchanged.
+2. Migration `0010_stage_5_event_contract` is the expected Alembic head. It
+   preserves readable `legacy-v1` and `stage-4-v1` rows, adds nullable bounded
+   Stage 5 mode/fallback/hybrid/collaborative columns, indexes mode/time, and
+   requires all-or-none hybrid identity or reason-only fallback identity for
+   `stage-5-v1`. Result summaries remain JSON arrays capped at 20 items.
+3. One pure projector receives the immutable `PersonalizedRankingDecision` and
+   derives both the response and compact event record from the same fixed-point
+   values. Hybrid and every fallback reason have equality/reconstruction
+   characterization; ordering, top-K, JSON shape, and source-edge bounds are
+   deterministic, and ranking is not invoked again during projection.
+4. `POST /api/v1/me/recommendations` activates that projector inside the
+   existing repeatable-read transaction. Each committed HTTP 200 correlates to
+   exactly one `stage-5-v1` event; known pre-commit failures insert none, and
+   commit-acknowledgement/ambiguous-outcome behavior remains the Stage 4
+   contract. The stateless route neither reads collaborative lineage nor changes
+   its response/event behavior.
+5. A fallback event records content and feedback identity, explicit
+   `stage_4_fallback` mode, and one bounded reason while all hybrid and
+   collaborative identity columns remain null. A hybrid event records complete
+   hybrid/collaborative identity and reconstructible compact component units.
+   Recommendation events remain excluded from labels and source revision.
+6. FastAPI OpenAPI is the single browser-contract source. The generated
+   TypeScript file includes the additive response and component-status fields;
+   the runtime client rejects malformed/unknown response shapes without a
+   handwritten parallel interface. The public request-only client behavior is
+   unchanged.
+7. The saved-results component renders the exact server array order and formats
+   returned values without sorting, reweighting, or score recomputation. It
+   presents hybrid mode or a neutral usable fallback and shows aggregate
+   interaction support/source evidence only when a positive collaborative
+   contribution was applied. Ordinary UI omits model fingerprints, lineage,
+   contributor identities, social proof, probability claims, and quality claims.
+8. Loading uses a polite live status; failures use an alert and keyboard retry;
+   valid empty results preserve saved-context guidance; ready/error headings
+   receive post-commit focus. Responsive and forced-colors styles keep the
+   saved-result evidence usable at representative viewports.
+9. Slice commits are `8c1c4f9`, `fe784e2`, `c2ddd2d`, `0bbdc58`, `9ab9f68`, and
+   `51664b5` for 6A–6F. The Phase 6 handoff passes 365 API unit, 109
+   disposable-PostgreSQL, 331 ML (plus one Windows symlink capability skip), and
+   86 web tests. Ruff lint/format passes across 172 Python files; strict
+   TypeScript, ESLint, production build, OpenAPI drift, and diff checks pass.
+10. A focused no-retry Docker browser gate passes five cases: axe on Chromium,
+    Firefox, and WebKit plus request-only and saved-personalization responsive
+    checks on Chromium. The browser/API stack uses disposable PostgreSQL and
+    removes its containers, networks, volumes, and artifacts after the run.
+    These gates prove contracts and functional behavior, not recommendation
+    quality, representativeness, or Stage 5 completion.
+
 ### As-Built External-Source Decisions
 
-1. Source kind is `external_snapshot`; report schema is 1; manifest schema is
-   1; the source remains `local-raw-sources-verified-not-integrated`.
+1. Source kind is `external_snapshot`; report schema is 1; manifest schema is 1;
+   the source remains `local-raw-sources-verified-not-integrated`.
 2. `verify`, `prepare`, and `audit` are read-only standard-library commands.
    JSON is the machine format and `--format summary` is the human format.
    Expected blocked integration exits zero; source/manifest safety errors exit
@@ -2345,22 +2429,22 @@ product contribution flow.
    or mutates PostgreSQL. A requested container image build may obtain image
    dependencies.
 3. All manifest members must pass exact path, HTTPS host, compressed size,
-   bounded SHA-256, gzip CRC/shape, expanded size, line-count, maximum-line,
-   and no-blank-line checks. Every compressed identity is verified before any
-   source literal is parsed and rechecked after scanning or parsing.
-4. Parser caps are 2 MiB per line, 2 GB expanded per member, 5,000,000
-   top-level records, 20,000,000 nested rows, 500,000 transient users,
-   100,000 transient items, 2,000,000 review pairs, 10,000,000 pair
-   contributions, and 1,000,000 distinct item pairs. Source user IDs are capped
-   at 256 characters and item IDs at 32. The parser is `ast.literal_eval`;
-   executable and structurally invalid literals fail with typed errors.
+   bounded SHA-256, gzip CRC/shape, expanded size, line-count, maximum-line, and
+   no-blank-line checks. Every compressed identity is verified before any source
+   literal is parsed and rechecked after scanning or parsing.
+4. Parser caps are 2 MiB per line, 2 GB expanded per member, 5,000,000 top-level
+   records, 20,000,000 nested rows, 500,000 transient users, 100,000 transient
+   items, 2,000,000 review pairs, 10,000,000 pair contributions, and 1,000,000
+   distinct item pairs. Source user IDs are capped at 256 characters and item
+   IDs at 32. The parser is `ast.literal_eval`; executable and structurally
+   invalid literals fail with typed errors.
 5. Preparation policy `ucsd-steam-review-recommend-preparation-v1` uses
    source-native `recommend=true` only, collapses same-flag user/item
    duplicates, excludes conflicts, and never promotes ownership, playtime, or
    false reviews. The policy is explicitly not an approved Stage 5 label.
-6. Source-level thresholds are two items per profile, two profiles per item,
-   and two profiles per pair; diagnostic activation minima are 10 profiles,
-   20 edges, and 5 items. A deterministic queue-based bipartite two-core reaches
+6. Source-level thresholds are two items per profile, two profiles per item, and
+   two profiles per pair; diagnostic activation minima are 10 profiles, 20
+   edges, and 5 items. A deterministic queue-based bipartite two-core reaches
    the same user/item fixed point without repeated full rescans. The JSON report
    records the algorithm and pass count; this does not freeze the future
    model-builder pruning policy.
@@ -2370,14 +2454,14 @@ product contribution flow.
 8. The exact verified file/profile/support counts, manifest fingerprint,
    candidate fingerprint, distributions, limits, and privacy flags are in
    [`data/external/ucsd-steam/suitability-audit.json`](../data/external/ucsd-steam/suitability-audit.json).
-   Source-level structural support passes, but approved training eligibility
-   and functional-build readiness remain false.
+   Source-level structural support passes, but approved training eligibility and
+   functional-build readiness remain false.
 9. Source identity is verified. Source provenance is recorded but not
-   ingestion-approved. License/redistribution, GameLens catalog mapping,
-   Stage 5 label authority, fixture activation, and live consent/lifecycle
-   gates remain blocked. The catalog schema has nullable `external_id`; all 30
-   seed payloads omit it and use the null default, and no reviewed Steam mapping
-   artifact exists. No title matching is attempted.
+   ingestion-approved. License/redistribution, GameLens catalog mapping, Stage 5
+   label authority, fixture activation, and live consent/lifecycle gates remain
+   blocked. The catalog schema has nullable `external_id`; all 30 seed payloads
+   omit it and use the null default, and no reviewed Steam mapping artifact
+   exists. No title matching is attempted.
 10. No dependency changed. The dedicated `ucsd-source-audit` service mounts
     `data/` and `ml/` read-only, uses a read-only root filesystem, and disables
     runtime networking. The general `quality` service mounts `data/catalog/`,
@@ -2388,20 +2472,18 @@ product contribution flow.
 
 The remaining implementation must resolve and record:
 
-1. Phase 6 personalized response additions, event columns/JSON bounds,
-   `stage-5-v1` constraints, same-value response/event mapping, OpenAPI/browser
-   type regeneration, and conditional frontend evidence/fallback copy.
-2. Product contribution-consent copy, public grant/re-consent/withdrawal
-   routes, and approval to audit an actual live cohort. Saved personalization
-   must remain a separate purpose.
-3. Deliberate approved live build registration/promotion, crash recovery,
-   operator invalidate/retire/rollback, and confirmed physical bundle cleanup.
-   Database lineage and transactional privacy invalidation are already present.
-4. Actual approved live cohort/exclusion aggregates and the explicit decision
-   to activate live build or remain fixture-only.
-5. Guarded fixture-artifact E2E topology and public hybrid/fallback/lifecycle
-   browser acceptance after Phase 6, plus final dependency/license, security,
-   artifact-size, runtime, privacy, and Stage 1–4 regression evidence.
+1. Product contribution-consent copy, public grant/re-consent/withdrawal routes,
+   and approval to audit an actual live cohort. Saved personalization must
+   remain a separate purpose.
+2. Phase 7 deliberate approved live build registration/promotion, crash
+   recovery, operator invalidate/retire/rollback, and confirmed physical bundle
+   cleanup. Database lineage and transactional privacy invalidation are already
+   present.
+3. Actual approved live cohort/exclusion aggregates and the explicit decision to
+   activate live build or remain fixture-only.
+4. Phase 8 guarded fixture-artifact E2E topology and public
+   hybrid/fallback/lifecycle browser acceptance, plus final dependency/license,
+   security, artifact-size, runtime, privacy, and Stage 1–4 regression evidence.
 
 Unresolved items may not become silent defaults. At Stage 5 completion, this
 checklist must be replaced by exact as-built decisions and passing evidence.
@@ -2434,18 +2516,19 @@ experiment report.
 
 The Stage 5 fixture, tiny local cohorts, build diagnostics, deterministic
 examples, and successful UI flows are not recommendation-quality evidence.
-Phase 5 has verified the lifecycle registry/readiness and internal orchestration
-portion of this handoff, but the handoff is not final: Phase 6 must expose and
-persist one synchronized decision, and later phases must complete lifecycle
-commands, guarded browser acceptance, and the full release gate.
+Phases 5–6 have verified lifecycle registry/readiness, synchronized public
+response/event projection, generated client ownership, and cautious browser
+presentation. The handoff is not final: later phases must complete lifecycle
+commands, guarded full-stack browser acceptance, and the full release gate.
 Before Stage 5 is marked complete, this section must change from “should leave”
 to verified facts only.
 
 ## 23. Verified Completion Record
 
-Pending complete Stage 5 implementation. The verified Phase 0–5 source/audit,
-offline-artifact, pure-scoring, hybrid-policy, lifecycle-readiness, and internal-
-orchestration slices are recorded in Section 21; they are not a Stage 5
+Pending complete Stage 5 implementation. The verified Phase 0–6 source/audit,
+offline-artifact, pure-scoring, hybrid-policy, lifecycle-readiness,
+internal-orchestration, response/event, generated-client, and
+browser-presentation slices are recorded in Section 21; they are not a Stage 5
 completion claim.
 
 When every Section 19 gate passes, this section must record the implementation

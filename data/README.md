@@ -6,15 +6,15 @@ training, serving, redistribution, or quality claims.
 
 ## Layout
 
-| Path | Git policy | Purpose |
-| --- | --- | --- |
-| `catalog/` | Tracked | Project-authored catalog used by development and tests. |
-| `fixtures/` | Tracked after review | Small, deterministic, visibly synthetic test inputs owned by the project. |
-| `external/<source>/` | Metadata tracked | Source manifest, source-specific policy, and aggregate-only audit evidence. |
-| `external/<source>/payload/` | Ignored | Immutable local source bytes used only by an approved read-only verifier. |
-| `private/` | Ignored | Local restricted material that must never be committed. |
-| `generated/` | Ignored | Reproducible processed datasets and other generated data artifacts. |
-| `raw/`, `processed/` | Ignored legacy paths | Kept ignored to prevent accidental commits from older workflows. |
+| Path                         | Git policy           | Purpose                                                                     |
+| ---------------------------- | -------------------- | --------------------------------------------------------------------------- |
+| `catalog/`                   | Tracked              | Project-authored catalog used by development and tests.                     |
+| `fixtures/`                  | Tracked after review | Small, deterministic, visibly synthetic test inputs owned by the project.   |
+| `external/<source>/`         | Metadata tracked     | Source manifest, source-specific policy, and aggregate-only audit evidence. |
+| `external/<source>/payload/` | Ignored              | Immutable local source bytes used only by an approved read-only verifier.   |
+| `private/`                   | Ignored              | Local restricted material that must never be committed.                     |
+| `generated/`                 | Ignored              | Reproducible processed datasets and other generated data artifacts.         |
+| `raw/`, `processed/`         | Ignored legacy paths | Kept ignored to prevent accidental commits from older workflows.            |
 
 The current catalog is [`catalog/games.json`](catalog/games.json): 30 fictional,
 project-authored games with explicit taxonomy references. It has no external
@@ -24,15 +24,16 @@ under the repository license.
 No external or real-user interaction dataset is committed or integrated. The
 project-authored Stage 5 interaction fixture is
 [`fixtures/interactions/collaborative-interactions.json`](fixtures/interactions/collaborative-interactions.json).
-It is strict test-only input with 12 synthetic profiles, 36 positive edges,
-6 supported items, explicit exclusions, and cold-start cases. It is not seeded
+It is strict test-only input with 12 synthetic profiles, 36 positive edges, 6
+supported items, explicit exclusions, and cold-start cases. It is not seeded
 into PostgreSQL, is not representative data, cannot establish recommendation
 quality, and does not approve live training or serving. It may drive the
 explicitly guarded Phase 2 fixture artifact build, Phase 3 pure-scoring handoff,
-Phase 4 hybrid-policy tests, and Phase 5 guarded internal orchestration; that
-generated bundle remains ignored and contains aggregate item neighborhoods
-rather than profile rows. It is never registrable as a live build and cannot
-authorize development or production serving.
+Phase 4 hybrid-policy tests, Phase 5 guarded orchestration, and Phase 6
+response/event/browser contract tests; that generated bundle remains ignored and
+contains aggregate item neighborhoods rather than profile rows. It is never
+registrable as a live build and cannot authorize development or production
+serving.
 
 ## External-source policy
 
