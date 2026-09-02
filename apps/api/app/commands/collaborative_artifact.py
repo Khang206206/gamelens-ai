@@ -19,8 +19,10 @@ from gamelens_recommender.interaction_snapshot import (
     load_fixture,
     profile_fingerprint,
 )
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.commands.collaborative_snapshot import catalog_from_seed
+from app.commands.operator_safety import resolve_database_identity
 from app.commands.output import fail_command, write_json
 from app.core.config import Settings, get_settings
 from app.db.seed import DEFAULT_SEED_PATH
@@ -35,6 +37,10 @@ from app.services.collaborative_lifecycle import (
     CollaborativeLifecycleError,
     CollaborativeLifecycleOperation,
     CollaborativeLifecycleService,
+)
+from app.services.collaborative_retirement import (
+    CollaborativeRetirementPreviewError,
+    CollaborativeRetirementPreviewService,
 )
 
 DEFAULT_FIXTURE_VALIDITY_DAYS = 30
@@ -232,6 +238,35 @@ def mutate_live_artifact_lifecycle(
         engine.dispose()
 
 
+def preview_collaborative_retirement(
+    settings: Settings,
+    *,
+    artifact_set: Path | None,
+) -> dict[str, object]:
+    if artifact_set is None:
+        raise CollaborativeArtifactCommandError(
+            "artifact_set_required",
+            "Retirement preview requires an explicit --artifact-set directory",
+        )
+    engine = create_database_engine(settings.database_url)
+    try:
+        try:
+            database = resolve_database_identity(engine, settings.database_url)
+        except (RuntimeError, SQLAlchemyError) as error:
+            raise CollaborativeRetirementPreviewError(
+                "retirement_database_identity_failed",
+                "PostgreSQL database identity could not be resolved",
+            ) from error
+        return CollaborativeRetirementPreviewService(create_session_factory(engine)).preview(
+            artifact_set,
+            database_fingerprint=database.fingerprint,
+            configured_content_artifact=settings.model_artifact_path,
+            configured_collaborative_artifact=settings.collaborative_artifact_path,
+        )
+    finally:
+        engine.dispose()
+
+
 def _artifact_path(
     settings: Settings,
     explicit: Path | None,
@@ -279,6 +314,11 @@ def main() -> None:
     )
     retire_parser.add_argument("--build-id")
     retire_parser.add_argument("--confirm-retirement")
+    retirement_preview_parser = commands.add_parser(
+        "retirement-preview",
+        help="Preview exact non-active bundle paths without registry or filesystem mutation",
+    )
+    retirement_preview_parser.add_argument("--artifact-set", type=Path)
 
     validate_parser = commands.add_parser("validate", help="Validate without mutation")
     validate_parser.add_argument("--artifact", type=Path)
@@ -290,7 +330,12 @@ def main() -> None:
     args = parser.parse_args()
     try:
         settings = get_settings()
-        if args.command in {"invalidate", "retire"}:
+        if args.command == "retirement-preview":
+            result = preview_collaborative_retirement(
+                settings,
+                artifact_set=args.artifact_set,
+            )
+        elif args.command in {"invalidate", "retire"}:
             confirmation = (
                 args.confirm_invalidation
                 if args.command == "invalidate"
@@ -347,6 +392,7 @@ def main() -> None:
         CollaborativeArtifactError,
         CollaborativeLiveBuildError,
         CollaborativeLifecycleError,
+        CollaborativeRetirementPreviewError,
         CollaborativeRegistryMutationError,
         CollaborativeSnapshotError,
         SnapshotAuditError,

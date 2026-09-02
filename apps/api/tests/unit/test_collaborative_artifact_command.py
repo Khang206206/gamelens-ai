@@ -28,6 +28,7 @@ def _settings(
             "stage-5-contribution-v1" if live_promotion_enabled else None
         ),
         collaborative_live_promotion_enabled=live_promotion_enabled,
+        model_artifact_path=tmp_path / "configured-content",
         collaborative_artifact_path=tmp_path / "configured-collaborative",
         collaborative_fixture_path=tmp_path / "fixture.json",
         database_url="postgresql+psycopg://test:test@localhost:5432/gamelens",
@@ -386,6 +387,133 @@ def test_lifecycle_command_passes_exact_operation_build_and_confirmation(
     assert json.loads(capsys.readouterr().out) == {
         "status": "ok",
         "operation": operation,
+    }
+
+
+def test_retirement_preview_requires_explicit_artifact_set_before_database_access(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "create_database_engine",
+        lambda _url: pytest.fail("artifact-set validation must precede database access"),
+    )
+
+    with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as caught:
+        collaborative_artifact.preview_collaborative_retirement(
+            settings,
+            artifact_set=None,
+        )
+
+    assert caught.value.code == "artifact_set_required"
+
+
+def test_retirement_preview_resolves_database_identity_and_disposes_engine(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    artifact_set = tmp_path / "artifact-set"
+    received: list[tuple[Path, str, Path, Path]] = []
+
+    class _Engine:
+        disposed = False
+
+        def dispose(self) -> None:
+            self.disposed = True
+
+    engine = _Engine()
+
+    class _Service:
+        def __init__(self, factory: object) -> None:
+            assert factory == "session-factory"
+
+        def preview(
+            self,
+            path: Path,
+            *,
+            database_fingerprint: str,
+            configured_content_artifact: Path,
+            configured_collaborative_artifact: Path,
+        ) -> dict[str, object]:
+            received.append(
+                (
+                    path,
+                    database_fingerprint,
+                    configured_content_artifact,
+                    configured_collaborative_artifact,
+                )
+            )
+            return {"status": "ok", "operation": "retirement_preview"}
+
+    monkeypatch.setattr(collaborative_artifact, "create_database_engine", lambda _url: engine)
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "resolve_database_identity",
+        lambda received_engine, _url: (
+            SimpleNamespace(fingerprint="a" * 12)
+            if received_engine is engine
+            else pytest.fail("unexpected engine")
+        ),
+    )
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "create_session_factory",
+        lambda _engine: "session-factory",
+    )
+    monkeypatch.setattr(collaborative_artifact, "CollaborativeRetirementPreviewService", _Service)
+
+    result = collaborative_artifact.preview_collaborative_retirement(
+        settings,
+        artifact_set=artifact_set,
+    )
+
+    assert result == {"status": "ok", "operation": "retirement_preview"}
+    assert received == [
+        (
+            artifact_set,
+            "a" * 12,
+            settings.model_artifact_path,
+            settings.collaborative_artifact_path,
+        )
+    ]
+    assert engine.disposed is True
+
+
+def test_retirement_preview_command_passes_exact_artifact_set(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    artifact_set = tmp_path / "artifact-set"
+    received: list[Path | None] = []
+    monkeypatch.setattr(collaborative_artifact, "get_settings", lambda: _settings(tmp_path))
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "preview_collaborative_retirement",
+        lambda _settings, *, artifact_set: (
+            received.append(artifact_set) or {"status": "ok", "operation": "retirement_preview"}
+        ),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "collaborative-artifact",
+            "retirement-preview",
+            "--artifact-set",
+            str(artifact_set),
+        ],
+    )
+
+    collaborative_artifact.main()
+
+    assert received == [artifact_set]
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "ok",
+        "operation": "retirement_preview",
     }
 
 

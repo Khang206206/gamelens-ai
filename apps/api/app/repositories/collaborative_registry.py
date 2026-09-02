@@ -1,4 +1,5 @@
 import re
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, cast
@@ -48,6 +49,13 @@ class CollaborativeLifecycleTransition:
     changed: bool
     invalidation_epoch: int
     effective_at: datetime
+
+
+@dataclass(frozen=True)
+class CollaborativeRegistryLifecycleState:
+    build_id: str
+    status: CollaborativeRegistryStatus
+    invalidation_epoch: int
 
 
 def collaborative_readiness_query(build_id: str) -> Select[tuple[object, ...]]:
@@ -206,6 +214,31 @@ class CollaborativeArtifactRegistryRepository:
             invalidation_epoch=build.invalidation_epoch,
             effective_at=effective_at,
         )
+
+    def lifecycle_states(
+        self,
+        build_ids: Collection[str],
+    ) -> dict[str, CollaborativeRegistryLifecycleState]:
+        normalized = tuple(sorted(set(build_ids)))
+        for build_id in normalized:
+            self.require_valid_build_id(build_id)
+        if not normalized:
+            return {}
+        rows = self.session.execute(
+            select(
+                CollaborativeArtifactBuild.build_id,
+                CollaborativeArtifactBuild.status,
+                CollaborativeArtifactBuild.invalidation_epoch,
+            ).where(CollaborativeArtifactBuild.build_id.in_(normalized))
+        ).all()
+        return {
+            row.build_id: CollaborativeRegistryLifecycleState(
+                build_id=row.build_id,
+                status=cast(CollaborativeRegistryStatus, row.status),
+                invalidation_epoch=row.invalidation_epoch,
+            )
+            for row in rows
+        }
 
     def register_live_build(self, registration: LiveBuildRegistration) -> None:
         self._validate_registration(registration)
