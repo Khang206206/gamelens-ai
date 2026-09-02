@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
+import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -22,7 +24,10 @@ from gamelens_recommender.interaction_snapshot import (
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.commands.collaborative_snapshot import catalog_from_seed
-from app.commands.operator_safety import resolve_database_identity
+from app.commands.operator_safety import (
+    resolve_database_identity,
+    validate_test_execution_configuration,
+)
 from app.commands.output import fail_command, write_json
 from app.core.config import Settings, get_settings
 from app.db.seed import DEFAULT_SEED_PATH
@@ -39,6 +44,7 @@ from app.services.collaborative_lifecycle import (
     CollaborativeLifecycleService,
 )
 from app.services.collaborative_retirement import (
+    CollaborativeArtifactCleanupService,
     CollaborativeRetirementPreviewError,
     CollaborativeRetirementPreviewService,
 )
@@ -267,6 +273,86 @@ def preview_collaborative_retirement(
         engine.dispose()
 
 
+def cleanup_collaborative_artifacts(
+    settings: Settings,
+    *,
+    artifact_set: Path | None,
+    confirmation: str | None,
+) -> dict[str, object]:
+    if artifact_set is None:
+        raise CollaborativeArtifactCommandError(
+            "artifact_set_required",
+            "Collaborative cleanup requires an explicit --artifact-set directory",
+        )
+    if confirmation is None or not confirmation.strip():
+        raise CollaborativeArtifactCommandError(
+            "cleanup_confirmation_required",
+            "Collaborative cleanup requires the exact confirmation emitted by preview",
+        )
+    _validate_cleanup_environment(settings, artifact_set)
+    engine = create_database_engine(settings.database_url)
+    try:
+        try:
+            database = resolve_database_identity(engine, settings.database_url)
+        except (RuntimeError, SQLAlchemyError) as error:
+            raise CollaborativeRetirementPreviewError(
+                "cleanup_database_identity_failed",
+                "PostgreSQL database identity could not be resolved for cleanup",
+            ) from error
+        return CollaborativeArtifactCleanupService(create_session_factory(engine)).cleanup(
+            artifact_set,
+            database_fingerprint=database.fingerprint,
+            configured_content_artifact=settings.model_artifact_path,
+            configured_collaborative_artifact=settings.collaborative_artifact_path,
+            confirmation=confirmation,
+        )
+    finally:
+        engine.dispose()
+
+
+def _validate_cleanup_environment(settings: Settings, artifact_set: Path) -> None:
+    if settings.environment == "development":
+        raise CollaborativeArtifactCommandError(
+            "development_database_protected",
+            "Collaborative cleanup is forbidden against the development database",
+        )
+    process_environment = os.environ.get("ENVIRONMENT")
+    allow_test_reset = os.environ.get("GAMELENS_ALLOW_TEST_DATABASE_RESET")
+    try:
+        validate_test_execution_configuration(
+            settings.database_url,
+            settings_environment=settings.environment,
+            process_environment=process_environment,
+            allow_test_reset=allow_test_reset,
+        )
+    except RuntimeError as error:
+        raise CollaborativeArtifactCommandError(
+            "cleanup_test_environment_unsafe",
+            "Collaborative cleanup test environment is not disposable",
+        ) from error
+
+    test_configuration_present = (
+        settings.environment == "test"
+        or process_environment == "test"
+        or allow_test_reset is not None
+    )
+    if not test_configuration_present:
+        return
+    try:
+        root = artifact_set.expanduser().resolve(strict=True)
+        temporary_root = Path(tempfile.gettempdir()).resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise CollaborativeArtifactCommandError(
+            "cleanup_test_artifact_set_unsafe",
+            "Disposable test artifact set cannot be resolved",
+        ) from error
+    if root == temporary_root or not root.is_relative_to(temporary_root):
+        raise CollaborativeArtifactCommandError(
+            "cleanup_test_artifact_set_unsafe",
+            "Test cleanup requires an artifact set below the system temporary directory",
+        )
+
+
 def _artifact_path(
     settings: Settings,
     explicit: Path | None,
@@ -319,6 +405,12 @@ def main() -> None:
         help="Preview exact non-active bundle paths without registry or filesystem mutation",
     )
     retirement_preview_parser.add_argument("--artifact-set", type=Path)
+    cleanup_parser = commands.add_parser(
+        "cleanup",
+        help="Remove only bundles authorized by an exact retirement preview confirmation",
+    )
+    cleanup_parser.add_argument("--artifact-set", type=Path)
+    cleanup_parser.add_argument("--confirm-cleanup")
 
     validate_parser = commands.add_parser("validate", help="Validate without mutation")
     validate_parser.add_argument("--artifact", type=Path)
@@ -330,7 +422,13 @@ def main() -> None:
     args = parser.parse_args()
     try:
         settings = get_settings()
-        if args.command == "retirement-preview":
+        if args.command == "cleanup":
+            result = cleanup_collaborative_artifacts(
+                settings,
+                artifact_set=args.artifact_set,
+                confirmation=args.confirm_cleanup,
+            )
+        elif args.command == "retirement-preview":
             result = preview_collaborative_retirement(
                 settings,
                 artifact_set=args.artifact_set,

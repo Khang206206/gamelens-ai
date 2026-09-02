@@ -7,6 +7,7 @@ import pytest
 from app.db.models import CollaborativeArtifactBuild
 from app.db.session import create_session_factory
 from app.services.collaborative_retirement import (
+    CollaborativeArtifactCleanupService,
     CollaborativeRetirementPreviewError,
     CollaborativeRetirementPreviewService,
 )
@@ -210,3 +211,145 @@ def test_postgresql_retirement_preview_rejects_unregistered_bundle_fail_closed(
 
     assert caught.value.code == "retirement_bundle_unregistered"
     assert _filesystem_snapshot(artifact_set) == before
+
+
+def test_confirmed_postgresql_cleanup_removes_only_exact_non_active_bundles(
+    postgres_engine: Engine,
+    postgres_session: Session,
+    tmp_path: Path,
+) -> None:
+    artifact_set = tmp_path / "artifact-set"
+    artifact_set.mkdir()
+    content_artifact = artifact_set / "content-artifact"
+    content_artifact.write_bytes(b"protected-content-artifact")
+    now = datetime.now(UTC)
+    for build_id, status in BUILD_STATUSES:
+        interaction_fingerprint, cutoff, valid_until = _build_bundle(
+            artifact_set / status,
+            build_id=build_id,
+            now=now,
+        )
+        _register_build(
+            postgres_session,
+            build_id=build_id,
+            status=status,
+            interaction_fingerprint=interaction_fingerprint,
+            cutoff=cutoff,
+            valid_until=valid_until,
+            now=now,
+        )
+    postgres_session.commit()
+    before_rows = postgres_session.execute(
+        select(
+            CollaborativeArtifactBuild.build_id,
+            CollaborativeArtifactBuild.status,
+            CollaborativeArtifactBuild.invalidation_epoch,
+        ).order_by(CollaborativeArtifactBuild.build_id)
+    ).all()
+    postgres_session.rollback()
+    session_factory = create_session_factory(postgres_engine)
+    preview_arguments = {
+        "database_fingerprint": "c" * 12,
+        "configured_content_artifact": content_artifact,
+        "configured_collaborative_artifact": None,
+    }
+    preview = CollaborativeRetirementPreviewService(session_factory).preview(
+        artifact_set,
+        **preview_arguments,
+    )
+    confirmation = preview["cleanup_confirmation"]
+    assert isinstance(confirmation, str)
+
+    result = CollaborativeArtifactCleanupService(session_factory).cleanup(
+        artifact_set,
+        **preview_arguments,
+        confirmation=confirmation,
+    )
+
+    assert result["summary"] == {
+        "selected_count": 2,
+        "removed_count": 2,
+        "remaining_candidate_count": 0,
+        "protected_count": 2,
+    }
+    assert [item["registry_status"] for item in result["removed"]] == [  # type: ignore[union-attr]
+        "invalidated",
+        "retired",
+    ]
+    assert (artifact_set / "active").is_dir()
+    assert not (artifact_set / "invalidated").exists()
+    assert not (artifact_set / "retired").exists()
+    assert content_artifact.read_bytes() == b"protected-content-artifact"
+    assert "user_id" not in json.dumps(result, sort_keys=True)
+    assert "contributor" not in json.dumps(result, sort_keys=True)
+    after_rows = postgres_session.execute(
+        select(
+            CollaborativeArtifactBuild.build_id,
+            CollaborativeArtifactBuild.status,
+            CollaborativeArtifactBuild.invalidation_epoch,
+        ).order_by(CollaborativeArtifactBuild.build_id)
+    ).all()
+    assert after_rows == before_rows
+
+    with pytest.raises(CollaborativeRetirementPreviewError) as stale:
+        CollaborativeArtifactCleanupService(session_factory).cleanup(
+            artifact_set,
+            **preview_arguments,
+            confirmation=confirmation,
+        )
+    assert stale.value.code == "cleanup_confirmation_mismatch"
+    assert (artifact_set / "active").is_dir()
+    assert content_artifact.is_file()
+
+
+def test_cleanup_rejects_registry_change_after_preview_without_removing_bundle(
+    postgres_engine: Engine,
+    postgres_session: Session,
+    tmp_path: Path,
+) -> None:
+    artifact_set = tmp_path / "artifact-set"
+    artifact_set.mkdir()
+    now = datetime.now(UTC)
+    build_id = "stage5-live-preview-state-change-v1"
+    interaction_fingerprint, cutoff, valid_until = _build_bundle(
+        artifact_set / "candidate",
+        build_id=build_id,
+        now=now,
+    )
+    _register_build(
+        postgres_session,
+        build_id=build_id,
+        status="invalidated",
+        interaction_fingerprint=interaction_fingerprint,
+        cutoff=cutoff,
+        valid_until=valid_until,
+        now=now,
+    )
+    postgres_session.commit()
+    session_factory = create_session_factory(postgres_engine)
+    preview_arguments = {
+        "database_fingerprint": "d" * 12,
+        "configured_content_artifact": None,
+        "configured_collaborative_artifact": None,
+    }
+    preview = CollaborativeRetirementPreviewService(session_factory).preview(
+        artifact_set,
+        **preview_arguments,
+    )
+    confirmation = preview["cleanup_confirmation"]
+    assert isinstance(confirmation, str)
+    build = postgres_session.get(CollaborativeArtifactBuild, build_id)
+    assert build is not None
+    build.status = "retired"
+    build.retired_at = now + timedelta(seconds=1)
+    postgres_session.commit()
+
+    with pytest.raises(CollaborativeRetirementPreviewError) as caught:
+        CollaborativeArtifactCleanupService(session_factory).cleanup(
+            artifact_set,
+            **preview_arguments,
+            confirmation=confirmation,
+        )
+
+    assert caught.value.code == "cleanup_confirmation_mismatch"
+    assert (artifact_set / "candidate").is_dir()

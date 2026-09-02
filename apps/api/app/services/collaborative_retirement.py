@@ -4,12 +4,15 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import stat
+import uuid
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from gamelens_recommender.collaborative_artifacts import (
     CollaborativeArtifactError,
@@ -51,6 +54,24 @@ class _ProtectedContentInventory:
     path: Path
     relative_path: str
     fingerprint: str
+
+
+@dataclass(frozen=True)
+class _CleanupCandidate:
+    path: Path
+    build_id: str
+    registry_status: Literal["invalidated", "retired"]
+    reason: Literal["registry_invalidated", "registry_retired"]
+    bundle_fingerprint: str
+
+    def report(self) -> dict[str, object]:
+        return {
+            "path": str(self.path),
+            "build_id": self.build_id,
+            "registry_status": self.registry_status,
+            "reason": self.reason,
+            "bundle_fingerprint": self.bundle_fingerprint,
+        }
 
 
 class CollaborativeRetirementPreviewService:
@@ -205,6 +226,76 @@ class CollaborativeRetirementPreviewService:
             ) from error
         finally:
             session.close()
+
+
+class CollaborativeArtifactCleanupService:
+    """Remove only the exact non-active bundles authorized by a fresh preview."""
+
+    def __init__(self, session_factory: Callable[[], Session]) -> None:
+        self.preview_service = CollaborativeRetirementPreviewService(session_factory)
+
+    def cleanup(
+        self,
+        artifact_set: Path,
+        *,
+        database_fingerprint: str,
+        configured_content_artifact: Path | None,
+        configured_collaborative_artifact: Path | None,
+        confirmation: str,
+    ) -> dict[str, object]:
+        preview_arguments = {
+            "database_fingerprint": database_fingerprint,
+            "configured_content_artifact": configured_content_artifact,
+            "configured_collaborative_artifact": configured_collaborative_artifact,
+        }
+        preview = self.preview_service.preview(artifact_set, **preview_arguments)
+        expected_confirmation = preview.get("cleanup_confirmation")
+        if not isinstance(expected_confirmation, str) or confirmation != expected_confirmation:
+            raise CollaborativeRetirementPreviewError(
+                "cleanup_confirmation_mismatch",
+                "Cleanup requires the exact confirmation emitted by the current retirement preview",
+            )
+
+        final_preview = self.preview_service.preview(artifact_set, **preview_arguments)
+        if final_preview.get("cleanup_confirmation") != expected_confirmation:
+            raise CollaborativeRetirementPreviewError(
+                "cleanup_target_changed",
+                "Artifact retirement targets changed after confirmation validation",
+            )
+        root = _artifact_set_root(artifact_set)
+        candidates = _cleanup_candidates(final_preview, root)
+        for candidate in candidates:
+            _verify_cleanup_candidate(root, candidate)
+
+        removed: list[dict[str, object]] = []
+        for candidate in candidates:
+            _verify_cleanup_candidate(root, candidate)
+            _remove_cleanup_candidate(root, candidate)
+            _fsync_directory(root)
+            removed.append(candidate.report())
+
+        after = self.preview_service.preview(artifact_set, **preview_arguments)
+        before_artifact_set = cast(dict[str, object], final_preview["artifact_set"])
+        after_artifact_set = cast(dict[str, object], after["artifact_set"])
+        after_summary = cast(dict[str, object], after["summary"])
+        return {
+            "status": "ok",
+            "operation": "cleanup",
+            "database": final_preview["database"],
+            "artifact_set": {
+                "path": before_artifact_set["path"],
+                "fingerprint_before": before_artifact_set["fingerprint"],
+                "fingerprint_after": after_artifact_set["fingerprint"],
+            },
+            "retirement_fingerprint": final_preview["retirement_fingerprint"],
+            "summary": {
+                "selected_count": len(candidates),
+                "removed_count": len(removed),
+                "remaining_candidate_count": after_summary["candidate_count"],
+                "protected_count": after_summary["protected_count"],
+            },
+            "removed": removed,
+        }
 
 
 def _artifact_set_root(path: Path) -> Path:
@@ -430,6 +521,151 @@ def _bundle_report(
         "reason": reason,
         "bundle_fingerprint": bundle.fingerprint,
     }
+
+
+def _cleanup_candidates(
+    preview: dict[str, object],
+    root: Path,
+) -> list[_CleanupCandidate]:
+    raw_candidates = preview.get("candidates")
+    if not isinstance(raw_candidates, list):
+        raise CollaborativeRetirementPreviewError(
+            "cleanup_preview_invalid",
+            "Retirement preview candidate shape is invalid",
+        )
+    candidates: list[_CleanupCandidate] = []
+    for raw_candidate in raw_candidates:
+        if not isinstance(raw_candidate, dict):
+            raise CollaborativeRetirementPreviewError(
+                "cleanup_preview_invalid",
+                "Retirement preview candidate shape is invalid",
+            )
+        path_value = raw_candidate.get("path")
+        build_id = raw_candidate.get("build_id")
+        registry_status = raw_candidate.get("registry_status")
+        reason = raw_candidate.get("reason")
+        bundle_fingerprint = raw_candidate.get("bundle_fingerprint")
+        if (
+            not isinstance(path_value, str)
+            or not isinstance(build_id, str)
+            or registry_status not in {"invalidated", "retired"}
+            or reason != f"registry_{registry_status}"
+            or not isinstance(bundle_fingerprint, str)
+            or re.fullmatch(r"[0-9a-f]{64}", bundle_fingerprint) is None
+        ):
+            raise CollaborativeRetirementPreviewError(
+                "cleanup_preview_invalid",
+                "Retirement preview candidate fields are invalid",
+            )
+        path = Path(path_value)
+        if _comparison_key(path) != _comparison_key(root / path.name):
+            raise CollaborativeRetirementPreviewError(
+                "cleanup_candidate_path_invalid",
+                "Cleanup candidate is not a direct artifact-set child",
+            )
+        candidates.append(
+            _CleanupCandidate(
+                path=path,
+                build_id=build_id,
+                registry_status=registry_status,
+                reason=reason,
+                bundle_fingerprint=bundle_fingerprint,
+            )
+        )
+    candidates.sort(key=lambda candidate: _comparison_key(candidate.path) or "")
+    return candidates
+
+
+def _verify_cleanup_candidate(root: Path, candidate: _CleanupCandidate) -> None:
+    try:
+        if _is_link(candidate.path):
+            raise CollaborativeRetirementPreviewError(
+                "cleanup_candidate_path_invalid",
+                "Cleanup candidate cannot be a symbolic link or junction",
+            )
+        resolved = candidate.path.resolve(strict=True)
+    except CollaborativeRetirementPreviewError:
+        raise
+    except (OSError, RuntimeError) as error:
+        raise CollaborativeRetirementPreviewError(
+            "cleanup_candidate_changed",
+            "Cleanup candidate disappeared or changed after preview",
+        ) from error
+    if resolved.parent != root or _comparison_key(resolved) != _comparison_key(candidate.path):
+        raise CollaborativeRetirementPreviewError(
+            "cleanup_candidate_path_invalid",
+            "Cleanup candidate escapes its artifact set",
+        )
+    bundle = _load_bundle(resolved, resolved.relative_to(root).as_posix())
+    if (
+        bundle.source_kind != "live"
+        or bundle.build_id != candidate.build_id
+        or bundle.fingerprint != candidate.bundle_fingerprint
+    ):
+        raise CollaborativeRetirementPreviewError(
+            "cleanup_candidate_changed",
+            "Cleanup candidate identity changed after preview",
+        )
+
+
+def _remove_cleanup_candidate(root: Path, candidate: _CleanupCandidate) -> None:
+    quarantine = root / (
+        ".gamelens-cleanup-"
+        f"{hashlib.sha256(candidate.build_id.encode()).hexdigest()[:16]}-{uuid.uuid4().hex}"
+    )
+    try:
+        candidate.path.rename(quarantine)
+    except OSError as error:
+        raise CollaborativeRetirementPreviewError(
+            "cleanup_filesystem_failed",
+            "Filesystem rejected the authorized collaborative bundle quarantine",
+        ) from error
+    try:
+        quarantined = _load_bundle(
+            quarantine,
+            candidate.path.relative_to(root).as_posix(),
+        )
+        if (
+            quarantined.source_kind != "live"
+            or quarantined.build_id != candidate.build_id
+            or quarantined.fingerprint != candidate.bundle_fingerprint
+        ):
+            raise CollaborativeRetirementPreviewError(
+                "cleanup_candidate_changed",
+                "Cleanup candidate identity changed during quarantine",
+            )
+    except BaseException:
+        if not os.path.lexists(candidate.path):
+            with suppress(OSError):
+                quarantine.rename(candidate.path)
+        raise
+    try:
+        shutil.rmtree(quarantine)
+    except OSError as error:
+        raise CollaborativeRetirementPreviewError(
+            "cleanup_filesystem_failed",
+            "Filesystem rejected an authorized collaborative bundle cleanup",
+        ) from error
+    if os.path.lexists(quarantine) or os.path.lexists(candidate.path):
+        raise CollaborativeRetirementPreviewError(
+            "cleanup_filesystem_failed",
+            "Collaborative bundle cleanup left an unexpected filesystem path",
+        )
+
+
+def _fsync_directory(path: Path) -> None:
+    if os.name == "nt":
+        return
+    try:
+        descriptor = os.open(path, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(descriptor)
+    except OSError:
+        pass
+    finally:
+        os.close(descriptor)
 
 
 def _plain_json(value: Any) -> Any:

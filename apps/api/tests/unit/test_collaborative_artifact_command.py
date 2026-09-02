@@ -517,6 +517,233 @@ def test_retirement_preview_command_passes_exact_artifact_set(
     }
 
 
+@pytest.mark.parametrize(
+    ("artifact_set", "confirmation", "expected_code"),
+    [
+        (None, None, "artifact_set_required"),
+        (Path("artifact-set"), None, "cleanup_confirmation_required"),
+    ],
+)
+def test_cleanup_requires_exact_explicit_inputs_before_database_access(
+    artifact_set: Path | None,
+    confirmation: str | None,
+    expected_code: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "create_database_engine",
+        lambda _url: pytest.fail("cleanup inputs must fail before database access"),
+    )
+
+    with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as caught:
+        collaborative_artifact.cleanup_collaborative_artifacts(
+            settings,
+            artifact_set=artifact_set,
+            confirmation=confirmation,
+        )
+
+    assert caught.value.code == expected_code
+
+
+def test_cleanup_rejects_development_database_before_database_access(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "create_database_engine",
+        lambda _url: pytest.fail("development cleanup must fail before database access"),
+    )
+
+    with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as caught:
+        collaborative_artifact.cleanup_collaborative_artifacts(
+            settings,
+            artifact_set=tmp_path,
+            confirmation="CLEAN COLLABORATIVE exact",
+        )
+
+    assert caught.value.code == "development_database_protected"
+
+
+def test_cleanup_requires_the_complete_disposable_test_gate(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    settings.environment = "test"
+    settings.database_url = (
+        "postgresql+psycopg://gamelens_test:gamelens_test_only@localhost:5432/gamelens_test"
+    )
+    artifact_set = tmp_path / "artifact-set"
+    artifact_set.mkdir()
+    monkeypatch.setenv("ENVIRONMENT", "test")
+    monkeypatch.setenv("GAMELENS_ALLOW_TEST_DATABASE_RESET", "false")
+
+    with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as caught:
+        collaborative_artifact._validate_cleanup_environment(settings, artifact_set)
+
+    assert caught.value.code == "cleanup_test_environment_unsafe"
+
+
+def test_cleanup_allows_a_fully_gated_temporary_test_artifact_set(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    settings.environment = "test"
+    settings.database_url = (
+        "postgresql+psycopg://gamelens_test:gamelens_test_only@localhost:5432/gamelens_test"
+    )
+    artifact_set = tmp_path / "artifact-set"
+    artifact_set.mkdir()
+    monkeypatch.setenv("ENVIRONMENT", "test")
+    monkeypatch.setenv("GAMELENS_ALLOW_TEST_DATABASE_RESET", "true")
+
+    collaborative_artifact._validate_cleanup_environment(settings, artifact_set)
+
+
+def test_cleanup_rejects_non_disposable_test_artifact_set(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    settings.environment = "test"
+    settings.database_url = (
+        "postgresql+psycopg://gamelens_test:gamelens_test_only@localhost:5432/gamelens_test"
+    )
+    monkeypatch.setenv("ENVIRONMENT", "test")
+    monkeypatch.setenv("GAMELENS_ALLOW_TEST_DATABASE_RESET", "true")
+
+    with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as caught:
+        collaborative_artifact._validate_cleanup_environment(settings, PROJECT_ROOT / "data")
+
+    assert caught.value.code == "cleanup_test_artifact_set_unsafe"
+
+
+def test_confirmed_cleanup_resolves_database_identity_and_disposes_engine(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    settings.environment = "production"
+    artifact_set = tmp_path / "artifact-set"
+    artifact_set.mkdir()
+    confirmation = "CLEAN COLLABORATIVE exact-confirmation"
+    received: list[tuple[Path, str, Path, Path, str]] = []
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.delenv("GAMELENS_ALLOW_TEST_DATABASE_RESET", raising=False)
+
+    class _Engine:
+        disposed = False
+
+        def dispose(self) -> None:
+            self.disposed = True
+
+    engine = _Engine()
+
+    class _Service:
+        def __init__(self, factory: object) -> None:
+            assert factory == "session-factory"
+
+        def cleanup(
+            self,
+            path: Path,
+            *,
+            database_fingerprint: str,
+            configured_content_artifact: Path,
+            configured_collaborative_artifact: Path,
+            confirmation: str,
+        ) -> dict[str, object]:
+            received.append(
+                (
+                    path,
+                    database_fingerprint,
+                    configured_content_artifact,
+                    configured_collaborative_artifact,
+                    confirmation,
+                )
+            )
+            return {"status": "ok", "operation": "cleanup"}
+
+    monkeypatch.setattr(collaborative_artifact, "create_database_engine", lambda _url: engine)
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "resolve_database_identity",
+        lambda received_engine, _url: (
+            SimpleNamespace(fingerprint="b" * 12)
+            if received_engine is engine
+            else pytest.fail("unexpected engine")
+        ),
+    )
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "create_session_factory",
+        lambda _engine: "session-factory",
+    )
+    monkeypatch.setattr(collaborative_artifact, "CollaborativeArtifactCleanupService", _Service)
+
+    result = collaborative_artifact.cleanup_collaborative_artifacts(
+        settings,
+        artifact_set=artifact_set,
+        confirmation=confirmation,
+    )
+
+    assert result == {"status": "ok", "operation": "cleanup"}
+    assert received == [
+        (
+            artifact_set,
+            "b" * 12,
+            settings.model_artifact_path,
+            settings.collaborative_artifact_path,
+            confirmation,
+        )
+    ]
+    assert engine.disposed is True
+
+
+def test_cleanup_command_passes_exact_artifact_set_and_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    artifact_set = tmp_path / "artifact-set"
+    confirmation = "CLEAN COLLABORATIVE exact-confirmation"
+    received: list[tuple[Path | None, str | None]] = []
+    monkeypatch.setattr(collaborative_artifact, "get_settings", lambda: _settings(tmp_path))
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "cleanup_collaborative_artifacts",
+        lambda _settings, *, artifact_set, confirmation: (
+            received.append((artifact_set, confirmation))
+            or {"status": "ok", "operation": "cleanup"}
+        ),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "collaborative-artifact",
+            "cleanup",
+            "--artifact-set",
+            str(artifact_set),
+            "--confirm-cleanup",
+            confirmation,
+        ],
+    )
+
+    collaborative_artifact.main()
+
+    assert received == [(artifact_set, confirmation)]
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "ok",
+        "operation": "cleanup",
+    }
+
+
 def test_fixture_build_requires_both_test_environment_and_explicit_gate(
     tmp_path: Path,
 ) -> None:

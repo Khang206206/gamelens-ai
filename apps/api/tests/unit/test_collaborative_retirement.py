@@ -7,6 +7,7 @@ import pytest
 from app.repositories.collaborative_registry import CollaborativeRegistryLifecycleState
 from app.services import collaborative_retirement
 from app.services.collaborative_retirement import (
+    CollaborativeArtifactCleanupService,
     CollaborativeRetirementPreviewError,
     CollaborativeRetirementPreviewService,
 )
@@ -175,3 +176,167 @@ def test_retirement_preview_rejects_configured_artifact_as_the_artifact_set(
     session.commit.assert_not_called()
     session.rollback.assert_not_called()
     session.close.assert_not_called()
+
+
+def test_confirmed_cleanup_removes_only_non_active_bundle_and_preserves_registry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact_set = tmp_path / "artifact-set"
+    active_path = artifact_set / "active"
+    retired_path = artifact_set / "retired"
+    active_path.mkdir(parents=True)
+    retired_path.mkdir()
+    build_ids = {
+        "active": "stage5-live-cleanup-active-v1",
+        "retired": "stage5-live-cleanup-retired-v1",
+    }
+
+    def load_bundle(path: Path, **_keywords: object) -> SimpleNamespace:
+        candidate = Path(path)
+        build_id = build_ids["active"] if candidate.name == "active" else build_ids["retired"]
+        return _loaded_bundle(candidate, build_id=build_id)
+
+    monkeypatch.setattr(collaborative_retirement, "load_collaborative_artifact", load_bundle)
+    states = {
+        build_ids["active"]: CollaborativeRegistryLifecycleState(
+            build_id=build_ids["active"],
+            status="active",
+            invalidation_epoch=0,
+        ),
+        build_ids["retired"]: CollaborativeRegistryLifecycleState(
+            build_id=build_ids["retired"],
+            status="retired",
+            invalidation_epoch=1,
+        ),
+    }
+    preview_service, session, repository = _service(monkeypatch, states)
+    preview = preview_service.preview(
+        artifact_set,
+        database_fingerprint="4" * 12,
+        configured_content_artifact=None,
+        configured_collaborative_artifact=None,
+    )
+    confirmation = preview["cleanup_confirmation"]
+    assert isinstance(confirmation, str)
+
+    result = CollaborativeArtifactCleanupService(lambda: session).cleanup(
+        artifact_set,
+        database_fingerprint="4" * 12,
+        configured_content_artifact=None,
+        configured_collaborative_artifact=None,
+        confirmation=confirmation,
+    )
+
+    assert result["summary"] == {
+        "selected_count": 1,
+        "removed_count": 1,
+        "remaining_candidate_count": 0,
+        "protected_count": 1,
+    }
+    assert result["removed"][0]["build_id"] == build_ids["retired"]  # type: ignore[index]
+    assert active_path.is_dir()
+    assert not retired_path.exists()
+    repository.lifecycle_states.assert_called()
+    session.commit.assert_not_called()
+
+    with pytest.raises(CollaborativeRetirementPreviewError) as stale:
+        CollaborativeArtifactCleanupService(lambda: session).cleanup(
+            artifact_set,
+            database_fingerprint="4" * 12,
+            configured_content_artifact=None,
+            configured_collaborative_artifact=None,
+            confirmation=confirmation,
+        )
+    assert stale.value.code == "cleanup_confirmation_mismatch"
+    assert active_path.is_dir()
+
+
+def test_cleanup_confirmation_mismatch_removes_nothing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact_set = tmp_path / "artifact-set"
+    retired_path = artifact_set / "retired"
+    retired_path.mkdir(parents=True)
+    build_id = "stage5-live-cleanup-mismatch-v1"
+    monkeypatch.setattr(
+        collaborative_retirement,
+        "load_collaborative_artifact",
+        lambda path, **_keywords: _loaded_bundle(Path(path), build_id=build_id),
+    )
+    _preview_service, session, _repository = _service(
+        monkeypatch,
+        {
+            build_id: CollaborativeRegistryLifecycleState(
+                build_id=build_id,
+                status="retired",
+                invalidation_epoch=1,
+            )
+        },
+    )
+
+    with pytest.raises(CollaborativeRetirementPreviewError) as caught:
+        CollaborativeArtifactCleanupService(lambda: session).cleanup(
+            artifact_set,
+            database_fingerprint="5" * 12,
+            configured_content_artifact=None,
+            configured_collaborative_artifact=None,
+            confirmation="CLEAN COLLABORATIVE stale",
+        )
+
+    assert caught.value.code == "cleanup_confirmation_mismatch"
+    assert retired_path.is_dir()
+
+
+def test_cleanup_restores_quarantined_bundle_when_identity_changes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact_set = tmp_path / "artifact-set"
+    retired_path = artifact_set / "retired"
+    retired_path.mkdir(parents=True)
+    build_id = "stage5-live-cleanup-quarantine-v1"
+
+    def load_bundle(path: Path, **_keywords: object) -> SimpleNamespace:
+        candidate = Path(path)
+        observed_build_id = (
+            "stage5-live-cleanup-replaced-v1"
+            if candidate.name.startswith(".gamelens-cleanup-")
+            else build_id
+        )
+        return _loaded_bundle(candidate, build_id=observed_build_id)
+
+    monkeypatch.setattr(collaborative_retirement, "load_collaborative_artifact", load_bundle)
+    preview_service, session, _repository = _service(
+        monkeypatch,
+        {
+            build_id: CollaborativeRegistryLifecycleState(
+                build_id=build_id,
+                status="retired",
+                invalidation_epoch=1,
+            )
+        },
+    )
+    preview = preview_service.preview(
+        artifact_set,
+        database_fingerprint="6" * 12,
+        configured_content_artifact=None,
+        configured_collaborative_artifact=None,
+    )
+    confirmation = preview["cleanup_confirmation"]
+    assert isinstance(confirmation, str)
+
+    with pytest.raises(CollaborativeRetirementPreviewError) as caught:
+        CollaborativeArtifactCleanupService(lambda: session).cleanup(
+            artifact_set,
+            database_fingerprint="6" * 12,
+            configured_content_artifact=None,
+            configured_collaborative_artifact=None,
+            confirmation=confirmation,
+        )
+
+    assert caught.value.code == "cleanup_candidate_changed"
+    assert retired_path.is_dir()
+    assert [path.name for path in artifact_set.iterdir()] == ["retired"]
+    session.commit.assert_not_called()
