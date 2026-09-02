@@ -268,6 +268,127 @@ def test_live_recovery_command_passes_exact_artifact_and_confirmation(
     assert json.loads(capsys.readouterr().out)["promotion"]["recovery"] == ("orphan_registered")
 
 
+@pytest.mark.parametrize("operation", ["invalidate", "retire"])
+def test_lifecycle_mutation_requires_exact_confirmation_before_database_access(
+    operation: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "create_database_engine",
+        lambda _url: pytest.fail("confirmation must fail before database access"),
+    )
+
+    with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as missing:
+        collaborative_artifact.mutate_live_artifact_lifecycle(
+            settings,
+            operation=operation,  # type: ignore[arg-type]
+            build_id=None,
+            confirmation=None,
+        )
+    with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as mismatch:
+        collaborative_artifact.mutate_live_artifact_lifecycle(
+            settings,
+            operation=operation,  # type: ignore[arg-type]
+            build_id="stage5-live-v1",
+            confirmation="different-build",
+        )
+
+    assert missing.value.code == "build_id_required"
+    assert mismatch.value.code == f"live_{operation}_confirmation_required"
+
+
+def test_confirmed_lifecycle_mutation_disposes_its_database_engine(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    received: list[tuple[str, str]] = []
+
+    class _Engine:
+        disposed = False
+
+        def dispose(self) -> None:
+            self.disposed = True
+
+    engine = _Engine()
+
+    class _Service:
+        def __init__(self, factory: object) -> None:
+            assert factory == "session-factory"
+
+        def mutate(self, *, operation: str, build_id: str) -> dict[str, object]:
+            received.append((operation, build_id))
+            return {"status": "ok"}
+
+    monkeypatch.setattr(collaborative_artifact, "create_database_engine", lambda _url: engine)
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "create_session_factory",
+        lambda _engine: "session-factory",
+    )
+    monkeypatch.setattr(collaborative_artifact, "CollaborativeLifecycleService", _Service)
+
+    result = collaborative_artifact.mutate_live_artifact_lifecycle(
+        settings,
+        operation="invalidate",
+        build_id="stage5-live-v1",
+        confirmation="stage5-live-v1",
+    )
+
+    assert result == {"status": "ok"}
+    assert received == [("invalidate", "stage5-live-v1")]
+    assert engine.disposed is True
+
+
+@pytest.mark.parametrize(
+    ("operation", "confirmation_flag"),
+    [
+        ("invalidate", "--confirm-invalidation"),
+        ("retire", "--confirm-retirement"),
+    ],
+)
+def test_lifecycle_command_passes_exact_operation_build_and_confirmation(
+    operation: str,
+    confirmation_flag: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    received: list[tuple[str, str | None, str | None]] = []
+    monkeypatch.setattr(collaborative_artifact, "get_settings", lambda: _settings(tmp_path))
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "mutate_live_artifact_lifecycle",
+        lambda _settings, *, operation, build_id, confirmation: (
+            received.append((operation, build_id, confirmation))
+            or {"status": "ok", "operation": operation}
+        ),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "collaborative-artifact",
+            operation,
+            "--build-id",
+            "stage5-live-v1",
+            confirmation_flag,
+            "stage5-live-v1",
+        ],
+    )
+
+    collaborative_artifact.main()
+
+    assert received == [(operation, "stage5-live-v1", "stage5-live-v1")]
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "ok",
+        "operation": operation,
+    }
+
+
 def test_fixture_build_requires_both_test_environment_and_explicit_gate(
     tmp_path: Path,
 ) -> None:

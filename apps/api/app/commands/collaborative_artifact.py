@@ -31,6 +31,11 @@ from app.services.collaborative_build import (
     CollaborativeLiveBuildError,
     CollaborativeLiveBuildService,
 )
+from app.services.collaborative_lifecycle import (
+    CollaborativeLifecycleError,
+    CollaborativeLifecycleOperation,
+    CollaborativeLifecycleService,
+)
 
 DEFAULT_FIXTURE_VALIDITY_DAYS = 30
 
@@ -200,6 +205,33 @@ def recover_live_artifact(
         engine.dispose()
 
 
+def mutate_live_artifact_lifecycle(
+    settings: Settings,
+    *,
+    operation: CollaborativeLifecycleOperation,
+    build_id: str | None,
+    confirmation: str | None,
+) -> dict[str, object]:
+    if build_id is None:
+        raise CollaborativeArtifactCommandError(
+            "build_id_required",
+            f"Live collaborative {operation} requires an explicit build ID",
+        )
+    if confirmation != build_id:
+        raise CollaborativeArtifactCommandError(
+            f"live_{operation}_confirmation_required",
+            f"Live {operation} requires its confirmation value to match --build-id",
+        )
+    engine = create_database_engine(settings.database_url)
+    try:
+        return CollaborativeLifecycleService(create_session_factory(engine)).mutate(
+            operation=operation,
+            build_id=build_id,
+        )
+    finally:
+        engine.dispose()
+
+
 def _artifact_path(
     settings: Settings,
     explicit: Path | None,
@@ -235,6 +267,19 @@ def main() -> None:
     recover_parser.add_argument("--build-id")
     recover_parser.add_argument("--confirm-live-recovery")
 
+    invalidate_parser = commands.add_parser(
+        "invalidate",
+        help="Deliberately invalidate one active live registry build",
+    )
+    invalidate_parser.add_argument("--build-id")
+    invalidate_parser.add_argument("--confirm-invalidation")
+    retire_parser = commands.add_parser(
+        "retire",
+        help="Retire one already-invalidated live registry build without deleting its bundle",
+    )
+    retire_parser.add_argument("--build-id")
+    retire_parser.add_argument("--confirm-retirement")
+
     validate_parser = commands.add_parser("validate", help="Validate without mutation")
     validate_parser.add_argument("--artifact", type=Path)
     validate_parser.add_argument("--catalog", type=Path, default=DEFAULT_SEED_PATH)
@@ -245,47 +290,63 @@ def main() -> None:
     args = parser.parse_args()
     try:
         settings = get_settings()
-        explicit_path = getattr(args, "output", None) if args.command == "build" else args.artifact
-        if args.command == "recover" and explicit_path is None:
-            raise CollaborativeArtifactCommandError(
-                "artifact_path_required",
-                "Live recovery requires an explicit --artifact path",
+        if args.command in {"invalidate", "retire"}:
+            confirmation = (
+                args.confirm_invalidation
+                if args.command == "invalidate"
+                else args.confirm_retirement
             )
-        artifact_path = _artifact_path(settings, explicit_path)
-        allow_fixture = _fixture_allowed(settings)
-        if args.command == "build":
-            if args.source == "fixture":
-                result = build_fixture_artifact(
-                    settings,
-                    artifact_path,
-                    fixture_path=args.fixture or settings.collaborative_fixture_path,
-                    catalog_path=args.catalog,
+            result = mutate_live_artifact_lifecycle(
+                settings,
+                operation=args.command,
+                build_id=args.build_id,
+                confirmation=confirmation,
+            )
+        else:
+            explicit_path = (
+                getattr(args, "output", None) if args.command == "build" else args.artifact
+            )
+            if args.command == "recover" and explicit_path is None:
+                raise CollaborativeArtifactCommandError(
+                    "artifact_path_required",
+                    "Live recovery requires an explicit --artifact path",
                 )
-            else:
-                result = build_live_artifact(
+            artifact_path = _artifact_path(settings, explicit_path)
+            allow_fixture = _fixture_allowed(settings)
+            if args.command == "build":
+                if args.source == "fixture":
+                    result = build_fixture_artifact(
+                        settings,
+                        artifact_path,
+                        fixture_path=args.fixture or settings.collaborative_fixture_path,
+                        catalog_path=args.catalog,
+                    )
+                else:
+                    result = build_live_artifact(
+                        settings,
+                        artifact_path,
+                        build_id=args.build_id,
+                        confirmation=args.confirm_live_build,
+                    )
+            elif args.command == "recover":
+                result = recover_live_artifact(
                     settings,
                     artifact_path,
                     build_id=args.build_id,
-                    confirmation=args.confirm_live_build,
+                    confirmation=args.confirm_live_recovery,
                 )
-        elif args.command == "recover":
-            result = recover_live_artifact(
-                settings,
-                artifact_path,
-                build_id=args.build_id,
-                confirmation=args.confirm_live_recovery,
-            )
-        else:
-            catalog = catalog_from_seed(args.catalog)
-            result = inspect_collaborative_artifact(
-                artifact_path,
-                allow_fixture=allow_fixture,
-                expected_catalog_fingerprint=catalog.fingerprint,
-            )
+            else:
+                catalog = catalog_from_seed(args.catalog)
+                result = inspect_collaborative_artifact(
+                    artifact_path,
+                    allow_fixture=allow_fixture,
+                    expected_catalog_fingerprint=catalog.fingerprint,
+                )
     except (
         CollaborativeArtifactCommandError,
         CollaborativeArtifactError,
         CollaborativeLiveBuildError,
+        CollaborativeLifecycleError,
         CollaborativeRegistryMutationError,
         CollaborativeSnapshotError,
         SnapshotAuditError,

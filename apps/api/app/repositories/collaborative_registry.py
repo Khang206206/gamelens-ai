@@ -1,9 +1,9 @@
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import cast
+from typing import Literal, cast
 
-from sqlalchemy import Select, insert, select
+from sqlalchemy import Select, func, insert, select
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -37,6 +37,17 @@ class LiveBuildRegistration:
     interaction_fingerprint: str
     cutoff: datetime
     valid_until: datetime
+
+
+@dataclass(frozen=True)
+class CollaborativeLifecycleTransition:
+    operation: Literal["invalidate", "retire"]
+    build_id: str
+    previous_status: CollaborativeRegistryStatus
+    status: CollaborativeRegistryStatus
+    changed: bool
+    invalidation_epoch: int
+    effective_at: datetime
 
 
 def collaborative_readiness_query(build_id: str) -> Select[tuple[object, ...]]:
@@ -118,6 +129,83 @@ class CollaborativeArtifactRegistryRepository:
                 "active_build_exists",
                 "An active collaborative build must be retired before another promotion",
             )
+
+    def invalidate_live_build(self, build_id: str) -> CollaborativeLifecycleTransition:
+        build = self._locked_build(build_id)
+        previous_status = cast(CollaborativeRegistryStatus, build.status)
+        if previous_status == "retired":
+            raise CollaborativeRegistryMutationError(
+                "retired_build_terminal",
+                "A retired collaborative build cannot be invalidated or reactivated",
+            )
+        if previous_status == "invalidated":
+            if build.invalidated_at is None:
+                raise CollaborativeRegistryMutationError(
+                    "registry_state_invalid",
+                    "Invalidated collaborative build is missing its lifecycle timestamp",
+                )
+            return CollaborativeLifecycleTransition(
+                operation="invalidate",
+                build_id=build.build_id,
+                previous_status=previous_status,
+                status=previous_status,
+                changed=False,
+                invalidation_epoch=build.invalidation_epoch,
+                effective_at=build.invalidated_at,
+            )
+
+        effective_at = self._database_time()
+        build.status = "invalidated"
+        build.invalidation_epoch += 1
+        build.invalidated_at = effective_at
+        self.session.flush()
+        return CollaborativeLifecycleTransition(
+            operation="invalidate",
+            build_id=build.build_id,
+            previous_status=previous_status,
+            status="invalidated",
+            changed=True,
+            invalidation_epoch=build.invalidation_epoch,
+            effective_at=effective_at,
+        )
+
+    def retire_live_build(self, build_id: str) -> CollaborativeLifecycleTransition:
+        build = self._locked_build(build_id)
+        previous_status = cast(CollaborativeRegistryStatus, build.status)
+        if previous_status == "active":
+            raise CollaborativeRegistryMutationError(
+                "active_build_retirement_forbidden",
+                "Invalidate an active collaborative build before retiring it",
+            )
+        if previous_status == "retired":
+            if build.retired_at is None:
+                raise CollaborativeRegistryMutationError(
+                    "registry_state_invalid",
+                    "Retired collaborative build is missing its lifecycle timestamp",
+                )
+            return CollaborativeLifecycleTransition(
+                operation="retire",
+                build_id=build.build_id,
+                previous_status=previous_status,
+                status=previous_status,
+                changed=False,
+                invalidation_epoch=build.invalidation_epoch,
+                effective_at=build.retired_at,
+            )
+
+        effective_at = self._database_time()
+        build.status = "retired"
+        build.retired_at = effective_at
+        self.session.flush()
+        return CollaborativeLifecycleTransition(
+            operation="retire",
+            build_id=build.build_id,
+            previous_status=previous_status,
+            status="retired",
+            changed=True,
+            invalidation_epoch=build.invalidation_epoch,
+            effective_at=effective_at,
+        )
 
     def register_live_build(self, registration: LiveBuildRegistration) -> None:
         self._validate_registration(registration)
@@ -203,3 +291,26 @@ class CollaborativeArtifactRegistryRepository:
                 "lineage_invalid",
                 "Live build contributor lineage contains an invalid user reference",
             )
+
+    def _locked_build(self, build_id: str) -> CollaborativeArtifactBuild:
+        self.require_valid_build_id(build_id)
+        build = self.session.scalar(
+            select(CollaborativeArtifactBuild)
+            .where(CollaborativeArtifactBuild.build_id == build_id)
+            .with_for_update()
+        )
+        if build is None:
+            raise CollaborativeRegistryMutationError(
+                "build_not_registered",
+                "Collaborative build is not registered",
+            )
+        return build
+
+    def _database_time(self) -> datetime:
+        database_time = self.session.scalar(select(func.clock_timestamp()))
+        if database_time is None:
+            raise CollaborativeRegistryMutationError(
+                "database_time_unavailable",
+                "PostgreSQL lifecycle timestamp is unavailable",
+            )
+        return database_time
