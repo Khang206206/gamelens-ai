@@ -200,6 +200,74 @@ def test_live_build_command_confirmation_failure_is_stable_json(
     }
 
 
+def test_live_recovery_requires_exact_build_confirmation_before_database_access(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path, live_promotion_enabled=True)
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "create_database_engine",
+        lambda _url: pytest.fail("confirmation must fail before database access"),
+    )
+
+    with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as missing:
+        collaborative_artifact.recover_live_artifact(
+            settings,
+            tmp_path / "artifact",
+            build_id=None,
+            confirmation=None,
+        )
+    with pytest.raises(collaborative_artifact.CollaborativeArtifactCommandError) as mismatch:
+        collaborative_artifact.recover_live_artifact(
+            settings,
+            tmp_path / "artifact",
+            build_id="stage5-live-v1",
+            confirmation="different-build",
+        )
+
+    assert missing.value.code == "build_id_required"
+    assert mismatch.value.code == "live_recovery_confirmation_required"
+
+
+def test_live_recovery_command_passes_exact_artifact_and_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    settings = _settings(tmp_path, live_promotion_enabled=True)
+    artifact = tmp_path / "orphan-artifact"
+    received: list[tuple[Path, str | None, str | None]] = []
+    monkeypatch.setattr(collaborative_artifact, "get_settings", lambda: settings)
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "recover_live_artifact",
+        lambda _settings, path, *, build_id, confirmation: (
+            received.append((path, build_id, confirmation))
+            or {"status": "valid", "promotion": {"recovery": "orphan_registered"}}
+        ),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "collaborative-artifact",
+            "recover",
+            "--artifact",
+            str(artifact),
+            "--build-id",
+            "stage5-live-v1",
+            "--confirm-live-recovery",
+            "stage5-live-v1",
+        ],
+    )
+
+    collaborative_artifact.main()
+
+    assert received == [(artifact, "stage5-live-v1", "stage5-live-v1")]
+    assert json.loads(capsys.readouterr().out)["promotion"]["recovery"] == ("orphan_registered")
+
+
 def test_fixture_build_requires_both_test_environment_and_explicit_gate(
     tmp_path: Path,
 ) -> None:

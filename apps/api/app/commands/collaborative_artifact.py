@@ -26,6 +26,7 @@ from app.core.config import Settings, get_settings
 from app.db.seed import DEFAULT_SEED_PATH
 from app.db.session import create_database_engine, create_session_factory
 from app.repositories.collaborative_registry import CollaborativeRegistryMutationError
+from app.repositories.collaborative_snapshot import CollaborativeSnapshotError
 from app.services.collaborative_build import (
     CollaborativeLiveBuildError,
     CollaborativeLiveBuildService,
@@ -166,6 +167,39 @@ def build_live_artifact(
         engine.dispose()
 
 
+def recover_live_artifact(
+    settings: Settings,
+    artifact: Path,
+    *,
+    build_id: str | None,
+    confirmation: str | None,
+) -> dict[str, object]:
+    if not settings.collaborative_live_promotion_enabled:
+        raise CollaborativeArtifactCommandError(
+            "unapproved_live_source",
+            "Live collaborative promotion is disabled by default",
+        )
+    if build_id is None:
+        raise CollaborativeArtifactCommandError(
+            "build_id_required",
+            "Live collaborative recovery requires an explicit build ID",
+        )
+    if confirmation != build_id:
+        raise CollaborativeArtifactCommandError(
+            "live_recovery_confirmation_required",
+            "Live recovery requires --confirm-live-recovery to match --build-id",
+        )
+    engine = create_database_engine(settings.database_url)
+    try:
+        return CollaborativeLiveBuildService(create_session_factory(engine)).recover(
+            artifact,
+            settings=settings,
+            build_id=build_id,
+        )
+    finally:
+        engine.dispose()
+
+
 def _artifact_path(
     settings: Settings,
     explicit: Path | None,
@@ -193,6 +227,14 @@ def main() -> None:
     build_parser.add_argument("--build-id")
     build_parser.add_argument("--confirm-live-build")
 
+    recover_parser = commands.add_parser(
+        "recover",
+        help="Recover registry promotion for one existing live bundle",
+    )
+    recover_parser.add_argument("--artifact", type=Path)
+    recover_parser.add_argument("--build-id")
+    recover_parser.add_argument("--confirm-live-recovery")
+
     validate_parser = commands.add_parser("validate", help="Validate without mutation")
     validate_parser.add_argument("--artifact", type=Path)
     validate_parser.add_argument("--catalog", type=Path, default=DEFAULT_SEED_PATH)
@@ -203,11 +245,12 @@ def main() -> None:
     args = parser.parse_args()
     try:
         settings = get_settings()
-        explicit_path = (
-            getattr(args, "output", None)
-            if args.command == "build"
-            else getattr(args, "artifact", None)
-        )
+        explicit_path = getattr(args, "output", None) if args.command == "build" else args.artifact
+        if args.command == "recover" and explicit_path is None:
+            raise CollaborativeArtifactCommandError(
+                "artifact_path_required",
+                "Live recovery requires an explicit --artifact path",
+            )
         artifact_path = _artifact_path(settings, explicit_path)
         allow_fixture = _fixture_allowed(settings)
         if args.command == "build":
@@ -225,6 +268,13 @@ def main() -> None:
                     build_id=args.build_id,
                     confirmation=args.confirm_live_build,
                 )
+        elif args.command == "recover":
+            result = recover_live_artifact(
+                settings,
+                artifact_path,
+                build_id=args.build_id,
+                confirmation=args.confirm_live_recovery,
+            )
         else:
             catalog = catalog_from_seed(args.catalog)
             result = inspect_collaborative_artifact(
@@ -237,6 +287,7 @@ def main() -> None:
         CollaborativeArtifactError,
         CollaborativeLiveBuildError,
         CollaborativeRegistryMutationError,
+        CollaborativeSnapshotError,
         SnapshotAuditError,
         OSError,
         ValueError,

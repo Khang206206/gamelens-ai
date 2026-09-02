@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from gamelens_recommender.interaction_snapshot import (
@@ -146,7 +146,11 @@ def _interaction_rows_query(
     )
 
 
-def begin_collaborative_snapshot(session: Session) -> datetime:
+def begin_collaborative_snapshot(
+    session: Session,
+    *,
+    cutoff: datetime | None = None,
+) -> datetime:
     """Start and pin the read-only MVCC snapshot before returning to the caller."""
 
     if session.get_bind().dialect.name != "postgresql":
@@ -175,7 +179,21 @@ def begin_collaborative_snapshot(session: Session) -> datetime:
             "extractor_transaction_invalid",
             "Live extraction requires one REPEATABLE READ, READ ONLY transaction",
         )
-    cutoff = transaction["cutoff"]
+    database_time = transaction["cutoff"]
+    if cutoff is None:
+        cutoff = database_time
+    elif cutoff.tzinfo is None or cutoff.utcoffset() is None:
+        raise CollaborativeSnapshotError(
+            "snapshot_cutoff_invalid",
+            "Collaborative recovery cutoff must be timezone-aware",
+        )
+    else:
+        cutoff = cutoff.astimezone(UTC)
+        if cutoff > database_time:
+            raise CollaborativeSnapshotError(
+                "snapshot_cutoff_invalid",
+                "Collaborative recovery cutoff cannot be in the future",
+            )
     session.info[_CUTOFF_SESSION_KEY] = _PinnedSnapshot(
         cutoff=cutoff, transaction=session.get_transaction()
     )

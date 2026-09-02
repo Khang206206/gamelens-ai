@@ -6,7 +6,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from app.commands.collaborative_artifact import build_live_artifact
+from app.commands.collaborative_artifact import build_live_artifact, recover_live_artifact
 from app.core.config import Settings
 from app.db.models import (
     CollaborativeArtifactBuild,
@@ -24,7 +24,11 @@ from app.repositories.collaborative_registry import (
     CollaborativeRegistryMutationError,
     LiveBuildRegistration,
 )
-from app.services.collaborative_build import CollaborativeLiveBuildService
+from app.repositories.collaborative_snapshot import CollaborativeSnapshotError
+from app.services.collaborative_build import (
+    CollaborativeLiveBuildError,
+    CollaborativeLiveBuildService,
+)
 from gamelens_recommender import inspect_collaborative_artifact
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
@@ -220,6 +224,144 @@ def test_registry_promotion_revision_race_rolls_back_build_and_lineage(
         )
         is None
     )
+
+
+def test_orphan_bundle_recovery_registers_exact_lineage_and_is_idempotent(
+    postgres_engine: Engine,
+    postgres_session: Session,
+    integration_settings: Settings,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    supported_user_ids, pruned_user_id = _seed_live_cohort(postgres_session)
+    settings = _live_settings(integration_settings)
+    output = tmp_path / "stage5-live-orphan-recovery-v1"
+    service = CollaborativeLiveBuildService(create_session_factory(postgres_engine))
+
+    def fail_after_filesystem_promotion(_registration: LiveBuildRegistration) -> None:
+        raise CollaborativeLiveBuildError(
+            "simulated_registry_outage",
+            "Simulated crash before registry commit",
+        )
+
+    monkeypatch.setattr(service, "_register", fail_after_filesystem_promotion)
+    with pytest.raises(CollaborativeLiveBuildError) as failed:
+        service.build(
+            output,
+            settings=settings,
+            build_id="stage5-live-orphan-recovery-v1",
+        )
+
+    assert failed.value.code == "simulated_registry_outage"
+    assert output.is_dir()
+    bundle_before_recovery = {
+        path.name: path.read_bytes() for path in sorted(output.iterdir()) if path.is_file()
+    }
+    postgres_session.expire_all()
+    assert (
+        CollaborativeArtifactRegistryRepository(postgres_session).readiness(
+            "stage5-live-orphan-recovery-v1"
+        )
+        is None
+    )
+
+    recovered = recover_live_artifact(
+        settings,
+        output,
+        build_id="stage5-live-orphan-recovery-v1",
+        confirmation="stage5-live-orphan-recovery-v1",
+    )
+    retried = recover_live_artifact(
+        settings,
+        output,
+        build_id="stage5-live-orphan-recovery-v1",
+        confirmation="stage5-live-orphan-recovery-v1",
+    )
+
+    assert recovered["promotion"]["recovery"] == "orphan_registered"  # type: ignore[index]
+    assert retried["promotion"]["recovery"] == "already_registered"  # type: ignore[index]
+    assert "user_id" not in json.dumps(recovered, sort_keys=True)
+    assert {
+        path.name: path.read_bytes() for path in sorted(output.iterdir()) if path.is_file()
+    } == bundle_before_recovery
+    postgres_session.expire_all()
+    registered_user_ids = set(
+        postgres_session.scalars(
+            select(CollaborativeArtifactContributor.user_id).where(
+                CollaborativeArtifactContributor.build_id == "stage5-live-orphan-recovery-v1"
+            )
+        ).all()
+    )
+    assert registered_user_ids == set(supported_user_ids)
+    assert pruned_user_id not in registered_user_ids
+
+    build = postgres_session.get(
+        CollaborativeArtifactBuild,
+        "stage5-live-orphan-recovery-v1",
+    )
+    assert build is not None
+    build.status = "invalidated"
+    build.invalidation_epoch = 1
+    build.invalidated_at = datetime.now(UTC)
+    postgres_session.commit()
+
+    with pytest.raises(CollaborativeLiveBuildError) as invalidated:
+        recover_live_artifact(
+            settings,
+            output,
+            build_id="stage5-live-orphan-recovery-v1",
+            confirmation="stage5-live-orphan-recovery-v1",
+        )
+
+    assert invalidated.value.code == "registered_build_not_active"
+    postgres_session.refresh(build)
+    assert build.status == "invalidated"
+
+
+def test_orphan_bundle_recovery_rejects_a_changed_source_revision(
+    postgres_engine: Engine,
+    postgres_session: Session,
+    integration_settings: Settings,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    supported_user_ids, _pruned_user_id = _seed_live_cohort(postgres_session)
+    settings = _live_settings(integration_settings)
+    build_id = "stage5-live-stale-orphan-v1"
+    output = tmp_path / build_id
+    service = CollaborativeLiveBuildService(create_session_factory(postgres_engine))
+
+    def fail_after_filesystem_promotion(_registration: LiveBuildRegistration) -> None:
+        raise CollaborativeLiveBuildError(
+            "simulated_registry_outage",
+            "Simulated crash before registry commit",
+        )
+
+    monkeypatch.setattr(service, "_register", fail_after_filesystem_promotion)
+    with pytest.raises(CollaborativeLiveBuildError):
+        service.build(output, settings=settings, build_id=build_id)
+
+    changed_preference = postgres_session.scalar(
+        select(UserPreference).where(
+            UserPreference.user_id == supported_user_ids[0],
+            UserPreference.value == SUPPORTED_SLUGS[0],
+        )
+    )
+    assert changed_preference is not None
+    postgres_session.delete(changed_preference)
+    postgres_session.commit()
+
+    with pytest.raises(CollaborativeSnapshotError) as stale:
+        recover_live_artifact(
+            settings,
+            output,
+            build_id=build_id,
+            confirmation=build_id,
+        )
+
+    assert stale.value.code == "revision_race"
+    postgres_session.expire_all()
+    assert postgres_session.get(CollaborativeArtifactBuild, build_id) is None
 
 
 def test_concurrent_registry_promotions_commit_exactly_one_active_build(

@@ -87,12 +87,16 @@ class CollaborativeArtifactRegistryRepository:
             valid_until=cast(datetime, record["valid_until"]),
         )
 
-    def assert_live_build_slot(self, build_id: str) -> None:
+    @staticmethod
+    def require_valid_build_id(build_id: str) -> None:
         if type(build_id) is not str or _SAFE_BUILD_ID.fullmatch(build_id) is None:
             raise CollaborativeRegistryMutationError(
                 "build_id_invalid",
                 "Live build ID must be a safe identifier of at most 128 characters",
             )
+
+    def assert_live_build_slot(self, build_id: str) -> None:
+        self.require_valid_build_id(build_id)
         existing = self.session.scalar(
             select(CollaborativeArtifactBuild.build_id)
             .where(CollaborativeArtifactBuild.build_id == build_id)

@@ -56,3 +56,33 @@ def test_live_build_service_rejects_existing_target_before_database_access(
         )
 
     assert caught.value.code == "artifact_target_exists"
+
+
+def test_live_recovery_rechecks_default_off_gates_before_filesystem_or_database_access(
+    tmp_path: Path,
+) -> None:
+    service = CollaborativeLiveBuildService(_unexpected_session)
+
+    with pytest.raises(CollaborativeLiveBuildError) as caught:
+        service.recover(
+            tmp_path / "missing-artifact",
+            settings=_settings(promotion_enabled=False),
+            build_id="stage5-live-v1",
+        )
+
+    assert caught.value.code == "unapproved_live_source"
+
+
+def test_live_recovery_requires_an_existing_non_symlink_directory_before_database_access(
+    tmp_path: Path,
+) -> None:
+    service = CollaborativeLiveBuildService(_unexpected_session)
+
+    with pytest.raises(CollaborativeLiveBuildError) as caught:
+        service.recover(
+            tmp_path / "missing-artifact",
+            settings=_settings(promotion_enabled=True),
+            build_id="stage5-live-v1",
+        )
+
+    assert caught.value.code == "recovery_target_invalid"
