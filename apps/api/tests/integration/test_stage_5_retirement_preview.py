@@ -4,14 +4,23 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from app.commands.collaborative_artifact import (
+    cleanup_collaborative_artifacts,
+    preview_collaborative_retirement,
+    recover_collaborative_files,
+)
+from app.core.config import Settings
 from app.db.models import CollaborativeArtifactBuild
 from app.db.session import create_session_factory
+from app.services import collaborative_retirement
+from app.services.collaborative_recovery import PROMOTION_LOCK_BYTES
 from app.services.collaborative_retirement import (
     CollaborativeArtifactCleanupService,
     CollaborativeRetirementPreviewError,
     CollaborativeRetirementPreviewService,
 )
 from gamelens_recommender.collaborative_artifacts import (
+    CollaborativeArtifactError,
     CollaborativeBuildMetadata,
     build_collaborative_artifact,
 )
@@ -353,3 +362,177 @@ def test_cleanup_rejects_registry_change_after_preview_without_removing_bundle(
 
     assert caught.value.code == "cleanup_confirmation_mismatch"
     assert (artifact_set / "candidate").is_dir()
+
+
+def test_interrupted_postgresql_cleanup_recovers_from_durable_receipt(
+    postgres_session: Session,
+    integration_settings: Settings,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "artifact-set"
+    root.mkdir()
+    content = root / "content"
+    content.write_bytes(b"protected-content")
+    build_id = "stage5-cleanup-recovery-v1"
+    original = root / "retired"
+    now = datetime.now(UTC)
+    interaction_fingerprint, cutoff, valid_until = _build_bundle(
+        original, build_id=build_id, now=now
+    )
+    _register_build(
+        postgres_session,
+        build_id=build_id,
+        status="retired",
+        interaction_fingerprint=interaction_fingerprint,
+        cutoff=cutoff,
+        valid_until=valid_until,
+        now=now,
+    )
+    postgres_session.commit()
+    settings = integration_settings.model_copy(
+        update={"model_artifact_path": content, "collaborative_artifact_path": None}
+    )
+    preview = preview_collaborative_retirement(settings, artifact_set=root)
+
+    def interrupted_remove(path: Path) -> None:
+        assert path.name == "bundle"
+        (path / "manifest.json").unlink()
+        raise OSError("simulated interruption after first deletion")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(collaborative_retirement.shutil, "rmtree", interrupted_remove)
+        with pytest.raises(CollaborativeRetirementPreviewError) as interrupted:
+            cleanup_collaborative_artifacts(
+                settings, artifact_set=root, confirmation=preview["cleanup_confirmation"]
+            )
+    assert interrupted.value.code == "cleanup_filesystem_failed"
+    assert not original.exists()
+    quarantine = next(root.glob(".gamelens-cleanup-*"))
+    assert (quarantine / "receipt.json").is_file()
+    assert not (quarantine / "bundle" / "manifest.json").exists()
+    before = _filesystem_snapshot(root)
+    arguments = {"artifact_set": root, "target": quarantine, "kind": "cleanup"}
+    recovery_preview = recover_collaborative_files(settings, **arguments)
+    assert recover_collaborative_files(settings, **arguments) == recovery_preview
+    assert _filesystem_snapshot(root) == before
+    assert "user_id" not in json.dumps(recovery_preview)
+    assert "contributor" not in json.dumps(recovery_preview)
+
+    result = recover_collaborative_files(
+        settings,
+        **arguments,
+        execute=True,
+        writers_stopped=True,
+        confirmation=recovery_preview["recovery_confirmation"],
+    )
+
+    assert result["operation"] == "recovery_cleanup"
+    assert result["removed_count"] == 1
+    assert not quarantine.exists()
+    assert content.read_bytes() == b"protected-content"
+    postgres_session.expire_all()
+    row = postgres_session.get(CollaborativeArtifactBuild, build_id)
+    assert row is not None
+    assert (row.status, row.invalidation_epoch, row.current_contributor_count) == ("retired", 1, 0)
+    with pytest.raises(CollaborativeRetirementPreviewError) as stale:
+        recover_collaborative_files(
+            settings,
+            **arguments,
+            execute=True,
+            writers_stopped=True,
+            confirmation=recovery_preview["recovery_confirmation"],
+        )
+    assert stale.value.code == "recovery_confirmation_mismatch"
+
+
+@pytest.mark.parametrize("registered", [True, False])
+def test_postgresql_build_file_recovery_preserves_active_or_orphan_final_bundle(
+    postgres_session: Session,
+    integration_settings: Settings,
+    tmp_path: Path,
+    registered: bool,
+) -> None:
+    root = tmp_path / "artifact-set"
+    root.mkdir()
+    final = root / "candidate"
+    build_id = "stage5-build-debris-recovery-v1"
+    now = datetime.now(UTC)
+    interaction_fingerprint, cutoff, valid_until = _build_bundle(final, build_id=build_id, now=now)
+    if registered:
+        _register_build(
+            postgres_session,
+            build_id=build_id,
+            status="active",
+            interaction_fingerprint=interaction_fingerprint,
+            cutoff=cutoff,
+            valid_until=valid_until,
+            now=now,
+        )
+        postgres_session.commit()
+    temporary = root / ".candidate.tmp-abcdefgh"
+    temporary.mkdir()
+    (temporary / "item-slugs.json").write_bytes(b"[]")
+    lock = root / ".candidate.promotion.lock"
+    lock.write_bytes(PROMOTION_LOCK_BYTES)
+    settings = integration_settings.model_copy(update={"collaborative_artifact_path": final})
+    arguments = {"artifact_set": root, "target": final, "kind": "build"}
+    before = _filesystem_snapshot(final)
+    preview = recover_collaborative_files(settings, **arguments)
+
+    result = recover_collaborative_files(
+        settings,
+        **arguments,
+        execute=True,
+        writers_stopped=True,
+        confirmation=preview["recovery_confirmation"],
+    )
+
+    assert result["removed_count"] == 2
+    assert _filesystem_snapshot(final) == before
+    assert not temporary.exists()
+    assert not lock.exists()
+    postgres_session.expire_all()
+    row = postgres_session.get(CollaborativeArtifactBuild, build_id)
+    if registered:
+        assert row is not None and row.status == "active" and row.invalidation_epoch == 0
+    else:
+        assert row is None
+
+
+def test_build_can_retry_only_after_explicit_stale_workspace_recovery(
+    postgres_session: Session,
+    integration_settings: Settings,
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "artifact-set"
+    root.mkdir()
+    target = root / "candidate"
+    temporary = root / ".candidate.tmp-abcdefgh"
+    temporary.mkdir()
+    (temporary / "item-slugs.json").write_bytes(b"[]")
+    lock = root / ".candidate.promotion.lock"
+    lock.write_bytes(PROMOTION_LOCK_BYTES)
+    with pytest.raises(CollaborativeArtifactError) as locked:
+        _build_bundle(target, build_id="stage5-build-after-recovery-v1", now=datetime.now(UTC))
+    assert locked.value.code == "artifact_target_exists"
+    arguments = {"artifact_set": root, "target": target, "kind": "build"}
+    preview = recover_collaborative_files(integration_settings, **arguments)
+    recover_collaborative_files(
+        integration_settings,
+        **arguments,
+        execute=True,
+        writers_stopped=True,
+        confirmation=preview["recovery_confirmation"],
+    )
+    assert not target.exists()
+    assert not lock.exists()
+    assert not temporary.exists()
+
+    _build_bundle(target, build_id="stage5-build-after-recovery-v1", now=datetime.now(UTC))
+
+    assert (target / "manifest.json").is_file()
+    assert not lock.exists()
+    assert (
+        postgres_session.get(CollaborativeArtifactBuild, "stage5-build-after-recovery-v1") is None
+    )

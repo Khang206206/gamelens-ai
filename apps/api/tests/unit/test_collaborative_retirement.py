@@ -289,9 +289,11 @@ def test_cleanup_confirmation_mismatch_removes_nothing(
     assert retired_path.is_dir()
 
 
+@pytest.mark.parametrize("occupied", [False, True])
 def test_cleanup_restores_quarantined_bundle_when_identity_changes(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    occupied: bool,
 ) -> None:
     artifact_set = tmp_path / "artifact-set"
     retired_path = artifact_set / "retired"
@@ -300,9 +302,12 @@ def test_cleanup_restores_quarantined_bundle_when_identity_changes(
 
     def load_bundle(path: Path, **_keywords: object) -> SimpleNamespace:
         candidate = Path(path)
+        if occupied and candidate.parent.name.startswith(".gamelens-cleanup-"):
+            retired_path.mkdir()
+            (retired_path / "replacement").write_bytes(b"must-not-overwrite")
         observed_build_id = (
             "stage5-live-cleanup-replaced-v1"
-            if candidate.name.startswith(".gamelens-cleanup-")
+            if candidate.parent.name.startswith(".gamelens-cleanup-")
             else build_id
         )
         return _loaded_bundle(candidate, build_id=observed_build_id)
@@ -336,7 +341,13 @@ def test_cleanup_restores_quarantined_bundle_when_identity_changes(
             confirmation=confirmation,
         )
 
-    assert caught.value.code == "cleanup_candidate_changed"
+    assert caught.value.code == (
+        "cleanup_restore_failed" if occupied else "cleanup_candidate_changed"
+    )
     assert retired_path.is_dir()
-    assert [path.name for path in artifact_set.iterdir()] == ["retired"]
+    if occupied:
+        assert (retired_path / "replacement").read_bytes() == b"must-not-overwrite"
+        assert len(list(artifact_set.glob(".gamelens-cleanup-*"))) == 1
+    else:
+        assert [path.name for path in artifact_set.iterdir()] == ["retired"]
     session.commit.assert_not_called()

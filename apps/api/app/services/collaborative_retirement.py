@@ -11,12 +11,18 @@ from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from itertools import islice
 from pathlib import Path
 from typing import Any, Literal, cast
 
 from gamelens_recommender.collaborative_artifacts import (
+    EXPECTED_DIRECTORY_MEMBERS,
+    MAX_MANIFEST_BYTES,
+    MAX_MEMBER_BYTES,
+    MAX_TOTAL_BYTES,
     CollaborativeArtifactError,
     LoadedCollaborativeArtifact,
+    _rename_directory_no_replace,
     load_collaborative_artifact,
 )
 from sqlalchemy.exc import SQLAlchemyError
@@ -270,7 +276,7 @@ class CollaborativeArtifactCleanupService:
         removed: list[dict[str, object]] = []
         for candidate in candidates:
             _verify_cleanup_candidate(root, candidate)
-            _remove_cleanup_candidate(root, candidate)
+            _remove_cleanup_candidate(root, candidate, database_fingerprint=database_fingerprint)
             _fsync_directory(root)
             removed.append(candidate.report())
 
@@ -608,49 +614,154 @@ def _verify_cleanup_candidate(root: Path, candidate: _CleanupCandidate) -> None:
         )
 
 
-def _remove_cleanup_candidate(root: Path, candidate: _CleanupCandidate) -> None:
+def _remove_cleanup_candidate(
+    root: Path,
+    candidate: _CleanupCandidate,
+    *,
+    database_fingerprint: str,
+) -> None:
     quarantine = root / (
         ".gamelens-cleanup-"
         f"{hashlib.sha256(candidate.build_id.encode()).hexdigest()[:16]}-{uuid.uuid4().hex}"
     )
+    receipt = {
+        "version": 1,
+        "database_fingerprint": database_fingerprint,
+        "artifact_set": str(root),
+        "candidate": candidate.report(),
+        "files": _recovery_bundle_files(candidate.path),
+    }
+    bundle_path = quarantine / "bundle"
+    receipt_path = quarantine / "receipt.json"
     try:
-        candidate.path.rename(quarantine)
-    except OSError as error:
+        quarantine.mkdir()
+        with receipt_path.open("x", encoding="utf-8") as stream:
+            json.dump(receipt, stream, sort_keys=True, separators=(",", ":"))
+            stream.flush()
+            os.fsync(stream.fileno())
+        _fsync_directory(quarantine)
+        _fsync_directory(root)
+        _rename_directory_no_replace(candidate.path, bundle_path)
+        _fsync_directory(root)
+        _fsync_directory(quarantine)
+    except (OSError, CollaborativeArtifactError) as error:
         raise CollaborativeRetirementPreviewError(
             "cleanup_filesystem_failed",
-            "Filesystem rejected the authorized collaborative bundle quarantine",
+            f"Cleanup quarantine failed; inspect recovery target: {quarantine}",
         ) from error
     try:
         quarantined = _load_bundle(
-            quarantine,
+            bundle_path,
             candidate.path.relative_to(root).as_posix(),
         )
         if (
             quarantined.source_kind != "live"
             or quarantined.build_id != candidate.build_id
             or quarantined.fingerprint != candidate.bundle_fingerprint
+            or _recovery_bundle_files(bundle_path) != receipt["files"]
         ):
             raise CollaborativeRetirementPreviewError(
                 "cleanup_candidate_changed",
                 "Cleanup candidate identity changed during quarantine",
             )
     except BaseException:
-        if not os.path.lexists(candidate.path):
-            with suppress(OSError):
-                quarantine.rename(candidate.path)
+        try:
+            _rename_directory_no_replace(bundle_path, candidate.path)
+        except (OSError, CollaborativeArtifactError) as error:
+            raise CollaborativeRetirementPreviewError(
+                "cleanup_restore_failed",
+                f"Cleanup restore refused overwrite; inspect recovery target: {quarantine}",
+            ) from error
+        with suppress(OSError):
+            receipt_path.unlink()
+            quarantine.rmdir()
+            _fsync_directory(root)
         raise
     try:
-        shutil.rmtree(quarantine)
+        shutil.rmtree(bundle_path)
+        _fsync_directory(quarantine)
+        receipt_path.unlink()
+        quarantine.rmdir()
     except OSError as error:
         raise CollaborativeRetirementPreviewError(
             "cleanup_filesystem_failed",
-            "Filesystem rejected an authorized collaborative bundle cleanup",
+            f"Cleanup interrupted; preview remaining files at recovery target: {quarantine}",
         ) from error
     if os.path.lexists(quarantine) or os.path.lexists(candidate.path):
         raise CollaborativeRetirementPreviewError(
             "cleanup_filesystem_failed",
             "Collaborative bundle cleanup left an unexpected filesystem path",
         )
+
+
+def _recovery_file_record(path: Path, *, maximum: int) -> dict[str, object]:
+    """Hash one bounded regular file without following a link or special file."""
+    try:
+        before = path.lstat()
+        if _is_link(path) or not stat.S_ISREG(before.st_mode) or before.st_size > maximum:
+            raise CollaborativeRetirementPreviewError(
+                "recovery_file_invalid", "Recovery requires bounded regular artifact files"
+            )
+        digest = hashlib.sha256()
+        size = 0
+        with path.open("rb") as stream:
+            while chunk := stream.read(min(65536, maximum + 1 - size)):
+                size += len(chunk)
+                if size > maximum:
+                    raise CollaborativeRetirementPreviewError(
+                        "recovery_file_invalid", "Recovery artifact file exceeds its size limit"
+                    )
+                digest.update(chunk)
+        after = path.lstat()
+        if (
+            _is_link(path)
+            or not stat.S_ISREG(after.st_mode)
+            or (before.st_ino, before.st_size, before.st_mtime_ns)
+            != (after.st_ino, after.st_size, after.st_mtime_ns)
+            or size != after.st_size
+        ):
+            raise CollaborativeRetirementPreviewError(
+                "recovery_target_changed", "Recovery file changed while being inspected"
+            )
+        return {"name": path.name, "size": size, "sha256": digest.hexdigest()}
+    except OSError as error:
+        raise CollaborativeRetirementPreviewError(
+            "recovery_file_invalid", "Recovery artifact file is missing or unreadable"
+        ) from error
+
+
+def _recovery_bundle_files(path: Path) -> list[dict[str, object]]:
+    try:
+        if _is_link(path) or not path.is_dir():
+            raise CollaborativeRetirementPreviewError(
+                "recovery_target_invalid", "Recovery bundle must be a non-link directory"
+            )
+        entries = sorted(
+            islice(path.iterdir(), len(EXPECTED_DIRECTORY_MEMBERS) + 1),
+            key=lambda item: item.name,
+        )
+        if len(entries) > len(EXPECTED_DIRECTORY_MEMBERS) or any(
+            entry.name not in EXPECTED_DIRECTORY_MEMBERS for entry in entries
+        ):
+            raise CollaborativeRetirementPreviewError(
+                "recovery_file_invalid", "Recovery bundle contains unexpected files"
+            )
+        records = [
+            _recovery_file_record(
+                entry,
+                maximum=MAX_MANIFEST_BYTES if entry.name == "manifest.json" else MAX_MEMBER_BYTES,
+            )
+            for entry in entries
+        ]
+        if sum(cast(int, record["size"]) for record in records) > MAX_TOTAL_BYTES:
+            raise CollaborativeRetirementPreviewError(
+                "recovery_file_invalid", "Recovery bundle exceeds its total size limit"
+            )
+        return records
+    except OSError as error:
+        raise CollaborativeRetirementPreviewError(
+            "recovery_target_invalid", "Recovery bundle cannot be inspected"
+        ) from error
 
 
 def _fsync_directory(path: Path) -> None:

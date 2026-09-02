@@ -43,6 +43,10 @@ from app.services.collaborative_lifecycle import (
     CollaborativeLifecycleOperation,
     CollaborativeLifecycleService,
 )
+from app.services.collaborative_recovery import (
+    CollaborativeArtifactRecoveryService,
+    RecoveryKind,
+)
 from app.services.collaborative_retirement import (
     CollaborativeArtifactCleanupService,
     CollaborativeRetirementPreviewError,
@@ -310,6 +314,60 @@ def cleanup_collaborative_artifacts(
         engine.dispose()
 
 
+def recover_collaborative_files(
+    settings: Settings,
+    *,
+    artifact_set: Path | None,
+    target: Path | None,
+    kind: RecoveryKind,
+    execute: bool = False,
+    confirmation: str | None = None,
+    writers_stopped: bool = False,
+) -> dict[str, object]:
+    if artifact_set is None or target is None:
+        raise CollaborativeArtifactCommandError(
+            "recovery_target_required",
+            "Filesystem recovery requires explicit --artifact-set and --target paths",
+        )
+    if execute and (confirmation is None or not confirmation.strip()):
+        raise CollaborativeArtifactCommandError(
+            "recovery_confirmation_required",
+            "Filesystem recovery requires the exact confirmation emitted by its preview",
+        )
+    if not execute and confirmation is not None:
+        raise CollaborativeArtifactCommandError(
+            "recovery_execution_required", "Recovery confirmation requires explicit --execute"
+        )
+    if execute and not writers_stopped:
+        raise CollaborativeArtifactCommandError(
+            "recovery_writers_not_stopped",
+            "Stop all artifact builders and cleaners, then acknowledge --writers-stopped",
+        )
+    if execute:
+        _validate_cleanup_environment(settings, artifact_set)
+    engine = create_database_engine(settings.database_url)
+    try:
+        try:
+            database = resolve_database_identity(engine, settings.database_url)
+        except (RuntimeError, SQLAlchemyError) as error:
+            raise CollaborativeArtifactCommandError(
+                "recovery_database_identity_failed",
+                "PostgreSQL database identity could not be resolved",
+            ) from error
+        return CollaborativeArtifactRecoveryService(create_session_factory(engine)).recover(
+            artifact_set,
+            target=target,
+            kind=kind,
+            database_fingerprint=database.fingerprint,
+            configured_content_artifact=settings.model_artifact_path,
+            configured_collaborative_artifact=settings.collaborative_artifact_path,
+            confirmation=confirmation,
+            writers_stopped=writers_stopped,
+        )
+    finally:
+        engine.dispose()
+
+
 def _validate_cleanup_environment(settings: Settings, artifact_set: Path) -> None:
     if settings.environment == "development":
         raise CollaborativeArtifactCommandError(
@@ -411,6 +469,16 @@ def main() -> None:
     )
     cleanup_parser.add_argument("--artifact-set", type=Path)
     cleanup_parser.add_argument("--confirm-cleanup")
+    file_recovery_parser = commands.add_parser(
+        "recover-files",
+        help="Preview or recover interrupted cleanup and stopped-builder temp/lock files",
+    )
+    file_recovery_parser.add_argument("--artifact-set", type=Path)
+    file_recovery_parser.add_argument("--target", type=Path)
+    file_recovery_parser.add_argument("--kind", choices=("build", "cleanup"), required=True)
+    file_recovery_parser.add_argument("--execute", action="store_true")
+    file_recovery_parser.add_argument("--confirm-recovery")
+    file_recovery_parser.add_argument("--writers-stopped", action="store_true")
 
     validate_parser = commands.add_parser("validate", help="Validate without mutation")
     validate_parser.add_argument("--artifact", type=Path)
@@ -422,7 +490,17 @@ def main() -> None:
     args = parser.parse_args()
     try:
         settings = get_settings()
-        if args.command == "cleanup":
+        if args.command == "recover-files":
+            result = recover_collaborative_files(
+                settings,
+                artifact_set=args.artifact_set,
+                target=args.target,
+                kind=args.kind,
+                execute=args.execute,
+                confirmation=args.confirm_recovery,
+                writers_stopped=args.writers_stopped,
+            )
+        elif args.command == "cleanup":
             result = cleanup_collaborative_artifacts(
                 settings,
                 artifact_set=args.artifact_set,
