@@ -52,6 +52,10 @@ from app.services.collaborative_retirement import (
     CollaborativeRetirementPreviewError,
     CollaborativeRetirementPreviewService,
 )
+from app.services.collaborative_rollback import (
+    CollaborativeRollbackError,
+    CollaborativeRollbackService,
+)
 
 DEFAULT_FIXTURE_VALIDITY_DAYS = 30
 
@@ -217,6 +221,25 @@ def recover_live_artifact(
             settings=settings,
             build_id=build_id,
         )
+    finally:
+        engine.dispose()
+
+
+def check_collaborative_rollback(settings: Settings, *, artifact: Path | None) -> dict[str, object]:
+    if artifact is None:
+        raise CollaborativeArtifactCommandError(
+            "artifact_path_required", "Rollback check requires an explicit --artifact path"
+        )
+    engine = create_database_engine(settings.database_url)
+    try:
+        try:
+            return CollaborativeRollbackService(create_session_factory(engine)).check(
+                artifact, settings=settings
+            )
+        except SQLAlchemyError as error:
+            raise CollaborativeRollbackError(
+                "rollback_database_unavailable", "Rollback database check could not be completed"
+            ) from error
     finally:
         engine.dispose()
 
@@ -446,6 +469,12 @@ def main() -> None:
     recover_parser.add_argument("--build-id")
     recover_parser.add_argument("--confirm-live-recovery")
 
+    rollback_parser = commands.add_parser(
+        "rollback-check",
+        help="Check one registered rollback candidate without changing configuration",
+    )
+    rollback_parser.add_argument("--artifact", type=Path)
+
     invalidate_parser = commands.add_parser(
         "invalidate",
         help="Deliberately invalidate one active live registry build",
@@ -490,7 +519,9 @@ def main() -> None:
     args = parser.parse_args()
     try:
         settings = get_settings()
-        if args.command == "recover-files":
+        if args.command == "rollback-check":
+            result = check_collaborative_rollback(settings, artifact=args.artifact)
+        elif args.command == "recover-files":
             result = recover_collaborative_files(
                 settings,
                 artifact_set=args.artifact_set,
@@ -567,6 +598,7 @@ def main() -> None:
         CollaborativeArtifactCommandError,
         CollaborativeArtifactError,
         CollaborativeLiveBuildError,
+        CollaborativeRollbackError,
         CollaborativeLifecycleError,
         CollaborativeRetirementPreviewError,
         CollaborativeRegistryMutationError,

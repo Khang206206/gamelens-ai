@@ -118,7 +118,7 @@ def _live_settings(settings: Settings) -> Settings:
     )
 
 
-def test_live_build_registers_only_support_retained_lineage_and_blocks_second_active(
+def test_live_build_registers_retained_lineage_and_preserves_valid_rollback_candidates(
     postgres_session: Session,
     integration_settings: Settings,
     tmp_path: Path,
@@ -176,16 +176,17 @@ def test_live_build_registers_only_support_retained_lineage_and_blocks_second_ac
     assert artifact_report["build"]["id"] == BUILD_ID  # type: ignore[index]
 
     second_output = tmp_path / "stage5-live-promotion-v2"
-    with pytest.raises(CollaborativeRegistryMutationError) as second:
-        build_live_artifact(
-            settings,
-            second_output,
-            build_id="stage5-live-promotion-v2",
-            confirmation="stage5-live-promotion-v2",
-        )
-
-    assert second.value.code == "active_build_exists"
-    assert not second_output.exists()
+    second = build_live_artifact(
+        settings,
+        second_output,
+        build_id="stage5-live-promotion-v2",
+        confirmation="stage5-live-promotion-v2",
+    )
+    assert second["promotion"]["status"] == "active"
+    assert second_output.is_dir()
+    postgres_session.refresh(build)
+    assert build.status == "active"
+    assert build.invalidation_epoch == 0
 
 
 def test_registry_promotion_revision_race_rolls_back_build_and_lineage(
@@ -364,7 +365,7 @@ def test_orphan_bundle_recovery_rejects_a_changed_source_revision(
     assert postgres_session.get(CollaborativeArtifactBuild, build_id) is None
 
 
-def test_concurrent_registry_promotions_commit_exactly_one_active_build(
+def test_concurrent_distinct_promotions_preserve_both_valid_builds(
     postgres_engine: Engine,
     postgres_session: Session,
     monkeypatch: pytest.MonkeyPatch,
@@ -415,7 +416,7 @@ def test_concurrent_registry_promotions_commit_exactly_one_active_build(
     with ThreadPoolExecutor(max_workers=2) as pool:
         outcomes = list(pool.map(promote, registrations))
 
-    assert sorted(outcomes) == ["active", "active_build_exists"]
+    assert outcomes == ["active", "active"]
     postgres_session.expire_all()
     active_build_ids = list(
         postgres_session.scalars(
@@ -424,13 +425,11 @@ def test_concurrent_registry_promotions_commit_exactly_one_active_build(
             )
         ).all()
     )
-    assert len(active_build_ids) == 1
-    assert active_build_ids[0] in {registration.build_id for registration in registrations}
-    assert (
-        postgres_session.scalar(
+    assert set(active_build_ids) == {registration.build_id for registration in registrations}
+    assert set(
+        postgres_session.scalars(
             select(CollaborativeArtifactContributor.user_id).where(
-                CollaborativeArtifactContributor.build_id == active_build_ids[0]
+                CollaborativeArtifactContributor.build_id.in_(active_build_ids)
             )
-        )
-        in supported_user_ids[:2]
-    )
+        ).all()
+    ) == set(supported_user_ids[:2])

@@ -126,17 +126,8 @@ class CollaborativeArtifactRegistryRepository:
                 "build_already_registered",
                 "Collaborative build ID is already registered",
             )
-        active = self.session.scalar(
-            select(CollaborativeArtifactBuild.build_id)
-            .where(CollaborativeArtifactBuild.status == "active")
-            .order_by(CollaborativeArtifactBuild.build_id)
-            .limit(1)
-        )
-        if active is not None:
-            raise CollaborativeRegistryMutationError(
-                "active_build_exists",
-                "An active collaborative build must be retired before another promotion",
-            )
+        # Registry validity is not serving selection. Keep still-valid older
+        # builds available for manual rollback; configuration selects one bundle.
 
     def invalidate_live_build(self, build_id: str) -> CollaborativeLifecycleTransition:
         build = self._locked_build(build_id)
@@ -295,20 +286,6 @@ class CollaborativeArtifactRegistryRepository:
             raise CollaborativeRegistryMutationError(
                 "revision_race",
                 "Collaborative source revision changed before registry promotion",
-            )
-        competing_active = self.session.scalar(
-            select(CollaborativeArtifactBuild.build_id)
-            .where(
-                CollaborativeArtifactBuild.status == "active",
-                CollaborativeArtifactBuild.build_id != registration.build_id,
-            )
-            .order_by(CollaborativeArtifactBuild.build_id)
-            .limit(1)
-        )
-        if competing_active is not None:
-            raise CollaborativeRegistryMutationError(
-                "active_build_exists",
-                "An active collaborative build must be retired before another promotion",
             )
 
     @staticmethod
