@@ -12,8 +12,7 @@ from app.db.models import (
     CollaborativeArtifactContributor,
     CollaborativeDataRevision,
 )
-from app.services.recommendation.collaborative import CollaborativeArtifactSourceKind
-from app.services.recommendation.readiness import (
+from app.repositories.collaborative_registry_types import (
     CollaborativeReadinessRow,
     CollaborativeRegistryStatus,
 )
@@ -94,7 +93,7 @@ class CollaborativeArtifactRegistryRepository:
             return None
         return CollaborativeReadinessRow(
             build_id=cast(str, record["build_id"]),
-            source_kind=cast(CollaborativeArtifactSourceKind, record["source_kind"]),
+            source_kind=cast(Literal["fixture", "live"], record["source_kind"]),
             status=cast(CollaborativeRegistryStatus, record["status"]),
             registered_revision=cast(int, record["registered_revision"]),
             invalidation_epoch=cast(int, record["invalidation_epoch"]),

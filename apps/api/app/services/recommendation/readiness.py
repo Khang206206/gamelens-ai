@@ -5,6 +5,7 @@ from typing import Literal
 
 from gamelens_recommender import LoadedCollaborativeArtifact
 
+from app.repositories.collaborative_registry_types import CollaborativeReadinessRow
 from app.services.recommendation.collaborative import (
     CollaborativeArtifactComponent,
     CollaborativeArtifactSourceKind,
@@ -27,8 +28,6 @@ CollaborativeReadinessReason = (
         "artifact_retired",
     ]
 )
-CollaborativeRegistryStatus = Literal["active", "invalidated", "retired"]
-
 COLLABORATIVE_READINESS_REASONS: tuple[CollaborativeReadinessReason, ...] = (
     "not_configured",
     "fixture_not_allowed",
@@ -57,23 +56,6 @@ _STALE_REASONS = frozenset(COLLABORATIVE_READINESS_REASONS) - {
 _LOWER_SHA256_LENGTH = 64
 _MAX_BUILD_ID_LENGTH = 128
 _MAX_CONSENT_VERSION_LENGTH = 100
-
-
-@dataclass(frozen=True, slots=True)
-class CollaborativeReadinessRow:
-    """One bounded database view of a live artifact's protected lineage."""
-
-    build_id: str
-    source_kind: CollaborativeArtifactSourceKind
-    status: CollaborativeRegistryStatus
-    registered_revision: int
-    invalidation_epoch: int
-    contributor_count: int
-    consent_version: str
-    catalog_fingerprint: str
-    interaction_fingerprint: str
-    cutoff: datetime | None
-    valid_until: datetime
 
 
 @dataclass(frozen=True, slots=True)
