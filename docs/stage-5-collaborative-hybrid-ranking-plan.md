@@ -1679,6 +1679,13 @@ output checks, and `git diff --check`.
 
 ## 15. Implementation Phase 8: Docker, Configuration, and Full-Stack Fixtures
 
+**Status: PLANNED — NOT IMPLEMENTED.** The codebase survey and independent
+one-commit slices 8A–8I are recorded in the
+[Phase 8 Docker and fixtures slice plan](stage-5-phase-8-docker-fixtures-plan.md).
+That plan defines dependencies, acceptance gates, required Docker/live-source
+build checkpoints, and the final documentation reconciliation. It adds no
+implementation or verification claim; Phases 9–10 remain separate gates.
+
 ### Objective
 
 Exercise the complete collaborative/hybrid lifecycle in isolated containers
