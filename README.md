@@ -10,9 +10,9 @@ game metadata, but they will not replace the recommendation engine.
 
 ## Current status
 
-**Stage 4 complete and verified 2026-08-13; Stage 5 implementation Phases 0–6
-verified through 2026-09-01; Phase 7 derived-data lifecycle and safe commands is
-next**
+**Stage 4 complete and verified 2026-08-13; Stage 5 implementation Phases 0–7
+verified through 2026-09-03; Phase 8 Docker, configuration, and full-stack
+fixtures is next**
 
 The detailed
 [Stage 5 collaborative-and-hybrid engineering plan](docs/stage-5-collaborative-hybrid-ranking-plan.md)
@@ -28,12 +28,15 @@ structured evidence, and exact Stage 4 fallback. Phase 5 adds the optional
 application loader, one-row lifecycle readiness, protected live build and
 contributor registry, transactional authority/label invalidation, additive
 component status, and saved-request orchestration over the hybrid ranker. Phase
-6 now projects that one decision into a synchronized additive saved response and
+6 projects that one decision into a synchronized additive saved response and
 bounded `stage-5-v1` event, regenerates the OpenAPI-owned browser contract, and
 renders server order, mode, neutral fallback, and conditional
-aggregate-interaction evidence without client ranking. Product contribution
-consent and approved live build/promotion remain intentionally blocked for Phase
-7 rather than being inferred from saved-personalization consent.
+aggregate-interaction evidence without client ranking. Phase 7 adds guarded live
+build registration, orphan and interrupted-filesystem recovery, explicit
+invalidation/retirement, valid-only rollback checks, previewed confirmed cleanup,
+and a monotonic database lifecycle guard. Product contribution consent and an
+approved production live cohort remain intentionally separate from saved-
+personalization consent.
 
 The repository now provides:
 
@@ -80,6 +83,10 @@ The repository now provides:
   invalidation on contribution-authority loss or removal/change of an included
   positive label; request readiness reads one bounded build row rather than
   scanning contributors.
+- Explicit machine-readable lifecycle commands for guarded live build and
+  recovery, invalidation, retirement, valid-only rollback checks, retirement
+  preview, confirmed cleanup, and interrupted-filesystem recovery. Startup,
+  migration, seed, broad tests, and ordinary teardown do not invoke them.
 - Additive content/collaborative status from `GET /api/v1/models/status` and a
   lifecycle-aware saved-ranking decision projected once into matching public
   response and event contracts.
@@ -185,13 +192,15 @@ The web application, backend, persistent data, and offline ML workflow remain
 separate. Training never runs inside an API request. See
 [Architecture](docs/architecture.md) for detailed boundaries.
 
-Stage 5 Phase 0–6 implements the consent-aware interaction extractor, aggregate
+Stage 5 Phase 0–7 implements the consent-aware interaction extractor, aggregate
 audit, revision contract, test fixture, offline collaborative artifact, pure
 scorer/materializers, versioned hybrid policy, optional application loader,
 lifecycle registry/readiness, component status, and internal saved-request
 orchestration. The saved endpoint now exposes the synchronized Stage 5 response
 and `stage-5-v1` event and the browser presents cautious mode/fallback evidence.
-The stateless endpoint remains unchanged.
+Phase 7 adds guarded build registration/recovery, one-way lifecycle mutation,
+valid-only rollback checks, and confirmed cleanup. The stateless endpoint
+remains unchanged.
 
 ## Technology
 
@@ -299,6 +308,10 @@ The collaborative bundle follows the same immutable-path rule but has a separate
 API can load that fixture only with the explicit test-only gate; development and
 production reject it. Live artifacts additionally require a matching active
 registry row before they can participate in the internal saved-request decision.
+The direct Phase 7 operator commands and their exact confirmation requirements
+are documented in the [API README](apps/api/README.md). A successful
+`rollback-check` only establishes that a registered bundle is currently valid;
+it never edits configuration or hot-reloads the API.
 
 Stop services without deleting development data:
 
@@ -369,6 +382,7 @@ Every optional Make target has a direct equivalent in the
 | `COLLABORATIVE_ARTIFACT_PATH`                         | Separate immutable collaborative bundle path; blank leaves it unconfigured    |
 | `COLLABORATIVE_LIVE_DATA_ENABLED`                     | Default-off live collaborative extraction gate                                |
 | `COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION`          | Explicit contribution-policy version required before live audit               |
+| `COLLABORATIVE_LIVE_PROMOTION_ENABLED`                | Separate default-off permission for deliberate live build registration        |
 | `COLLABORATIVE_ALLOW_TEST_FIXTURE`                    | Test-only fixture read/build/load gate; never enable for production           |
 | `ANONYMOUS_SESSION_SECRET`                            | Server-only HMAC key; replace the development default outside local use       |
 | `ANONYMOUS_SESSION_COOKIE_NAME` / `_PATH`             | Host-only cookie name and API path scope                                      |
@@ -537,10 +551,11 @@ evidence.
   audit do not integrate that external source or authorize its use. The
   collaborative loader, registry, readiness, scorer, hybrid policy, synchronized
   saved response/event, and browser evidence are functional infrastructure only.
-  No approved live cohort/build promotion, product contribution-consent flow,
-  lifecycle command set, or approved external interaction dataset is
-  implemented. Those operator/lifecycle contracts are Phase 7; formal
-  comparative evaluation remains roadmap Stage 6.
+  The guarded live build/lifecycle command set is implemented and verified only
+  against explicitly enabled disposable test data. No product contribution-
+  consent flow, approved production live cohort, or approved external interaction
+  dataset exists. Phase 8 still owns the guarded full-stack lifecycle fixture;
+  formal comparative evaluation remains roadmap Stage 6.
 - No external metadata service or approved remote cover-image source.
 - Seed ratings and popularity values are synthetic development signals.
 - Social metadata currently uses a localhost development base. A validated

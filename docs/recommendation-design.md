@@ -164,7 +164,7 @@ fingerprint of the complete effective state, and compact reconstructible result
 units. The event is audit/correlation data for server generation, not a
 standalone replay snapshot, impression, click, conversion, or positive label.
 
-## Implemented Stage 5 Phase 0–6 collaborative ranking and product contract
+## Implemented Stage 5 Phase 0–7 collaborative ranking and lifecycle contract
 
 The detailed
 [Stage 5 engineering plan](stage-5-collaborative-hybrid-ranking-plan.md) is
@@ -174,7 +174,8 @@ are complete. Phase 5 adds optional artifact loading, protected live lineage,
 lifecycle readiness, additive component status, and internal saved-request
 orchestration. Phase 6 maps the same immutable decision to synchronized API,
 event, generated-client, and browser fields while preserving the stateless
-contract.
+contract. Phase 7 adds guarded live build registration/recovery and explicit
+artifact lifecycle commands without changing ranking mathematics.
 
 Stage 5 first audits whether an interaction source is authorized, sufficiently
 supported, catalog-aligned, and retention-aware. Existing Stage 4 storage
@@ -308,10 +309,12 @@ content. The implemented guarded fixture path audits, builds, validates,
 promotes to an unused path, and inspects catalog/interaction fingerprints,
 policy, support, checksums, and validity metadata. Phase 5 adds the protected
 live build/contributor registry, authority and included-label invalidation,
-optional load-once API component, and bounded request readiness. Approved live
-build registration/promotion, operator invalidation/retirement/rollback and
-physical cleanup remain later phases. Any collaborative failure disables only
-that optional component and preserves the content/feedback path.
+optional load-once API component, and bounded request readiness. Guarded live
+build registration, recovery, operator invalidation/retirement, valid-only
+rollback checks, and confirmed physical cleanup are implemented as Phase 7
+commands. They do not change the configured artifact or hot-reload the API. Any
+collaborative failure disables only that optional component and preserves the
+content/feedback path.
 
 ## Evaluation
 
@@ -340,7 +343,7 @@ complete. The identity-free collaborative artifact, pure candidate scorer,
 versioned hybrid policy, protected lineage/invalidation, bounded readiness,
 additive model status, saved-request orchestration, synchronized personalized
 response/event mapping, generated contract, and conditional browser evidence are
-implemented through Stage 5 Phase 6. Product contribution consent, approved live
-promotion, and derived-data lifecycle commands remain Phase 7 work. Formal
-ranking evaluation is Stage 6 work. Semantic embeddings, exploration, LLM
+implemented through Stage 5 Phase 7. Product contribution consent, an approved
+production live cohort, and full-stack lifecycle fixtures remain later work.
+Formal ranking evaluation is Stage 6 work. Semantic embeddings, exploration, LLM
 explanations, and diversity reranking remain outside the first MVP model.

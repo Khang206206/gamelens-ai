@@ -221,8 +221,8 @@ zero, then retire the old secret. The implementation is published as commit
 
 ## Stage 5 — Collaborative and hybrid ranking
 
-**Status:** External-source preflight and implementation Phases 0–6 verified
-through 2026-09-01; Phase 7 derived-data lifecycle and safe commands is next;
+**Status:** External-source preflight and implementation Phases 0–7 verified
+through 2026-09-03; Phase 8 Docker, configuration, and full-stack fixtures is next;
 Stage 5 as a whole remains in progress
 
 Detailed execution plan:
@@ -242,10 +242,12 @@ Stage 4 fallback. Phase 5 adds the optional immutable API component, protected
 live build/contributor lineage, transactional invalidation, bounded readiness,
 additive model status, and internal saved-request orchestration. Phase 6 adds
 one synchronized public saved response and `stage-5-v1` event, generated
-OpenAPI/browser ownership, and conditional hybrid/fallback presentation. It
-still does not approve a source for live build or grant contribution consent.
+OpenAPI/browser ownership, and conditional hybrid/fallback presentation. Phase
+7 adds guarded live build registration and recovery, operator lifecycle
+transitions, valid-only rollback checks, and previewed confirmed cleanup. It
+does not approve a production source or grant contribution consent.
 
-Completed Phase 0–6 evidence:
+Completed Phase 0–7 evidence:
 
 1. Default-off live configuration and a supported `integration_blocked` state
    that performs no database access.
@@ -343,19 +345,49 @@ Completed Phase 0–6 evidence:
 28. The focused Phase 6 browser gate passes five no-retry Docker cases: axe on
     Chromium, Firefox, and WebKit plus request-only and saved-result responsive
     checks on Chromium. All disposable Docker/PostgreSQL resources are removed.
+29. The live build command remains default-off and requires explicit live-data,
+    contribution-consent-version, promotion, build-ID, and exact-confirmation
+    gates. It uses ephemeral identity-free profiles, writes an immutable unused
+    target, validates it, and registers exact retained lineage transactionally.
+30. Registry failure leaves a final orphan bundle non-serveable. Explicit
+    recovery either registers the exact unchanged artifact against the current
+    source facts or rejects it; a matching already-registered active retry is
+    deterministic.
+31. Multiple registered active builds may coexist as valid rollback candidates,
+    while configuration still selects the only bundle loaded for serving. The
+    read-only `rollback-check` reuses serving readiness and accepts only a
+    registered, active, unexpired, catalog/consent/fingerprint-compatible build.
+32. Operator invalidation and retirement require exact build-ID confirmations;
+    retirement requires prior invalidation. Migration
+    `0011_stage_5_lifecycle_guard` adds no data and enforces one-way
+    `active -> invalidated -> retired` history at the database boundary.
+33. Retirement preview inventories one exact artifact set without contributor
+    identity. Confirmed cleanup binds database, artifact-set, and selection
+    fingerprints, rechecks them, protects configured/active/content/root paths,
+    and removes only registered non-active candidates.
+34. Interrupted promotion and cleanup recovery is preview-first and bounded to
+    exact temporary, lock, quarantine, receipt, and file-hash evidence. Execution
+    requires an exact confirmation plus stopped-writer acknowledgement and never
+    reactivates invalidated registry state.
+35. Slices 7A–7H are commits `03985e3`, `23c2c62`, `b48aa41`, `f997b23`,
+    `7b2bf74`, `7740223`, `0dc057d`, and `3fabc72`, followed by direct-CLI import
+    fix `3e274be`. The handoff passes 782 combined API-unit/ML tests and 143
+    disposable-PostgreSQL tests; Ruff checks 194 Python files, OpenAPI has no
+    drift, and disposable resources are removed.
+36. Characterization proves startup, requests, migration, seed, broad tests,
+    and ordinary teardown do not fit, promote, retire, recover, or delete an
+    artifact. The lifecycle gate includes both contribution withdrawal and user
+    deletion without modifying the content artifact or development data.
 
 Build the remaining implementation phases one reviewable slice at a time:
 
-1. Phase 7: add deliberate live build registration/promotion plus explicit
-   invalidate, retire, rollback, and confirmed physical-cleanup commands. The
-   current operator build path remains fixture-only.
-2. Keep product contribution consent and any live-cohort audit blocked unless a
-   separate product policy, copy, and public route contract is explicitly
-   approved; saved personalization remains a separate purpose.
-3. Extend the disposable E2E topology to build/load the guarded fixture and
-   prove hybrid, fallback, invalidation, re-consent, and clear-data browser
+1. Keep product contribution consent and any production live-cohort audit
+   blocked unless a separate product policy, copy, and public route contract is
+   explicitly approved; saved personalization remains a separate purpose.
+2. Phase 8: extend the disposable E2E topology to build/load the guarded fixture
+   and prove hybrid, fallback, invalidation, re-consent, and clear-data browser
    paths without touching development data.
-4. Run the complete privacy, dependency, artifact, API, PostgreSQL, web,
+3. Run the complete privacy, dependency, artifact, API, PostgreSQL, web,
    browser, accessibility, Docker, and Stage 1–4 regression matrix before
    claiming Stage 5 completion or finalizing the roadmap Stage 6 handoff.
 

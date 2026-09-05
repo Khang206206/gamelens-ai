@@ -3,7 +3,7 @@
 The GameLens AI API is a Python 3.12 FastAPI application backed by
 PostgreSQL 16. It exposes the deterministic catalog, Stage 3 artifact-backed
 content recommendations, the verified Stage 4 consented persistence slice, and
-Stage 5 Phase 6 synchronized saved response/event contract. It never trains
+Stage 5 Phase 7 derived-data lifecycle handoff. It never trains
 during startup or a request and never fabricates recommendations when a
 configured component is unavailable.
 
@@ -20,24 +20,26 @@ The detailed
 [Stage 4 feedback-and-persistence plan](../../docs/stage-4-feedback-persistence-plan.md)
 is complete and verified. Anonymous identity, preference, temporal feedback,
 personalized-event, retention, and revocation contracts are present on the
-implementation branch. The Stage 5 Phase 6 handoff passes 365 API unit tests,
-109 disposable-PostgreSQL tests, 331 ML tests with one Windows symlink-
-capability skip, and 86 web tests. Ruff lint/format passes across 172 Python
-files; generated OpenAPI, strict TypeScript, ESLint, and production build gates
-pass. Five focused no-retry browser checks cover Phase 6 axe and responsive
-behavior, and disposable Docker resources are removed after the runs. The
-endpoint and command tables below describe the current worktree.
+implementation branch. The Phase 7 handoff passes 782 combined API-unit/ML
+tests and 143 disposable-PostgreSQL tests. Ruff lint/format passes across 194
+Python files, generated OpenAPI has no drift, and disposable lifecycle resources
+are removed after the runs. Phase 6's 86 web tests and five focused no-retry
+browser checks remain the latest browser evidence; Phase 8 owns the full
+lifecycle browser topology. The endpoint and command tables below describe the
+current worktree.
 
 The detailed
 [Stage 5 collaborative-and-hybrid plan](../../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-has completed implementation Phases 0–6. In addition to the governed snapshot,
+has completed implementation Phases 0–7. In addition to the governed snapshot,
 fixture artifact, pure scorer/materializers, and hybrid policy, the API now owns
 an optional immutable collaborative component, protected live build/contributor
 lineage, transactional invalidation, one-row readiness, additive component
 status, saved-request orchestration, one deterministic response/event projector,
-and the public `stage-5-v1` saved contract. No HTTP route grants contribution
-consent and no approved live build/promotion command exists; those remain Phase
-7 boundaries.
+and the public `stage-5-v1` saved contract. Phase 7 adds guarded live build and
+registration, crash recovery, explicit lifecycle mutation, valid-only rollback
+checks, previewed confirmed cleanup, and a one-way database lifecycle guard. No
+HTTP route grants contribution consent and no production live cohort is
+approved.
 
 ## Responsibilities
 
@@ -260,9 +262,10 @@ The implemented migration chain is:
   -> 0008_stage_5_authority_loss
   -> 0009_stage_5_label_changes
   -> 0010_stage_5_event_contract
+  -> 0011_stage_5_lifecycle_guard
 ```
 
-Readiness expects head `0010_stage_5_event_contract`. The Stage 4 revisions
+Readiness expects head `0011_stage_5_lifecycle_guard`. The Stage 4 revisions
 preserve legacy rows, revoke inaccessible plaintext-key identities without
 fabricating consent, add temporal current-state indexes, and version
 recommendation events. The legacy replacement is exactly
@@ -279,7 +282,10 @@ authority, maintain aggregate contributor count, record cutoff, and invalidate
 affected active builds transactionally when authority or an included positive
 label is lost. Revision `0010` preserves existing legacy/Stage 4 event rows and
 adds nullable bounded Stage 5 mode, fallback, hybrid, collaborative, and scoring
-policy identity with all-or-none checks and a mode/time index.
+policy identity with all-or-none checks and a mode/time index. Revision `0011`
+adds no data; it rejects lifecycle reversal, epoch rewind, timestamp rewriting,
+and direct `active -> retired` updates while preserving legal same-state
+bookkeeping.
 
 ## Stage 5 Phase 0–2 offline commands
 
@@ -324,7 +330,7 @@ resource, semantic, catalog/lifecycle, and expiry contracts and emit only
 aggregate metadata. They bind the artifact to the catalog read from `--catalog`,
 which defaults to the canonical seed file.
 
-## Stage 5 Phase 5–6 lifecycle, orchestration, and public contract
+## Stage 5 Phase 5–7 lifecycle, orchestration, and public contract
 
 `GET /api/v1/models/status` preserves the top-level content capability contract
 and adds `components.content` plus `components.collaborative`. Collaborative
@@ -367,6 +373,89 @@ Errors use one envelope:
   }
 }
 ```
+
+## Phase 7 live artifact operator commands
+
+Live build is default-off. It requires `COLLABORATIVE_LIVE_DATA_ENABLED=true`,
+a separate `COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION`, and
+`COLLABORATIVE_LIVE_PROMOTION_ENABLED=true`. The command validates an unused
+immutable target and then registers the build and exact retained contributor
+lineage transactionally:
+
+```powershell
+python -m app.commands.collaborative_artifact build --source live `
+    --output C:\artifacts\collaborative-live-v1 `
+    --build-id collaborative-live-v1 `
+    --confirm-live-build collaborative-live-v1
+```
+
+A failed registry commit can leave a non-serveable orphan bundle. Recovery
+revalidates its exact artifact metadata, snapshot revision, aggregate lineage,
+and current registry state before registering it. Retrying a matching already-
+registered active build is deterministic.
+
+```powershell
+python -m app.commands.collaborative_artifact recover `
+    --artifact C:\artifacts\collaborative-live-v1 `
+    --build-id collaborative-live-v1 `
+    --confirm-live-recovery collaborative-live-v1
+```
+
+Multiple registered active rows may coexist so an older still-valid artifact
+can remain a rollback candidate. Configuration selects the only bundle loaded
+for serving. `rollback-check` applies the same catalog, consent, expiry,
+fingerprint, count, and registry-readiness rules as serving, but it never edits
+configuration or reloads the API:
+
+```powershell
+python -m app.commands.collaborative_artifact rollback-check `
+    --artifact C:\artifacts\collaborative-live-v1
+```
+
+Lifecycle mutation requires an exact build ID and matching confirmation.
+Retirement is legal only after invalidation, and neither operation deletes the
+bundle:
+
+```powershell
+python -m app.commands.collaborative_artifact invalidate `
+    --build-id collaborative-live-v1 `
+    --confirm-invalidation collaborative-live-v1
+python -m app.commands.collaborative_artifact retire `
+    --build-id collaborative-live-v1 `
+    --confirm-retirement collaborative-live-v1
+```
+
+Physical cleanup is a separate preview/confirm operation over one explicit
+artifact-set directory. Preview lists only registered non-active candidates and
+emits a database/artifact-set/selection-bound confirmation. Cleanup reruns the
+inventory and removes only an exact unchanged selection. It protects active and
+configured collaborative bundles, configured content artifacts, development
+databases, linked or escaping paths, and repository/filesystem roots.
+
+```powershell
+python -m app.commands.collaborative_artifact retirement-preview `
+    --artifact-set C:\artifacts\collaborative-set
+python -m app.commands.collaborative_artifact cleanup `
+    --artifact-set C:\artifacts\collaborative-set `
+    --confirm-cleanup "<exact cleanup_confirmation from preview>"
+```
+
+`recover-files` previews stale builder temp/lock files or an interrupted cleanup
+quarantine. Execution additionally requires the exact emitted confirmation,
+`--execute`, and an operator acknowledgement that all artifact writers are
+stopped:
+
+```powershell
+python -m app.commands.collaborative_artifact recover-files `
+    --artifact-set C:\artifacts\collaborative-set `
+    --target C:\artifacts\collaborative-set\collaborative-live-v1 `
+    --kind build
+```
+
+Ordinary startup, requests, migration, seed, broad tests, and Compose teardown
+do not invoke these commands. Destructive test execution additionally requires
+the existing triple test-database gate and an artifact set strictly below the
+system temporary directory.
 
 ## Retention and revocation commands
 
@@ -438,15 +527,14 @@ The test service explicitly selects the `integration` marker, requires the
 `GAMELENS_ALLOW_TEST_DATABASE_RESET=true`. The test guard rejects non-test
 database identities before Alembic can reset a schema.
 
-The current Phase 6 handoff passes 365 API unit tests and 109 disposable-
-PostgreSQL integration tests. The database suite covers the current migration
-head, artifact registry/count constraints, authority and included-label
-invalidation, additive model status, same-snapshot orchestration, Stage 5 event
-upgrade/constraints/correlation, next-request privacy/retirement fallback,
-fail-closed readiness errors, and all inherited Stage 4 persistence behavior.
-The full ML regression suite passes 331 tests with one Windows symbolic-link
-capability skip. No new diagnostic coverage percentage was recorded for this
-phase.
+The current Phase 7 handoff passes 782 combined API-unit/ML tests and 143
+disposable-PostgreSQL integration tests. The database suite covers the current
+migration head, one-way lifecycle guard, artifact registry/count constraints,
+authority and included-label invalidation, live build and orphan recovery,
+valid-only rollback, previewed confirmed cleanup, non-mutation boundaries,
+additive model status, same-snapshot orchestration, Stage 5 event contracts,
+and all inherited Stage 4 persistence behavior. No new diagnostic coverage
+percentage was recorded for this phase.
 
 Lint, format, and coverage:
 
@@ -462,7 +550,7 @@ The `quality` service bind-mounts `apps/api`, so checks always read the current
 working tree and formatting writes changes back to the host.
 
 Coverage remains diagnostic; failure-path coverage matters more than an
-arbitrary percentage threshold. Ruff lint and format pass across 172 Python
+arbitrary percentage threshold. Ruff lint and format pass across 194 Python
 files, generated OpenAPI types have no drift, and the disposable Docker test
 stack is removed after the run.
 
@@ -505,12 +593,12 @@ structured inserted, updated, and unchanged counters.
   live access is default-off and no public contribution-consent route is
   present.
 - The collaborative trainer, hardened artifact/loader, pure scorer, hybrid
-  policy, live registry/invalidation, bounded readiness, component status, and
-  saved-request orchestration are implemented together with the Stage 5 public
-  personalized response/event schema and generated browser contract. No approved
-  live build registration/promotion, product contribution-consent route,
-  lifecycle operator command set, or approved real interaction dataset is
-  implemented; these are Phase 7 boundaries.
+  policy, live registry/invalidation, bounded readiness, component status,
+  saved-request orchestration, and guarded lifecycle operator commands are
+  implemented together with the Stage 5 public personalized response/event
+  schema and generated browser contract. No product contribution-consent route,
+  approved production live cohort, approved real interaction dataset, or Phase
+  8 full-stack lifecycle fixture is implemented.
 - No formal recommendation-quality evaluation on the synthetic seed; that is
   Stage 6 work.
 - No external metadata source is integrated.

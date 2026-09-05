@@ -9,8 +9,9 @@
   handoff verified on 2026-08-28; Phase 4 versioned hybrid policy and exact
   Stage 4 fallback verified on 2026-08-29; Phase 5 artifact lifecycle,
   readiness, and internal API orchestration verified on 2026-08-30; Phase 6
-  response, event, OpenAPI, and product integration verified on 2026-09-01.
-  Phase 7 derived-data lifecycle and safe commands is next.
+  response, event, OpenAPI, and product integration verified on 2026-09-01;
+  Phase 7 derived-data lifecycle and safe commands verified on 2026-09-03.
+  Phase 8 Docker, configuration, and full-stack fixtures is next.
 - **Stage 4 prerequisite:** Complete and verified on 2026-08-13.
 - **Planning and target implementation branch:**
   `feat/stage-5-collaborative-and-hybrid-ranking`
@@ -20,12 +21,13 @@
   independently observable.
 
 Sections 1–20 remain the forward-looking engineering plan except where the Phase
-0–6 slices are explicitly marked verified. Section 21 records only measured
+0–7 slices are explicitly marked verified. Section 21 records only measured
 implementation decisions. Section 22 is a provisional roadmap Stage 6 handoff,
 and Section 23 remains pending until every Stage 5 acceptance gate passes. Phase
 6 exposes one synchronized saved response and `stage-5-v1` event from the Phase
-5 decision and presents cautious browser evidence. It does not grant
-contribution consent, approve a live build, or complete Stage 5.
+5 decision and presents cautious browser evidence. Phase 7 adds guarded live
+build and lifecycle operations without granting product contribution consent,
+approving a production cohort, or completing Stage 5.
 
 ## 1. Context
 
@@ -675,7 +677,7 @@ response may present synthetic co-occurrence as an aggregate interaction signal.
 
 ## 6. Target Repository Structure
 
-Phase 0–6 names marked `(+ implemented)` are as built. Later-phase illustrative
+Phase 0–7 names marked `(+ implemented)` are as built. Later-phase illustrative
 entries remain `(+ planned)`; generated snapshots and artifacts remain ignored.
 
 ```text
@@ -686,16 +688,24 @@ entries remain `(+ planned)`; generated snapshots and artifacts remain ignored.
 |   |   |   |-- 0006_stage_5_collaborative_contract.py  (+ implemented)
 |   |   |   |-- 0007_stage_5_artifact_registry.py       (+ implemented)
 |   |   |   |-- 0008_stage_5_authority_loss.py          (+ implemented)
-|   |   |   `-- 0009_stage_5_label_changes.py           (+ implemented)
+|   |   |   |-- 0009_stage_5_label_changes.py           (+ implemented)
+|   |   |   |-- 0010_stage_5_recommendation_event_contract.py (+ implemented)
+|   |   |   `-- 0011_stage_5_lifecycle_guard.py         (+ implemented)
 |   |   |-- app/
 |   |   |   |-- commands/
 |   |   |   |   |-- collaborative_snapshot.py          (+ implemented)
 |   |   |   |   `-- collaborative_artifact.py          (+ implemented)
 |   |   |   |-- repositories/
 |   |   |   |   |-- collaborative_snapshot.py          (+ implemented)
-|   |   |   |   `-- collaborative_registry.py          (+ implemented)
+|   |   |   |   |-- collaborative_registry.py          (+ implemented)
+|   |   |   |   `-- collaborative_registry_types.py    (+ implemented)
 |   |   |   |-- services/
 |   |   |   |   |-- collaborative_snapshot.py          (+ implemented)
+|   |   |   |   |-- collaborative_build.py             (+ implemented)
+|   |   |   |   |-- collaborative_lifecycle.py         (+ implemented)
+|   |   |   |   |-- collaborative_retirement.py        (+ implemented)
+|   |   |   |   |-- collaborative_recovery.py          (+ implemented)
+|   |   |   |   |-- collaborative_rollback.py          (+ implemented)
 |   |   |   |   `-- recommendation/
 |   |   |   |       |-- collaborative.py               (+ implemented)
 |   |   |   |       |-- readiness.py                   (+ implemented)
@@ -1578,31 +1588,42 @@ Suggested commit subjects are
 
 ## 14. Implementation Phase 7: Derived-Data Lifecycle and Safe Commands
 
-**Status:** Next implementation phase; not started.
+**Status:** Complete and verified on 2026-09-03 through slice 7H.
 
-### Phase 7 Entry Handoff
+### Phase 7 Completion Handoff
 
-Phase 7 starts from Alembic head `0010_stage_5_event_contract`, the immutable
-Phase 2 artifact format, Phase 5 registry/invalidation/readiness contracts, and
-the Phase 6 synchronized saved response/event boundary. It must not reopen
-ranking math, generated-client ownership, event meaning, or browser-side order.
+Phase 7 advances the Alembic head from `0010_stage_5_event_contract` to
+`0011_stage_5_lifecycle_guard` while preserving the immutable Phase 2 artifact
+format, Phase 5 registry/readiness contracts, and Phase 6 response/event/browser
+contract. It does not reopen ranking math, event meaning, or browser-side order.
 
-The entry state is intentionally fail-closed:
+The completed state remains fail-closed:
 
 1. No public route grants collaborative contribution consent and no existing
    personalization consent may be reused for that purpose.
-2. The guarded fixture build/validate/inspect path exists, but no approved live
-   registration/promotion transaction or rollback target-selection command
-   exists.
-3. PostgreSQL can invalidate affected live lineage transactionally, but operator
-   preview/confirm, retirement, crash recovery, and physical bundle cleanup are
-   not implemented.
-4. Phase 7 command tests must use exact disposable database/artifact targets;
+2. Guarded live build/registration requires separately enabled live-data,
+   contribution-consent-version, promotion, build-ID, and exact-confirmation
+   gates; default settings refuse before build work.
+3. Explicit recovery, invalidation, retirement, rollback check, retirement
+   preview, confirmed cleanup, and interrupted-filesystem recovery commands are
+   implemented with bounded machine-readable output.
+4. Phase 7 command tests use exact disposable database/artifact targets;
    ordinary startup, migration, seed, broad tests, and Compose teardown remain
    non-mutating with respect to derived artifacts.
-5. Full guarded two-artifact browser lifecycle remains Phase 8; Phase 7 should
-   expose deterministic machine-readable command outcomes that Phase 8 can
-   orchestrate without hidden fitting or deletion.
+5. Full guarded two-artifact browser lifecycle remains Phase 8. Phase 7 exposes
+   deterministic command outcomes for that orchestration without hidden fitting,
+   activation, or deletion.
+
+| Slice | Completed boundary                                                                  | Commit    |
+| ----- | ----------------------------------------------------------------------------------- | --------- |
+| 7A    | Stable operator command contracts, explicit targets, confirmations, and safe errors | `03985e3` |
+| 7B    | Eligible ephemeral lineage plus guarded immutable live build registration           | `23c2c62` |
+| 7C    | Exact orphan-bundle registration recovery                                           | `b48aa41` |
+| 7D    | Explicit idempotent invalidation and ordered terminal retirement                    | `f997b23` |
+| 7E    | Identity-free retirement inventory and fingerprinted preview                        | `7b2bf74` |
+| 7F    | Fresh-confirmation cleanup with protected paths and quarantine                      | `7740223` |
+| 7G    | Previewed recovery for interrupted cleanup and stopped-builder remnants             | `0dc057d` |
+| 7H    | Valid-only rollback, one-way DB guard, non-mutation, privacy, and lifecycle handoff | `3fabc72` |
 
 ### Objective
 
@@ -1641,6 +1662,15 @@ reviewable operations with no hidden destructive side effect.
   non-disposable test target fails closed.
 - Disposable tests prove withdrawal/deletion invalidation and confirmed cleanup
   without touching content artifacts or persistent development data.
+
+The 7H handoff verifies the complete command sequence on disposable PostgreSQL
+and temporary artifact sets: audit, two immutable live builds, validate/inspect,
+valid rollback check, source revision advance, withdrawal or deletion
+invalidation, failed resurrection, retirement preview, confirmation mismatch,
+and confirmed cleanup. It also characterizes startup, migration, seed, and broad
+test non-mutation. The final gate passes 782 combined API-unit/ML tests, 143
+PostgreSQL integration tests, Ruff across 194 Python files, OpenAPI drift, privacy
+output checks, and `git diff --check`.
 
 ### Exit Criteria
 
@@ -1852,30 +1882,35 @@ limitations, and leave a precise Stage 6 input contract.
 
 ## 18. Command Interface Target
 
-The external-source, Phase 0–1 audit, and guarded Phase 2 fixture-artifact
-command names are frozen as implemented. Live build and artifact retirement
-remain forward-looking until their lifecycle phases are implemented.
+The external-source, Phase 0–1 audit, guarded Phase 2 fixture-artifact, and Phase
+7 lifecycle command names are frozen as implemented.
 
-| Capability                                                                                  | Optional Make wrapper                   | Required direct equivalent                                                                                                                                                                                                             |
-| ------------------------------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Verify local UCSD source identity                                                           | `make ucsd-steam-verify`                | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam verify --root /workspace --format json`                                                                  |
-| Profile UCSD ingestion preparation                                                          | `make ucsd-steam-prepare`               | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam prepare --root /workspace --format json`                                                                 |
-| Audit UCSD source-level support                                                             | `make ucsd-steam-audit`                 | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --format json`                                                                   |
-| Check committed UCSD aggregate report                                                       | `make ucsd-steam-audit-check`           | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/external/ucsd-steam/suitability-audit.json --format summary` |
-| Report the default-off live interaction gate or audit explicitly enabled eligible live data | `make collaborative-audit`              | `python -m app.commands.collaborative_snapshot audit --source live --format json`                                                                                                                                                      |
-| Audit the project-authored test fixture                                                     | `make collaborative-fixture-audit`      | `ENVIRONMENT=test COLLABORATIVE_ALLOW_TEST_FIXTURE=true python -m app.commands.collaborative_snapshot audit --source fixture --format json`                                                                                            |
-| Build a new guarded fixture bundle                                                          | `make collaborative-build`              | `docker compose --profile quality run --build --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact build --source fixture`                                                    |
-| Validate the configured guarded fixture bundle                                              | `make collaborative-validate`           | `docker compose --profile quality run --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact validate`                                                                          |
-| Inspect guarded fixture-bundle metadata                                                     | none required                           | `docker compose --profile quality run --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact inspect`                                                                           |
-| Preview obsolete-bundle retirement                                                          | `make collaborative-retirement-preview` | `python -m app.commands.collaborative_artifact retire` without confirmation                                                                                                                                                            |
-| Confirm disposable/obsolete cleanup                                                         | no broad wrapper                        | Same retire command with exact emitted confirmation                                                                                                                                                                                    |
-| Build existing content artifact                                                             | `make model-build`                      | Existing `recommendation_artifact build` command                                                                                                                                                                                       |
-| Validate existing content artifact                                                          | `make model-validate`                   | Existing `recommendation_artifact validate` command                                                                                                                                                                                    |
-| Inspect component status                                                                    | none required                           | `GET /api/v1/models/status`                                                                                                                                                                                                            |
-| Run focused ML tests                                                                        | `make test-ml`                          | Existing documented pytest command                                                                                                                                                                                                     |
-| Run API and PostgreSQL gates                                                                | `make test`, `make test-integration`    | Existing documented direct commands                                                                                                                                                                                                    |
-| Run web and browser gates                                                                   | `make test-web`, `make test-web-e2e`    | Existing documented npm/Compose commands                                                                                                                                                                                               |
-| Validate all Compose files                                                                  | `make config`                           | Existing direct `docker compose ... config --quiet` commands                                                                                                                                                                           |
+| Capability                                                                                  | Optional Make wrapper                | Required direct equivalent                                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verify local UCSD source identity                                                           | `make ucsd-steam-verify`             | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam verify --root /workspace --format json`                                                                  |
+| Profile UCSD ingestion preparation                                                          | `make ucsd-steam-prepare`            | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam prepare --root /workspace --format json`                                                                 |
+| Audit UCSD source-level support                                                             | `make ucsd-steam-audit`              | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --format json`                                                                   |
+| Check committed UCSD aggregate report                                                       | `make ucsd-steam-audit-check`        | `docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam audit --root /workspace --check-report data/external/ucsd-steam/suitability-audit.json --format summary` |
+| Report the default-off live interaction gate or audit explicitly enabled eligible live data | `make collaborative-audit`           | `python -m app.commands.collaborative_snapshot audit --source live --format json`                                                                                                                                                      |
+| Audit the project-authored test fixture                                                     | `make collaborative-fixture-audit`   | `ENVIRONMENT=test COLLABORATIVE_ALLOW_TEST_FIXTURE=true python -m app.commands.collaborative_snapshot audit --source fixture --format json`                                                                                            |
+| Build a new guarded fixture bundle                                                          | `make collaborative-build`           | `docker compose --profile quality run --build --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact build --source fixture`                                                    |
+| Validate the configured guarded fixture bundle                                              | `make collaborative-validate`        | `docker compose --profile quality run --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact validate`                                                                          |
+| Inspect guarded fixture-bundle metadata                                                     | none required                        | `docker compose --profile quality run --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact inspect`                                                                           |
+| Build and register an explicitly approved live bundle                                       | none required                        | `python -m app.commands.collaborative_artifact build --source live --output <unused-path> --build-id <id> --confirm-live-build <id>`                                                                                                   |
+| Recover exact orphan-bundle registration                                                    | none required                        | `python -m app.commands.collaborative_artifact recover --artifact <path> --build-id <id> --confirm-live-recovery <id>`                                                                                                                 |
+| Check one valid-only manual rollback candidate                                              | none required                        | `python -m app.commands.collaborative_artifact rollback-check --artifact <path>`                                                                                                                                                       |
+| Invalidate exact active registry state                                                      | none required                        | `python -m app.commands.collaborative_artifact invalidate --build-id <id> --confirm-invalidation <id>`                                                                                                                                 |
+| Retire exact invalidated registry state                                                     | none required                        | `python -m app.commands.collaborative_artifact retire --build-id <id> --confirm-retirement <id>`                                                                                                                                       |
+| Preview obsolete-bundle retirement                                                          | none required                        | `python -m app.commands.collaborative_artifact retirement-preview --artifact-set <exact-root>`                                                                                                                                         |
+| Confirm obsolete-bundle cleanup                                                             | no broad wrapper                     | `python -m app.commands.collaborative_artifact cleanup --artifact-set <exact-root> --confirm-cleanup <exact-preview-value>`                                                                                                            |
+| Preview or execute interrupted-filesystem recovery                                          | no broad wrapper                     | `python -m app.commands.collaborative_artifact recover-files --artifact-set <exact-root> --target <exact-target> --kind build\|cleanup [--execute --writers-stopped --confirm-recovery <exact-preview-value>]`                         |
+| Build existing content artifact                                                             | `make model-build`                   | Existing `recommendation_artifact build` command                                                                                                                                                                                       |
+| Validate existing content artifact                                                          | `make model-validate`                | Existing `recommendation_artifact validate` command                                                                                                                                                                                    |
+| Inspect component status                                                                    | none required                        | `GET /api/v1/models/status`                                                                                                                                                                                                            |
+| Run focused ML tests                                                                        | `make test-ml`                       | Existing documented pytest command                                                                                                                                                                                                     |
+| Run API and PostgreSQL gates                                                                | `make test`, `make test-integration` | Existing documented direct commands                                                                                                                                                                                                    |
+| Run web and browser gates                                                                   | `make test-web`, `make test-web-e2e` | Existing documented npm/Compose commands                                                                                                                                                                                               |
+| Validate all Compose files                                                                  | `make config`                        | Existing direct `docker compose ... config --quiet` commands                                                                                                                                                                           |
 
 Existing command meanings must not change. No startup, request, migration, seed,
 broad test, or teardown command may fit a model, install an unpinned dependency,
@@ -2085,11 +2120,12 @@ infrastructure docs explicit until Section 23 is populated from passing gates.
 
 ## 21. Implementation-Time Decisions
 
-Phase 0–6 source preflight, first-party snapshot, consent/revision, fixture,
+Phase 0–7 source preflight, first-party snapshot, consent/revision, fixture,
 aggregate audit, sparse trainer, offline artifact, pure scoring, hybrid policy,
 lifecycle readiness, saved API/event projection, and browser-presentation
-decisions are implemented. They do not activate an approved live build or a
-product contribution flow.
+decisions are implemented. Guarded live operations are tested only with explicit
+disposable data; they do not approve a production cohort or product contribution
+flow.
 
 ### As-Built Phase 0–1 First-Party Decisions
 
@@ -2370,7 +2406,8 @@ product contribution flow.
    hybrid/collaborative identity, candidate origin, aggregate support/source
    edges, component weights, and exact contributions. The stateless Stage 3
    response remains unchanged.
-2. Migration `0010_stage_5_event_contract` is the expected Alembic head. It
+2. Migration `0010_stage_5_event_contract` is the Phase 6 Alembic head, later
+   advanced by Phase 7's data-preserving `0011_stage_5_lifecycle_guard`. It
    preserves readable `legacy-v1` and `stage-4-v1` rows, adds nullable bounded
    Stage 5 mode/fallback/hybrid/collaborative columns, indexes mode/time, and
    requires all-or-none hybrid identity or reason-only fallback identity for
@@ -2417,6 +2454,69 @@ product contribution flow.
     removes its containers, networks, volumes, and artifacts after the run.
     These gates prove contracts and functional behavior, not recommendation
     quality, representativeness, or Stage 5 completion.
+
+### As-Built Phase 7 Derived-Data Lifecycle Decisions
+
+1. Operator output is deterministic JSON with stable typed error envelopes and
+   exit status two for refused operations. Read-only commands require explicit
+   paths where ambiguity could otherwise select a configured artifact.
+2. The live path remains default-off and requires enabled live data, a separate
+   contribution-consent version, enabled promotion, an explicit build ID, and an
+   exact matching confirmation. It extracts ephemeral identity-free lineage,
+   builds and validates an immutable unused target, then registers exact retained
+   contributor membership in one deliberate transaction.
+3. Filesystem publication precedes registry commit, so a registry failure can
+   leave a complete orphan directory but never a serveable half-state. `recover`
+   revalidates exact artifact metadata, current revision, catalog, consent,
+   aggregate matrix facts, and retained lineage before registering it. It never
+   reactivates an invalidated or retired row.
+4. Registry validity is separate from serving selection. Multiple active rows
+   may coexist so a prior still-valid bundle remains a rollback candidate; only
+   `COLLABORATIVE_ARTIFACT_PATH` is loaded. A new positive revision does not
+   invalidate older retained lineage, while authority or included-label loss
+   invalidates every affected active row transactionally.
+5. `rollback-check` is read-only and shares the serving-readiness resolver. It
+   accepts only a structurally valid registered live artifact whose row is
+   active with epoch zero and whose build/revision/cutoff/count/consent/catalog/
+   interaction/validity facts match. Success explicitly reports that no
+   configuration changed and a manual configuration update plus restart remains
+   required.
+6. `invalidate` and `retire` require exact build-ID confirmations. Invalidation
+   is idempotent, retirement requires invalidation first, and retired state is
+   terminal. Migration `0011_stage_5_lifecycle_guard` changes no data and blocks
+   lifecycle reversal, skipped invalidation, epoch rewind, and rewriting an
+   already recorded lifecycle timestamp even through direct SQL.
+7. `retirement-preview` performs a bounded direct-child inventory, discloses no
+   contributor membership, refuses unregistered or malformed live bundles, and
+   separates protected active/configured/content paths from invalidated or
+   retired candidates. Its confirmation binds the resolved database, artifact-
+   set inventory, and exact retirement selection.
+8. `cleanup` requires that exact confirmation and repeats the preview before
+   moving each unchanged candidate into a receipt-backed quarantine. It verifies
+   bounded filenames, sizes, hashes, registry status, and protection facts before
+   physical deletion; it makes no registry write. Confirmation mismatch, target
+   drift, path escape/link, root paths, configured artifacts, active builds, and
+   development-database execution fail closed.
+9. `recover-files` is preview-first for stopped-builder temp/lock remnants and
+   interrupted cleanup quarantine. It relies only on an exact target, bounded
+   marker/receipt/file hashes, current registry status, database fingerprint,
+   exact confirmation, `--execute`, and `--writers-stopped`. It does not infer
+   process death, register an orphan, or resurrect lifecycle state.
+10. Startup, requests, migration, seed, broad tests, and ordinary Compose
+    teardown do not fit, promote, invalidate, retire, recover, or clean a bundle.
+    Destructive test execution additionally requires the triple disposable-
+    PostgreSQL gate and an artifact-set descendant of the system temporary root.
+11. Slice commits are `03985e3`, `23c2c62`, `b48aa41`, `f997b23`, `7b2bf74`,
+    `7740223`, `0dc057d`, and `3fabc72` for 7A–7H. Direct-CLI import-cycle fix
+    `3e274be` adds a fresh-interpreter smoke gate. The current handoff passes 782
+    combined API-unit/ML tests and 143 disposable-PostgreSQL integration tests.
+    Ruff lint/format passes across 194 Python files, OpenAPI has no drift, privacy
+    scans find no contributor identifier in output/log/artifacts, and Docker test
+    resources are removed.
+12. Phase 7 proves operational safety and lifecycle correctness on synthetic
+    disposable data. It does not grant product contribution consent, approve a
+    production live cohort or external dataset, establish recommendation
+    quality, or claim the Phase 8 browser lifecycle.
 
 ### As-Built External-Source Decisions
 
@@ -2475,13 +2575,9 @@ The remaining implementation must resolve and record:
 1. Product contribution-consent copy, public grant/re-consent/withdrawal routes,
    and approval to audit an actual live cohort. Saved personalization must
    remain a separate purpose.
-2. Phase 7 deliberate approved live build registration/promotion, crash
-   recovery, operator invalidate/retire/rollback, and confirmed physical bundle
-   cleanup. Database lineage and transactional privacy invalidation are already
-   present.
-3. Actual approved live cohort/exclusion aggregates and the explicit decision to
+2. Actual approved live cohort/exclusion aggregates and the explicit decision to
    activate live build or remain fixture-only.
-4. Phase 8 guarded fixture-artifact E2E topology and public
+3. Phase 8 guarded fixture-artifact E2E topology and public
    hybrid/fallback/lifecycle browser acceptance, plus final dependency/license,
    security, artifact-size, runtime, privacy, and Stage 1–4 regression evidence.
 
@@ -2516,20 +2612,21 @@ experiment report.
 
 The Stage 5 fixture, tiny local cohorts, build diagnostics, deterministic
 examples, and successful UI flows are not recommendation-quality evidence.
-Phases 5–6 have verified lifecycle registry/readiness, synchronized public
-response/event projection, generated client ownership, and cautious browser
-presentation. The handoff is not final: later phases must complete lifecycle
-commands, guarded full-stack browser acceptance, and the full release gate.
+Phases 5–7 have verified lifecycle registry/readiness, synchronized public
+response/event projection, generated client ownership, cautious browser
+presentation, and guarded operator lifecycle safety. The handoff is not final:
+later phases must complete guarded full-stack browser acceptance and the full
+release gate.
 Before Stage 5 is marked complete, this section must change from “should leave”
 to verified facts only.
 
 ## 23. Verified Completion Record
 
-Pending complete Stage 5 implementation. The verified Phase 0–6 source/audit,
+Pending complete Stage 5 implementation. The verified Phase 0–7 source/audit,
 offline-artifact, pure-scoring, hybrid-policy, lifecycle-readiness,
 internal-orchestration, response/event, generated-client, and
-browser-presentation slices are recorded in Section 21; they are not a Stage 5
-completion claim.
+browser-presentation, and operator-lifecycle slices are recorded in Section 21;
+they are not a Stage 5 completion claim.
 
 When every Section 19 gate passes, this section must record the implementation
 commit/PR, runtime and lock versions, migration head, consent/lifecycle

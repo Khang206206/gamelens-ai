@@ -11,8 +11,8 @@
 - JSON is reserved for genuinely flexible recommendation-event context.
 
 The Alembic migration chain is the executable source of truth for this model.
-Stage 5 Phase 6 extends the Stage 1–4 chain through expected head
-`0010_stage_5_event_contract` without embedding seed, fixture, audit, model
+Stage 5 Phase 7 extends the Stage 1–4 chain through expected head
+`0011_stage_5_lifecycle_guard` without embedding seed, fixture, audit, model
 fitting, promotion, or retention commands in migrations.
 
 The
@@ -168,7 +168,13 @@ agree with the relational mode/reason, and `result_summary` remains a non-null
 array capped at 20 compact objects. These records are still committed-
 generation audit data, never a training label or proof of browser exposure.
 
-## Implemented Stage 5 Phase 0–6 Data Boundary
+Revision `0011_stage_5_lifecycle_guard` adds no rows and changes no existing
+row values. Its update trigger makes collaborative lifecycle transitions
+one-way: `active -> invalidated -> retired`; it forbids direct active retirement,
+reactivation, unretirement, invalidation-epoch rewind, and rewriting an already
+recorded lifecycle timestamp. Same-state bookkeeping updates remain legal.
+
+## Implemented Stage 5 Phase 0–7 Data Boundary
 
 ### CollaborativeContributionConsent
 
@@ -273,7 +279,11 @@ current catalog fingerprint, current consent-policy version, and at most one
 matching build row. Bounded states are `not_configured`, `fixture_only`,
 `insufficient_data`, `unavailable`, `stale`, and `ready`. Phase 6 uses this data
 boundary in saved-request orchestration and persists the same decision as a
-`stage-5-v1` event. Events remain excluded from labels and revision changes.
+`stage-5-v1` event. Phase 7 permits multiple active registry rows because
+registry validity is distinct from serving selection: only the bundle named by
+configuration can be loaded, while another still-valid row remains available
+for an explicit rollback check. Events remain excluded from labels and revision
+changes.
 
 ## Index and constraint plan
 
@@ -283,7 +293,7 @@ boundary in saved-request orchestration and persists the same decision as a
   eligible source/catalog table while excluding recommendation events.
 - Live artifact builds have a stable primary key, status/validity lookup index,
   lifecycle and fingerprint checks, and exact expected/current contributor count
-  bounds.
+  bounds. The Phase 7 trigger additionally enforces one-way lifecycle history.
 - Contributor membership has a composite primary key plus a user/build lookup
   index; database triggers enforce current authority, maintain the aggregate
   count, and invalidate affected builds on authority or included-label loss.

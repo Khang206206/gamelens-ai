@@ -1,8 +1,8 @@
 # Machine-learning workspace
 
 **Status:** Stage 4 feedback policy complete and verified 2026-08-13; Stage 5
-external-source preflight and implementation Phases 0–6 verified through
-2026-09-01; Phase 7 derived-data lifecycle and safe commands is next.
+external-source preflight and implementation Phases 0–7 verified through
+2026-09-03; Phase 8 Docker, configuration, and full-stack fixtures is next.
 
 This directory owns deterministic catalog normalization, the popularity
 baseline, TF-IDF feature construction, sparse artifact serialization, pure
@@ -28,8 +28,9 @@ and affinity materializers plus the Phase 4 `gamelens-hybrid-ranking/1.0.0`
 policy. Phase 5 consumes these pure contracts from the API through optional
 lifecycle readiness and internal saved-request orchestration. Phase 6 exposes
 the resulting decision through synchronized saved response/event and browser
-contracts. No approved live builder/promotion or product contribution-consent
-flow exists.
+contracts. Phase 7 connects the existing pure ML build contract to guarded API
+operator lifecycle commands without adding online fitting or mutable model state.
+No product contribution-consent flow or approved production live cohort exists.
 
 ## Stage 5 Phase 0–1 interaction audit
 
@@ -107,10 +108,11 @@ docker compose --profile quality run --rm --no-deps `
 
 Fixture build requires `ENVIRONMENT=test` and the explicit fixture gate,
 validates a temporary sibling with the production loader, and promotes only to
-an unused path. Live build fails closed before database access because protected
-live lineage and activation are not yet approved. Validation and inspection bind
-the artifact to the catalog read from `--catalog`, which defaults to the
-canonical seed file.
+an unused path. The API's separate live operator path remains default-off and
+requires explicit live-data, consent-version, promotion, build-ID, and exact-
+confirmation gates before this same builder can receive an eligible PostgreSQL
+snapshot. Validation and inspection bind the artifact to the catalog read from
+`--catalog`, which defaults to the canonical seed file.
 
 ## Stage 5 Phase 3 pure collaborative scoring
 

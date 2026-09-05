@@ -125,7 +125,7 @@ application boundaries, and 49 disposable-PostgreSQL integration tests verify
 the Stage 4 schema, populated legacy upgrade, transaction/concurrency,
 event/delete correlation, cascades, and retention behavior.
 
-### Stage 5 Phase 0–6 synchronized saved contract implemented; lifecycle commands pending
+### Stage 5 Phase 0–7 lifecycle handoff implemented; full-stack fixtures pending
 
 The
 [Stage 5 collaborative-and-hybrid plan](stage-5-collaborative-hybrid-ranking-plan.md)
@@ -137,8 +137,10 @@ transactional invalidation, one-row request readiness, additive model status,
 and saved-request orchestration. Phase 6 projects that decision once into an
 additive saved response and matching bounded `stage-5-v1` event, regenerates the
 browser contract, and renders server-owned hybrid/fallback evidence. Phase 7
-still owns deliberate live lifecycle commands and any separately approved
-contribution flow.
+adds deliberate guarded live build registration, recovery, invalidation,
+retirement, valid-only rollback checks, confirmed cleanup, and a one-way
+PostgreSQL lifecycle guard. Any product contribution flow and approved
+production cohort remain separate decisions.
 
 The implemented read-only UCSD Steam preflight is a separate offline source
 identity, preparation, and aggregate-support check. It is not connected to the
@@ -167,7 +169,7 @@ flowchart LR
     Revision --> Audit
     Snapshot --> Builder
     Builder --> CF
-    Builder -. "approved live registration pending" .-> Lineage
+    Builder -. "explicit guarded registration" .-> Lineage
     CF --> Scorer
     Content --> Materializers
     Feedback --> Materializers
@@ -189,12 +191,15 @@ events do not.
 The Phase 2 builder writes a separate immutable identity-free bundle, validates
 the temporary sibling through the production loader, supports a last-moment
 revision callback for live metadata, and promotes only to an unused path. The
-operator CLI deliberately exposes only the guarded authored fixture. Phase 5
+operator CLI exposes the guarded authored fixture. Phase 5
 persists live build/contributor lineage and invalidates affected builds on
-authority or included-label loss, but approved live build registration,
-promotion, rollback, retirement commands, and physical cleanup remain later
-work. Configuration keeps live access default-off. No request, startup, or
-ordinary migration trains a model.
+authority or included-label loss. Phase 7 adds a separately gated live path that
+registers exact retained lineage, preserves multiple still-valid builds for
+manual rollback, and recovers an exact orphan bundle after a registry failure.
+Rollback checks are read-only; invalidation and retirement are explicit; cleanup
+requires a fresh artifact-set/database fingerprint and exact confirmation.
+Configuration keeps live access default-off. No request, startup, seed, or
+ordinary migration trains, promotes, or removes a model.
 
 ## Repository boundaries
 
@@ -282,7 +287,7 @@ relational shape would not be stable.
 Stage 4 migrations replace plaintext anonymous-key semantics with a consented,
 expiring token digest, add temporal active/superseded interaction rules, and
 extend recommendation events with data and personalization-policy identity. The
-expected Alembic head is `0010_stage_5_event_contract`. Legacy placeholder rows
+expected Alembic head is `0011_stage_5_lifecycle_guard`. Legacy placeholder rows
 are deterministically converted to unique revoked, inaccessible identities and
 are not treated as consented sessions. The populated `0002` to head upgrade and
 the documented populated downgrade/re-upgrade gate pass in the disposable
@@ -294,7 +299,9 @@ and invalidate affected active builds transactionally when authority or an
 included positive label is removed or changed. Revision `0010` preserves
 legacy/Stage 4 event rows and adds all-or-none Stage 5 mode, fallback, hybrid,
 collaborative identity, and bounded result constraints. Recommendation events
-remain generation audit records and are not a revision or label source.
+remain generation audit records and are not a revision or label source. Revision
+`0011` changes no data and enforces one-way collaborative lifecycle transitions,
+monotonic invalidation epochs, and immutable recorded lifecycle timestamps.
 
 ### Machine learning
 
@@ -316,7 +323,7 @@ vectors, and exposes its own identity and contribution. User identity and
 mutable state never enter an artifact or the application-lifecycle ranker
 singleton. The Stage 3 model and artifact identity remain unchanged.
 
-Stage 5 Phase 0–6 adds canonical sorted-profile serialization, fixed
+Stage 5 Phase 0–7 adds canonical sorted-profile serialization, fixed
 fingerprinting, bounded support/pair aggregates, a strict synthetic fixture
 loader, and a separate sparse item-item cosine artifact. The trainer receives
 only canonical ephemeral profiles and stable-slug catalog identity. The bundle
@@ -341,9 +348,10 @@ fallback wrapper for every typed unavailable or no-support outcome. Phase 5's
 application boundary loads the optional component once, maps artifact/registry
 facts to bounded readiness, and invokes this policy from the saved request.
 Phase 6 exposes its decision through synchronized public response/event records
-and generated-client/UI evidence; formal ranking evaluation stays in roadmap
-Stage 6. Fixture readiness is functional evidence only and does not approve a
-live cohort.
+and generated-client/UI evidence. Phase 7 supplies guarded registration,
+recovery, lifecycle transitions, rollback eligibility, and cleanup outside the
+request path; formal ranking evaluation stays in roadmap Stage 6. Fixture
+readiness is functional evidence only and does not approve a production cohort.
 
 ### External data
 
@@ -407,12 +415,13 @@ slice. The offline builder, checksum-validated artifact, immutable ranker,
 generated browser contract, and anonymous explained-result experience are
 active. Account authentication, approved live collaborative training, formal
 evaluation, and production deployment remain later components. Stage 5 now has
-Phases 0–6: interaction audit, offline collaborative artifact, pure scoring and
+Phases 0–7: interaction audit, offline collaborative artifact, pure scoring and
 materialization, versioned hybrid policy, protected live lifecycle lineage,
 bounded component readiness, additive model status, saved-request orchestration,
 synchronized response/event projection, generated client fields, and cautious
-browser evidence. Approved live promotion, contribution-consent product flow,
-and lifecycle operator commands are not implemented.
+browser evidence, guarded live build/recovery, lifecycle mutation, valid-only
+rollback checks, and confirmed cleanup. Product contribution consent, an
+approved production live cohort, and the Phase 8 full-stack fixture remain open.
 
 The Phase 6 handoff passes 365 API unit tests, 109 disposable-PostgreSQL tests,
 331 ML tests with one Windows symbolic-link capability skip, and 86 web tests.
@@ -421,6 +430,12 @@ production build, and generated OpenAPI drift pass. Five focused no-retry Docker
 browser checks cover axe on Chromium/Firefox/WebKit and responsive request-only/
 saved results; the test Compose resources were removed. The inherited full Stage
 4 browser matrix remains recorded below.
+
+The Phase 7 handoff passes 782 combined API-unit/ML tests and 143 disposable-
+PostgreSQL integration tests. Ruff lint/format passes across 194 Python files,
+OpenAPI has no drift, and the disposable lifecycle database, containers, network,
+and temporary artifacts are removed after verification. Browser lifecycle
+orchestration remains Phase 8.
 
 Stage 4 is complete and verified. Its consented identity, durable preferences,
 temporal feedback writes, deterministic feedback adjustment, personalized
