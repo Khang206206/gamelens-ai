@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from app.core.config import DEVELOPMENT_SESSION_SECRET, Settings
+from app.core.config import DEVELOPMENT_SESSION_SECRET, PROJECT_ROOT, Settings
 from pydantic import ValidationError
 
 
@@ -150,6 +150,7 @@ def test_collaborative_live_data_is_default_off_and_requires_contribution_versio
         "COLLABORATIVE_LIVE_PROMOTION_ENABLED",
         "COLLABORATIVE_ALLOW_TEST_FIXTURE",
         "COLLABORATIVE_ARTIFACT_PATH",
+        "COLLABORATIVE_FIXTURE_PATH",
     ):
         monkeypatch.delenv(variable, raising=False)
     settings = Settings(_env_file=None)
@@ -159,6 +160,9 @@ def test_collaborative_live_data_is_default_off_and_requires_contribution_versio
     assert settings.collaborative_live_promotion_enabled is False
     assert settings.collaborative_allow_test_fixture is False
     assert settings.collaborative_artifact_path is None
+    assert settings.collaborative_fixture_path == (
+        PROJECT_ROOT / "data" / "fixtures" / "interactions" / "collaborative-interactions.json"
+    )
 
     blank_path = Settings(_env_file=None, collaborative_artifact_path="   ")
     assert blank_path.collaborative_artifact_path is None
@@ -197,13 +201,30 @@ def test_collaborative_live_data_is_default_off_and_requires_contribution_versio
         )
 
 
-def test_collaborative_fixture_gate_is_test_only() -> None:
+@pytest.mark.parametrize(
+    ("environment", "security"),
+    [
+        ("development", {"cors_origins": ["http://localhost:3000"]}),
+        (
+            "production",
+            {
+                "cors_origins": ["https://app.example.com"],
+                "anonymous_session_cookie_secure": True,
+                "anonymous_session_secret": "production-only-secret-with-at-least-32-bytes",
+            },
+        ),
+    ],
+)
+def test_collaborative_fixture_gate_is_test_only(
+    environment: str,
+    security: dict[str, object],
+) -> None:
     with pytest.raises(ValidationError, match="ENVIRONMENT=test"):
         Settings(
             _env_file=None,
-            environment="development",
-            cors_origins=["http://localhost:3000"],
+            environment=environment,
             collaborative_allow_test_fixture=True,
+            **security,
         )
 
     settings = Settings(
@@ -213,3 +234,31 @@ def test_collaborative_fixture_gate_is_test_only() -> None:
         collaborative_allow_test_fixture=True,
     )
     assert settings.collaborative_allow_test_fixture is True
+
+
+@pytest.mark.parametrize(
+    "live_authority",
+    [
+        {"collaborative_contribution_consent_version": "stage-5-contribution-v1"},
+        {
+            "collaborative_live_data_enabled": True,
+            "collaborative_contribution_consent_version": "stage-5-contribution-v1",
+        },
+        {
+            "collaborative_live_data_enabled": True,
+            "collaborative_contribution_consent_version": "stage-5-contribution-v1",
+            "collaborative_live_promotion_enabled": True,
+        },
+    ],
+)
+def test_collaborative_fixture_and_live_authority_are_mutually_exclusive(
+    live_authority: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError, match="mutually exclusive"):
+        Settings(
+            _env_file=None,
+            environment="test",
+            cors_origins=["http://testserver"],
+            collaborative_allow_test_fixture=True,
+            **live_authority,
+        )

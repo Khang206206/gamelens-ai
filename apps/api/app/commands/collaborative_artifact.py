@@ -449,7 +449,7 @@ def _artifact_path(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Build, validate, or inspect Stage 5 collaborative artifacts"
+        description="Operate Stage 5 collaborative artifacts with explicit immutable targets"
     )
     commands = parser.add_subparsers(dest="command", required=True)
 

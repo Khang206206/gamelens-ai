@@ -217,6 +217,12 @@ class Settings(BaseSettings):
             raise ValueError("live collaborative promotion requires live data to be enabled")
         if self.collaborative_allow_test_fixture and self.environment != "test":
             raise ValueError("collaborative fixture access is limited to ENVIRONMENT=test")
+        if self.collaborative_allow_test_fixture and (
+            self.collaborative_live_data_enabled
+            or self.collaborative_contribution_consent_version is not None
+            or self.collaborative_live_promotion_enabled
+        ):
+            raise ValueError("collaborative fixture and live-data authority are mutually exclusive")
         return self
 
 

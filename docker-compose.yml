@@ -38,6 +38,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       MODEL_ARTIFACT_PATH: ${MODEL_ARTIFACT_PATH:-}
       COLLABORATIVE_ARTIFACT_PATH: ${COLLABORATIVE_ARTIFACT_PATH:-}
+      COLLABORATIVE_FIXTURE_PATH: ${COLLABORATIVE_FIXTURE_PATH:-/workspace/data/fixtures/interactions/collaborative-interactions.json}
       ANONYMOUS_SESSION_SECRET: ${ANONYMOUS_SESSION_SECRET:-development-only-stage-4-session-secret-change-me}
       ANONYMOUS_SESSION_COOKIE_NAME: ${ANONYMOUS_SESSION_COOKIE_NAME:-gamelens_session}
       ANONYMOUS_SESSION_COOKIE_PATH: ${ANONYMOUS_SESSION_COOKIE_PATH:-/api/v1}
@@ -47,6 +48,7 @@ services:
       CONSENT_VERSION: ${CONSENT_VERSION:-stage-4-v1}
       COLLABORATIVE_LIVE_DATA_ENABLED: ${COLLABORATIVE_LIVE_DATA_ENABLED:-false}
       COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION: ${COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION:-}
+      COLLABORATIVE_LIVE_PROMOTION_ENABLED: ${COLLABORATIVE_LIVE_PROMOTION_ENABLED:-false}
       COLLABORATIVE_ALLOW_TEST_FIXTURE: "false"
       CSRF_HEADER_NAME: ${CSRF_HEADER_NAME:-X-CSRF-Token}
       RECOMMENDATION_EVENT_RETENTION_DAYS: ${RECOMMENDATION_EVENT_RETENTION_DAYS:-90}
@@ -85,9 +87,11 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       MODEL_ARTIFACT_PATH: ${MODEL_ARTIFACT_PATH:-/artifacts/content-v1}
-      COLLABORATIVE_ARTIFACT_PATH: ${COLLABORATIVE_ARTIFACT_PATH:-/artifacts/collaborative-v1}
+      COLLABORATIVE_ARTIFACT_PATH: ${COLLABORATIVE_ARTIFACT_PATH:-}
+      COLLABORATIVE_FIXTURE_PATH: ${COLLABORATIVE_FIXTURE_PATH:-/workspace/data/fixtures/interactions/collaborative-interactions.json}
       COLLABORATIVE_LIVE_DATA_ENABLED: ${COLLABORATIVE_LIVE_DATA_ENABLED:-false}
       COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION: ${COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION:-}
+      COLLABORATIVE_LIVE_PROMOTION_ENABLED: ${COLLABORATIVE_LIVE_PROMOTION_ENABLED:-false}
       COLLABORATIVE_ALLOW_TEST_FIXTURE: "false"
     depends_on:
       db:
@@ -98,6 +102,49 @@ services:
       - python
       - -m
       - app.commands.recommendation_artifact
+      - --help
+
+  collaborative-operator:
+    profiles:
+      - model
+    image: gamelens-ai-api:stage4
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      args:
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-gamelens}:${POSTGRES_PASSWORD:-gamelens_dev_only}@db:5432/${POSTGRES_DB:-gamelens}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ANONYMOUS_SESSION_SECRET: ${ANONYMOUS_SESSION_SECRET:-development-only-stage-4-session-secret-change-me}
+      ANONYMOUS_SESSION_COOKIE_NAME: ${ANONYMOUS_SESSION_COOKIE_NAME:-gamelens_session}
+      ANONYMOUS_SESSION_COOKIE_PATH: ${ANONYMOUS_SESSION_COOKIE_PATH:-/api/v1}
+      ANONYMOUS_SESSION_COOKIE_SECURE: ${ANONYMOUS_SESSION_COOKIE_SECURE:-false}
+      ANONYMOUS_SESSION_COOKIE_SAMESITE: ${ANONYMOUS_SESSION_COOKIE_SAMESITE:-lax}
+      ANONYMOUS_SESSION_TTL_SECONDS: ${ANONYMOUS_SESSION_TTL_SECONDS:-15552000}
+      CONSENT_VERSION: ${CONSENT_VERSION:-stage-4-v1}
+      MODEL_ARTIFACT_PATH: ${MODEL_ARTIFACT_PATH:-/artifacts/content-v1}
+      COLLABORATIVE_ARTIFACT_PATH: ${COLLABORATIVE_ARTIFACT_PATH:-}
+      COLLABORATIVE_FIXTURE_PATH: ${COLLABORATIVE_FIXTURE_PATH:-/workspace/data/fixtures/interactions/collaborative-interactions.json}
+      COLLABORATIVE_LIVE_DATA_ENABLED: ${COLLABORATIVE_LIVE_DATA_ENABLED:-false}
+      COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION: ${COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION:-}
+      COLLABORATIVE_LIVE_PROMOTION_ENABLED: ${COLLABORATIVE_LIVE_PROMOTION_ENABLED:-false}
+      COLLABORATIVE_ALLOW_TEST_FIXTURE: "false"
+      CSRF_HEADER_NAME: ${CSRF_HEADER_NAME:-X-CSRF-Token}
+      RECOMMENDATION_EVENT_RETENTION_DAYS: ${RECOMMENDATION_EVENT_RETENTION_DAYS:-90}
+      RETENTION_BATCH_SIZE: ${RETENTION_BATCH_SIZE:-500}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./ml/artifacts:/artifacts
+    command:
+      - python
+      - -m
+      - app.commands.collaborative_artifact
       - --help
 
   web:
@@ -144,8 +191,10 @@ services:
       RUFF_CACHE_DIR: /tmp/ruff-cache
       COLLABORATIVE_LIVE_DATA_ENABLED: "false"
       COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION: ""
+      COLLABORATIVE_LIVE_PROMOTION_ENABLED: "false"
       COLLABORATIVE_ALLOW_TEST_FIXTURE: "false"
       COLLABORATIVE_ARTIFACT_PATH: /workspace/ml/artifacts/collaborative-fixture-v1
+      COLLABORATIVE_FIXTURE_PATH: /workspace/data/fixtures/interactions/collaborative-interactions.json
       PYTHONPATH: /workspace/ml/src
     volumes:
       - ./apps/api:/workspace/apps/api

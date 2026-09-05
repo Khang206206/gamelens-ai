@@ -1,5 +1,5 @@
 .PHONY: help config build build-web up down logs api web migrate seed model-build model-validate retention-preview ucsd-steam-verify ucsd-steam-prepare ucsd-steam-audit ucsd-steam-audit-check test-ml test test-integration test-web test-web-e2e lint lint-web format format-web api-types
-.PHONY: collaborative-audit collaborative-fixture-audit collaborative-build collaborative-validate
+.PHONY: collaborative-audit collaborative-fixture-audit collaborative-build collaborative-validate collaborative-operator-help
 
 help:
 	@echo "GameLens AI commands"
@@ -20,6 +20,7 @@ help:
 	@echo "  make collaborative-fixture-audit  Audit the project-authored test fixture"
 	@echo "  make collaborative-build  Build the guarded project-authored collaborative fixture"
 	@echo "  make collaborative-validate  Validate the guarded collaborative fixture bundle"
+	@echo "  make collaborative-operator-help  Show direct collaborative artifact operator commands"
 	@echo "  make ucsd-steam-verify  Verify local UCSD Steam bytes and gzip shape read-only"
 	@echo "  make ucsd-steam-prepare  Profile source schemas and alignment read-only"
 	@echo "  make ucsd-steam-audit  Run the aggregate source-level suitability audit"
@@ -36,7 +37,7 @@ help:
 	@echo "  make api-types  Refresh web contracts from the running API"
 
 config:
-	docker compose --profile quality --profile source-audit config --quiet
+	docker compose --profile model --profile quality --profile source-audit config --quiet
 	docker compose -f infra/docker-compose.test.yml config --quiet
 	docker compose -f infra/docker-compose.e2e.yml config --quiet
 
@@ -78,7 +79,7 @@ retention-preview:
 	docker compose run --build --rm api python -m app.commands.retention
 
 collaborative-audit:
-	docker compose run --build --rm --no-deps api python -m app.commands.collaborative_snapshot audit --source live --format summary
+	docker compose --profile model run --build --rm --no-deps collaborative-operator python -m app.commands.collaborative_snapshot audit --source live --format summary
 
 collaborative-fixture-audit:
 	docker compose --profile quality run --build --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_snapshot audit --source fixture --format summary
@@ -88,6 +89,9 @@ collaborative-build:
 
 collaborative-validate:
 	docker compose --profile quality run --rm --no-deps -e COLLABORATIVE_ALLOW_TEST_FIXTURE=true quality python -m app.commands.collaborative_artifact validate
+
+collaborative-operator-help:
+	docker compose --profile model run --build --rm --no-deps collaborative-operator
 
 ucsd-steam-verify:
 	docker compose --profile source-audit run --build --rm --no-deps ucsd-source-audit python -m gamelens_recommender.ucsd_steam verify --root /workspace --format summary
