@@ -3,6 +3,7 @@ from app.core.config import PROJECT_ROOT
 
 COMPOSE_PATH = PROJECT_ROOT / "infra" / "docker-compose.e2e.yml"
 ARTIFACT_SET = "/tmp/gamelens-e2e/artifact-set"
+EVENT_EVIDENCE = "/tmp/gamelens-e2e/evidence"
 
 
 def _compose() -> dict[str, object]:
@@ -76,19 +77,40 @@ def test_fixture_api_waits_for_both_artifacts_and_cannot_write_them() -> None:
 
     browser = services["e2e-fixture"]
     assert browser["profiles"] == ["fixture"]
-    assert browser["depends_on"] == {"e2e-fixture-web": {"condition": "service_healthy"}}
+    assert browser["depends_on"] == {
+        "e2e-fixture-web": {"condition": "service_healthy"},
+        "e2e-test-evidence-init": {"condition": "service_completed_successfully"},
+    }
     assert browser["environment"]["WEB_BASE_URL"] == "http://gamelens.test:3000"
-    assert browser["command"] == [
-        "npm",
-        "run",
-        "test:e2e",
-        "--",
-        "--project=chromium",
-        "e2e/navigation.smoke.spec.ts",
-        "e2e/recommendations.smoke.spec.ts",
-        "e2e/accessibility.smoke.spec.ts",
-    ]
+    assert browser["environment"]["COLLABORATIVE_FIXTURE_E2E"] == "1"
+    assert browser["environment"]["STAGE5_EVENT_EVIDENCE_DIR"] == EVENT_EVIDENCE
+    assert browser["volumes"] == [f"e2e_test_evidence:{EVENT_EVIDENCE}"]
+    assert "--workers=1 --retries=0 --project=chromium" in browser["command"][-1]
+    assert "e2e/hybrid.fixture.spec.ts" in browser["command"][-1]
+    assert "--project=firefox-smoke" in browser["command"][-1]
+    assert "--project=webkit-smoke e2e/hybrid.fixture.smoke.spec.ts" in browser["command"][-1]
     assert "ports" not in browser
+
+
+def test_hybrid_event_evidence_stays_out_of_the_browser_database_boundary() -> None:
+    services = _compose()["services"]
+
+    evidence_init = services["e2e-test-evidence-init"]
+    assert evidence_init["user"] == "root"
+    assert evidence_init["volumes"] == [f"e2e_test_evidence:{EVENT_EVIDENCE}"]
+    assert "find" in evidence_init["command"][-1]
+    assert "chown --no-dereference 1001:1001" in evidence_init["command"][-1]
+    assert "chmod 0755" in evidence_init["command"][-1]
+
+    browser = services["e2e-fixture"]
+    assert "DATABASE_URL" not in browser["environment"]
+    assert "ANONYMOUS_SESSION_SECRET" not in browser["environment"]
+
+    event_assertion = services["e2e-fixture-events"]
+    assert event_assertion["read_only"] is True
+    assert "@test-db:5432/gamelens_e2e_test" in event_assertion["environment"]["DATABASE_URL"]
+    assert event_assertion["volumes"] == [f"e2e_test_evidence:{EVENT_EVIDENCE}:ro"]
+    assert event_assertion["command"][-1] == "events"
 
 
 def test_content_only_browser_route_remains_independent() -> None:
@@ -119,6 +141,8 @@ def test_fixture_runner_replays_fresh_volume_and_always_tears_down() -> None:
     assert runner.count("start_fresh_stack") == 3
     assert runner.count("teardown") >= 4
     assert "down --volumes --remove-orphans" in runner
+    assert "compose run --rm --no-deps e2e-test-evidence-init" in runner
     assert "e2e_fixture_stack runtime" in runner
     assert "compose run --rm --no-deps e2e-fixture" in runner
+    assert "compose run --rm --no-deps e2e-fixture-events" in runner
     assert "e2e-fixture-immutability" in runner

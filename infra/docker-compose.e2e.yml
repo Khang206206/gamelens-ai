@@ -58,6 +58,27 @@ services:
         chmod 0750 /tmp/gamelens-e2e/artifact-set
     restart: "no"
 
+  e2e-test-evidence-init:
+    profiles:
+      - fixture
+    image: gamelens-ai-api:e2e
+    user: root
+    read_only: true
+    depends_on:
+      e2e-setup:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_test_evidence:/tmp/gamelens-e2e/evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        test -d /tmp/gamelens-e2e/evidence &&
+        test -z "$$(find /tmp/gamelens-e2e/evidence -mindepth 1 -maxdepth 1 -print -quit)" &&
+        chown --no-dereference 1001:1001 /tmp/gamelens-e2e/evidence &&
+        chmod 0755 /tmp/gamelens-e2e/evidence
+    restart: "no"
+
   e2e-model:
     image: gamelens-ai-api:e2e
     read_only: true
@@ -326,19 +347,42 @@ services:
     environment:
       WEB_BASE_URL: http://gamelens.test:3000
       PLAYWRIGHT_EXTERNAL_SERVER: "1"
+      COLLABORATIVE_FIXTURE_E2E: "1"
+      STAGE5_EVENT_EVIDENCE_DIR: /tmp/gamelens-e2e/evidence
     depends_on:
       e2e-fixture-web:
         condition: service_healthy
+      e2e-test-evidence-init:
+        condition: service_completed_successfully
     command:
-      - npm
-      - run
-      - test:e2e
-      - --
-      - --project=chromium
-      - e2e/navigation.smoke.spec.ts
-      - e2e/recommendations.smoke.spec.ts
-      - e2e/accessibility.smoke.spec.ts
+      - /bin/sh
+      - -ec
+      - >-
+        npm run test:e2e -- --workers=1 --retries=0 --project=chromium
+        e2e/hybrid.fixture.spec.ts &&
+        npm run test:e2e -- --workers=1 --retries=0 --project=chromium
+        --project=firefox-smoke --project=webkit-smoke
+        e2e/hybrid.fixture.smoke.spec.ts
+    volumes:
+      - e2e_test_evidence:/tmp/gamelens-e2e/evidence
     ipc: host
+
+  e2e-fixture-events:
+    profiles:
+      - fixture
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@test-db:5432/gamelens_e2e_test
+    volumes:
+      - e2e_test_evidence:/tmp/gamelens-e2e/evidence:ro
+    command:
+      - python
+      - -m
+      - tests.fixtures.e2e_fixture_stack
+      - events
+    restart: "no"
 
   e2e-fixture-immutability:
     profiles:
@@ -382,3 +426,4 @@ services:
 
 volumes:
   e2e_artifact_set:
+  e2e_test_evidence:

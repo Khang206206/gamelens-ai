@@ -42,8 +42,10 @@ compose build e2e-setup e2e-fixture-web e2e-fixture
 start_fresh_stack() {
     stack_active=1
     compose up --detach --wait e2e-fixture-web >&2
+    compose run --rm --no-deps e2e-test-evidence-init >&2
     compose logs e2e-model-validate e2e-collaborative-validate >&2
     compose run --rm --no-deps e2e-fixture >&2
+    compose run --rm --no-deps e2e-fixture-events >&2
     compose run --rm --no-deps e2e-fixture-immutability >&2
 }
 
