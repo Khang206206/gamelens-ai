@@ -5,12 +5,11 @@
 - **Survey baseline:** `a1aab44` on `feat/stage-5-collaborative-and-hybrid-ranking`
 - **Parent scope:** [Stage 5 engineering plan, Section 15](stage-5-collaborative-hybrid-ranking-plan.md#15-implementation-phase-8-docker-configuration-and-full-stack-fixtures)
 
-This document decomposes Phase 8 into independently verifiable commits. It is
-a plan, not execution evidence. The planning commit changes documentation only;
-it does not change source, tests, migrations, configuration, dependencies, or
-generated contracts, and does not run builds or mutate runtime data. Every
-slice below remains **PLANNED — NOT IMPLEMENTED** until its acceptance gate
-passes and its implementation commit is recorded.
+This document decomposes Phase 8 into independently verifiable commits. It began
+as a plan; measured execution evidence is recorded per slice in the ledger below.
+The original planning commit changed documentation only and did not run builds
+or mutate runtime data. A slice remains **PLANNED — NOT IMPLEMENTED** until its
+acceptance gate passes and its implementation commit is recorded.
 
 ## 1. Survey findings and inherited boundaries
 
@@ -207,7 +206,7 @@ registry gate: diagnose those at 8C/8F first.
 
 ### 8F — Explicit live-source build topology
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on 8B and 8C.
+**Status: IMPLEMENTED — VERIFIED (2026-09-06).** Depends on 8B and 8C.
 
 - Scope: opt-in lifecycle Compose mode and test runner sequencing. Keep pure
   fixture and database-derived modes separate; fixture flag is off in live mode.
@@ -361,10 +360,55 @@ docs impact. Do not prefill counts or mark a slice verified from inherited Phase
 | 8C | PLANNED — NOT IMPLEMENTED | — | Not run |
 | 8D | PLANNED — NOT IMPLEMENTED | — | Not run |
 | 8E | PLANNED — NOT IMPLEMENTED | — | Not run |
-| 8F | PLANNED — NOT IMPLEMENTED | — | Not run |
+| 8F | IMPLEMENTED — VERIFIED | `4769d5d` | Disposable PostgreSQL/live-source gate passed; see the record below. |
 | 8G | PLANNED — NOT IMPLEMENTED | — | Not run |
 | 8H | PLANNED — NOT IMPLEMENTED | — | Not run |
 | 8I | PLANNED — NOT IMPLEMENTED | — | Not run |
+
+### Slice 8F verification record — 2026-09-06
+
+- **Implementation commit and tested tree:** `4769d5d`
+  (`test(infra): add disposable live-source build workflow`).
+- **Mode and authority:** explicit `live-source` Compose profile against the
+  project-owned synthetic cohort in disposable `gamelens_e2e_test` PostgreSQL;
+  fixture access remained off and live promotion authority was limited to the
+  guarded build/recovery probes.
+- **Artifact and registry evidence:** immutable builds
+  `stage8f-live-previous-v1` and `stage8f-live-current-v1` were registered
+  `active` at revisions 224 and 225. Each retained 12 contributor lineages, both
+  matched the real extracted snapshot fingerprint, and the previous build
+  passed rollback readiness after Phase 7 orphan recovery.
+- **Failure and privacy evidence:** missing live authority, mismatched
+  confirmation, an existing target, and a real PostgreSQL registry insertion
+  rejection all failed closed. The recovery result was `orphan_registered`;
+  CLI/run records and bundle structure exposed no contributor token, digest, or
+  user identifier.
+- **Serving evidence:** the API selected the current bundle only after
+  validation, inspection, registry, lineage, and rollback checks. Its artifact
+  mount rejected writes. Saved recommendation generation returned `hybrid` with
+  live collaborative evidence, committed exactly one matching `stage-5-v1`
+  event, created no contribution grant, and removed the disposable session/event
+  during cleanup.
+
+| Verification command | Result |
+| --- | --- |
+| `sh infra/run-e2e-live-source.sh` | Passed the real image/container, audit/build/recover/validate/inspect/rollback, registry, HTTP smoke, and project-local teardown workflow. |
+| `docker compose -f infra/docker-compose.test.yml run --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_disposable_lifecycle_fixture.py -q -p no:cacheprovider` | 8 passed in 13.57s. |
+| `docker compose run --build --rm --no-deps quality python -m pytest tests/unit -q -p no:cacheprovider` | 483 passed in 54.40s. |
+| `docker compose run --build --rm --no-deps quality python -m ruff check --no-cache app tests alembic /workspace/ml/src /workspace/ml/tests` | Passed. |
+| `docker compose run --build --rm --no-deps quality python -m ruff format --no-cache --check app tests alembic /workspace/ml/src /workspace/ml/tests` | 203 files already formatted. |
+| Root Compose with `quality`/`source-audit`, test Compose, and E2E Compose with `live-source`, each using `config --quiet` | Passed. |
+| `sh -n infra/run-e2e-live-source.sh` and `git diff --cached --check` | Passed. |
+
+Implementation used direct Docker commands because GNU Make and host `pytest`
+were unavailable; this did not reduce the planned test scope. An initial HTTP
+smoke selected a preference without supported collaborative evidence, and an
+initial unit run lacked the new runner's read-only quality mount. Both defects
+were corrected in `4769d5d`, followed by clean full reruns. Browser lifecycle,
+invalidation, re-consent, clear-data, retirement, cross-platform claims, and the
+broad documentation reconciliation remain explicitly deferred to 8G–8I. This
+record does not grant production-data authority or provide ranking-quality
+evidence.
 
 Phase 8 exits only when a fresh isolated stack reproducibly builds and validates
 both artifact types, serves hybrid, invalidates a real registered test build,
