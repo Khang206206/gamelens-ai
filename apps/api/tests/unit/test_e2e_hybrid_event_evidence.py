@@ -16,22 +16,53 @@ def _write_evidence(path: Path, *payloads: dict[str, object]) -> None:
 def test_event_evidence_loads_bounded_exact_records(tmp_path: Path) -> None:
     _write_evidence(
         tmp_path / "chromium-0.jsonl",
-        {"generation_id": "a" * 32, "ranking_mode": "hybrid"},
-        {"generation_id": "b" * 32, "ranking_mode": "stage_4_fallback"},
+        {
+            "fallback_reason": None,
+            "generation_id": "a" * 32,
+            "ranking_mode": "hybrid",
+        },
+        {
+            "fallback_reason": "artifact_missing",
+            "generation_id": "b" * 32,
+            "ranking_mode": "stage_4_fallback",
+        },
     )
 
     assert _load_event_evidence(tmp_path) == (
-        EventEvidence("a" * 32, "hybrid"),
-        EventEvidence("b" * 32, "stage_4_fallback"),
+        EventEvidence("a" * 32, "hybrid", None),
+        EventEvidence("b" * 32, "stage_4_fallback", "artifact_missing"),
     )
 
 
 @pytest.mark.parametrize(
     "payload",
     [
-        {"generation_id": "not-a-generation", "ranking_mode": "hybrid"},
-        {"generation_id": "a" * 32, "ranking_mode": "unknown"},
-        {"generation_id": "a" * 32, "ranking_mode": "hybrid", "extra": True},
+        {
+            "fallback_reason": None,
+            "generation_id": "not-a-generation",
+            "ranking_mode": "hybrid",
+        },
+        {
+            "fallback_reason": None,
+            "generation_id": "a" * 32,
+            "ranking_mode": "unknown",
+        },
+        {
+            "fallback_reason": "artifact_missing",
+            "generation_id": "a" * 32,
+            "ranking_mode": "hybrid",
+        },
+        {
+            "fallback_reason": None,
+            "generation_id": "a" * 32,
+            "ranking_mode": "stage_4_fallback",
+        },
+        {
+            "fallback_reason": None,
+            "generation_id": "a" * 32,
+            "ranking_mode": "hybrid",
+            "extra": True,
+        },
     ],
 )
 def test_event_evidence_rejects_invalid_records(tmp_path: Path, payload: dict[str, object]) -> None:
@@ -42,7 +73,11 @@ def test_event_evidence_rejects_invalid_records(tmp_path: Path, payload: dict[st
 
 
 def test_event_evidence_rejects_duplicate_generations_across_workers(tmp_path: Path) -> None:
-    payload = {"generation_id": "a" * 32, "ranking_mode": "hybrid"}
+    payload = {
+        "fallback_reason": None,
+        "generation_id": "a" * 32,
+        "ranking_mode": "hybrid",
+    }
     _write_evidence(tmp_path / "chromium-0.jsonl", payload)
     _write_evidence(tmp_path / "chromium-1.jsonl", payload)
 

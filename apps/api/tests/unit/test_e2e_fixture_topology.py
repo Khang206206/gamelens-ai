@@ -137,7 +137,7 @@ def test_fixture_runner_replays_fresh_volume_and_always_tears_down() -> None:
     runner = (PROJECT_ROOT / "infra" / "run-e2e-fixture.sh").read_text(encoding="utf-8")
 
     assert '--project-name "$project"' in runner
-    assert "--profile fixture" in runner
+    assert "--profile fixture --profile fallback" in runner
     assert runner.count("start_fresh_stack") == 3
     assert runner.count("teardown") >= 4
     assert "down --volumes --remove-orphans" in runner

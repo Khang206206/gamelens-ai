@@ -116,6 +116,7 @@ function recordCommittedGeneration(
   appendFileSync(
     evidencePath,
     `${JSON.stringify({
+      fallback_reason: result.fallback_reason,
       generation_id: result.generation_id,
       ranking_mode: result.ranking_mode,
     })}\n`,
