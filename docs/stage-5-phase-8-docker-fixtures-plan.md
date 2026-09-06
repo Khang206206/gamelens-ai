@@ -47,8 +47,8 @@ synthetic test data. Its authority exists only inside that disposable scenario.
 “Docker live build” below means executing real image builds and containers.
 “Live-source build” means the existing `build --source live` command against
 guarded PostgreSQL. The latter is unnecessary for ordinary fixture UI tests but
-mandatory before accepting contributor lifecycle browser tests. Neither runs
-during this planning task.
+mandatory before accepting contributor lifecycle browser tests. Neither was run
+by the original planning commit; completed-slice execution is recorded below.
 
 ## 3. Commit and dependency map
 
@@ -78,7 +78,7 @@ registry gate: diagnose those at 8C/8F first.
 
 ### 8A — Configuration and explicit commands
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on Phase 7.
+**Status: IMPLEMENTED — VERIFIED (2026-09-06).** Depends on Phase 7.
 
 - Scope: `.env.example`, root Compose, `Makefile`, configuration/command notes;
   focused tests in the existing configuration and artifact command suites.
@@ -103,7 +103,7 @@ registry gate: diagnose those at 8C/8F first.
 
 ### 8B — Disposable cohort and scenario helper
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on 8A.
+**Status: IMPLEMENTED — VERIFIED (2026-09-06).** Depends on 8A.
 
 - Scope: test-only API fixture/helper modules and focused PostgreSQL tests;
   test fixture provenance notes. Reuse existing seed/cohort contracts without
@@ -129,7 +129,7 @@ registry gate: diagnose those at 8C/8F first.
 
 ### 8C — Two-artifact fixture topology
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on 8A.
+**Status: IMPLEMENTED — VERIFIED (2026-09-06).** Depends on 8A.
 
 - Scope: E2E Compose, narrowly scoped fixture input mounts/build allowlists as
   needed, explicit runner/wrapper, topology probes. Keep the content-only E2E
@@ -159,7 +159,7 @@ registry gate: diagnose those at 8C/8F first.
 
 ### 8D — Hybrid browser acceptance
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on 8C.
+**Status: IMPLEMENTED — VERIFIED (2026-09-06).** Depends on 8C.
 
 - Scope: new focused Playwright specs/helpers and only necessary project
   selection. Test real public endpoints and cookies; do not fulfill mocked
@@ -181,7 +181,7 @@ registry gate: diagnose those at 8C/8F first.
 
 ### 8E — Optional-component fallback
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on 8C.
+**Status: IMPLEMENTED — VERIFIED (2026-09-06).** Depends on 8C.
 
 - Scope: isolated scenario configuration, focused API/container probes, browser
   fallback specs. Preserve valid required content while varying only the optional
@@ -355,15 +355,80 @@ docs impact. Do not prefill counts or mark a slice verified from inherited Phase
 
 | Slice | Status | Implementation commit | Verification |
 | --- | --- | --- | --- |
-| 8A | PLANNED — NOT IMPLEMENTED | — | Not run |
-| 8B | PLANNED — NOT IMPLEMENTED | — | Not run |
-| 8C | PLANNED — NOT IMPLEMENTED | — | Not run |
-| 8D | PLANNED — NOT IMPLEMENTED | — | Not run |
-| 8E | PLANNED — NOT IMPLEMENTED | — | Not run |
+| 8A | IMPLEMENTED — VERIFIED | `e19ea9f` | Configuration/command and Compose gates passed; see the record below. |
+| 8B | IMPLEMENTED — VERIFIED | `53c112b` | Guarded disposable PostgreSQL cohort gate passed; see the record below. |
+| 8C | IMPLEMENTED — VERIFIED | `44d070d` | Two-artifact fixture topology passed two fresh deterministic runs; see the record below. |
+| 8D | IMPLEMENTED — VERIFIED | `7f8cf1b` | Real hybrid Chromium and cross-browser smoke passed; see the record below. |
+| 8E | IMPLEMENTED — VERIFIED | `4711979` | Full optional-component fallback matrix and browsers passed; see the record below. |
 | 8F | IMPLEMENTED — VERIFIED | `4769d5d` | Disposable PostgreSQL/live-source gate passed; see the record below. |
 | 8G | PLANNED — NOT IMPLEMENTED | — | Not run |
 | 8H | PLANNED — NOT IMPLEMENTED | — | Not run |
 | 8I | PLANNED — NOT IMPLEMENTED | — | Not run |
+
+### Slices 8A–8E verification record — 2026-09-06
+
+- **Tested tree:** `34df2b0`, with a clean worktree before verification. The
+  implementation commits remain the owning revisions listed in the ledger.
+- **8A — `e19ea9f`:** configuration and direct command wiring expose separate
+  content/collaborative paths plus explicit live, contribution-version,
+  promotion, and fixture gates. Invalid combinations and unsafe fixture/live
+  invocations remain fail-closed; default service behavior is read-only and API
+  artifact mounts remain read-only. Root, test, and E2E Compose definitions all
+  parsed successfully.
+- **8B — `53c112b`:** the named synthetic cohort crossed the frozen support gate
+  in real disposable PostgreSQL while expired, revoked, outdated, negative, and
+  pruned rows stayed excluded. Configured and connected database guards,
+  partial/repeated setup behavior, public-versus-contribution consent separation,
+  aggregate inspection, and private-output checks passed. The current focused
+  file also contains the later bounded 8F revision-control regression, so its
+  measured result is 8 tests rather than the original slice-only count.
+- **8C — `44d070d`:** the runner built real API, web, and Playwright images and
+  twice created a fresh tmpfs PostgreSQL → migration/catalog seed → volume owner
+  init → content/fixture build → validation → ready API/web stack. Builders ran
+  as UID 1000, existing content and collaborative targets were refused, and the
+  serving API rejected artifact writes. Both runs produced the same semantic
+  identities: content fingerprint
+  `1a304ac3686742022ef41828bf48467412e34bd0e882c9b428cc723a5e2685e1`,
+  fixture build
+  `stage5-fixture-22197350a7b9d5316a98a14f7a819f64a5aef98c879e26a1ec597927c9af60b9`,
+  and interaction fingerprint
+  `d2ec587ef4e06eeaaf918447e58d8c233840575a33299556eb9765b786a1c003`.
+  The collaborative bundle retained 12 contributors, 36 positive edges, and 6
+  items, with `quality_evidence=false`.
+- **8D — `7f8cf1b`:** each fresh fixture run passed four focused Chromium hybrid
+  cases and one Chromium/Firefox/WebKit smoke case. Assertions covered supported
+  and cold-start sources, dislike/source exclusion, played evidence, reload,
+  stateless content-only behavior, exact DOM/server order, contribution/edge
+  reconstruction, keyboard/focus, axe, and viewport behavior. Event evidence
+  recorded eight exactly-once `hybrid` generations per run and exposed neither
+  database credentials nor identity fields to browser evidence.
+- **8E — `4711979`:** container/API probes passed `not_configured`,
+  `artifact_missing`, `artifact_corrupt`, `artifact_expired`, `catalog_stale`,
+  `fixture_not_allowed`, and `no_supported_sources`; every saved fallback matched
+  the exact Stage 4 score/order oracle and committed a matching event. Separate
+  development/production fixture rejection passed with valid security settings.
+  Chromium passed representative missing/corrupt browser cases, Firefox/WebKit
+  passed cold-start smoke, and missing required content retained its distinct
+  HTTP 503 behavior without committing an event.
+
+| Verification command | Result |
+| --- | --- |
+| `docker compose run --build --rm --no-deps quality python -m pytest tests/unit/test_config.py tests/unit/test_collaborative_artifact_command.py tests/unit/test_collaborative_artifact_entrypoint.py tests/unit/test_e2e_fixture_topology.py tests/unit/test_e2e_hybrid_event_evidence.py tests/unit/test_e2e_fallback_topology.py -q -p no:cacheprovider` | 89 passed in 35.15s. |
+| `docker compose -f infra/docker-compose.test.yml run --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_disposable_lifecycle_fixture.py -q -p no:cacheprovider` | 8 passed in 13.05s against real disposable PostgreSQL. |
+| `sh infra/run-e2e-fixture.sh` | Passed two fresh deterministic fixture runs, the hybrid browser suites, the complete fallback matrix, event/privacy probes, and project-local teardown. |
+| Root Compose with `quality`/`source-audit`, test Compose, and E2E Compose with `fixture`/`fallback`, each using `config --quiet` | Passed. |
+| `sh -n infra/run-e2e-fixture.sh` | Passed. |
+
+GNU Make was unavailable on the host, so the documented underlying Docker
+commands were invoked directly without reducing test scope. Compose parsing
+returned exit code 0 while the restricted shell warned that the host Docker
+client configuration file was unreadable; real escalated Docker builds and
+containers ran successfully. These are functional fixture results, not ranking
+quality evidence or production-data authority. Native non-Linux-container host
+behavior, live-source lifecycle transitions, invalidation, re-consent,
+clear-data, retirement, and the combined isolation/handoff gate remain deferred
+to 8G–8H; the separately verified live-source build is recorded under 8F below,
+and broad documentation reconciliation remains 8I.
 
 ### Slice 8F verification record — 2026-09-06
 
