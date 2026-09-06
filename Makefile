@@ -1,4 +1,4 @@
-.PHONY: help config build build-web up down logs api web migrate seed model-build model-validate retention-preview ucsd-steam-verify ucsd-steam-prepare ucsd-steam-audit ucsd-steam-audit-check test-ml test test-integration test-web test-web-e2e test-e2e-fixture lint lint-web format format-web api-types
+.PHONY: help config build build-web up down logs api web migrate seed model-build model-validate retention-preview ucsd-steam-verify ucsd-steam-prepare ucsd-steam-audit ucsd-steam-audit-check test-ml test test-integration test-web test-web-e2e test-e2e-fixture test-e2e-live-source lint lint-web format format-web api-types
 .PHONY: collaborative-audit collaborative-fixture-audit collaborative-build collaborative-validate collaborative-operator-help
 
 help:
@@ -31,6 +31,7 @@ help:
 	@echo "  make test-web  Run web type, lint, format, unit, build, and API drift checks"
 	@echo "  make test-web-e2e  Run browser tests against an isolated full stack"
 	@echo "  make test-e2e-fixture  Build and probe the isolated two-artifact fixture stack twice"
+	@echo "  make test-e2e-live-source  Build and register disposable PostgreSQL-derived artifacts"
 	@echo "  make lint    Run Ruff lint and formatting checks"
 	@echo "  make lint-web  Run web lint and formatting checks"
 	@echo "  make format  Apply Ruff fixes and formatting"
@@ -128,6 +129,9 @@ test-web-e2e:
 
 test-e2e-fixture:
 	sh infra/run-e2e-fixture.sh
+
+test-e2e-live-source:
+	sh infra/run-e2e-live-source.sh
 
 lint:
 	docker compose run --build --rm --no-deps quality python -m ruff check --no-cache app tests alembic /workspace/ml/src /workspace/ml/tests

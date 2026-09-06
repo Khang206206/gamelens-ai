@@ -21,6 +21,7 @@ from app.core.security import parse_session_credential
 from app.db.models import (
     CollaborativeArtifactBuild,
     CollaborativeContributionConsent,
+    CollaborativeDataRevision,
     Game,
     Interaction,
     InteractionType,
@@ -316,6 +317,62 @@ class DisposableCollaborativeScenario:
             contribution.withdrawn_at = now
         return self._control_result("withdraw-contribution", "updated")
 
+    def advance_revision(self, *, scenario: str) -> dict[str, object]:
+        """Advance the disposable source revision without changing a positive label."""
+
+        self._require_named_scenario(scenario)
+        with self._write_session() as session:
+            self._require_complete_scenario(session)
+            before = session.scalar(
+                select(CollaborativeDataRevision.revision).where(
+                    CollaborativeDataRevision.singleton_id == 1
+                )
+            )
+            interaction = session.scalar(
+                select(Interaction)
+                .join(User, User.id == Interaction.user_id)
+                .where(
+                    User.anonymous_token_digest == _role_digest("negative"),
+                    Interaction.interaction_type == InteractionType.RATED,
+                )
+                .with_for_update()
+            )
+            if before is None or interaction is None:
+                raise ScenarioControlError(
+                    "scenario_incomplete",
+                    "The named disposable cohort cannot advance its source revision",
+                )
+            if interaction.value == Decimal("5"):
+                after = before
+                status = "unchanged"
+            elif interaction.value == Decimal("4"):
+                # Both values remain below the frozen positive-rating threshold. The update
+                # exercises a real source revision while preserving retained labels and the
+                # existing registered bundle as a valid rollback candidate.
+                interaction.value = Decimal("5")
+                session.flush()
+                after = session.scalar(
+                    select(CollaborativeDataRevision.revision).where(
+                        CollaborativeDataRevision.singleton_id == 1
+                    )
+                )
+                if after != before + 1:
+                    raise ScenarioControlError(
+                        "scenario_revision_failed",
+                        "The disposable source revision did not advance exactly once",
+                    )
+                status = "updated"
+            else:
+                raise ScenarioControlError(
+                    "scenario_incomplete",
+                    "The named disposable cohort has an unexpected revision marker",
+                )
+
+        result = self._control_result("advance-revision", status)
+        result["data_revision"] = {"before": before, "after": after}
+        result["positive_labels_changed"] = False
+        return result
+
     def inspect(
         self,
         *,
@@ -529,7 +586,32 @@ class DisposableCollaborativeScenario:
                 None,
             ),
         }
-        return "complete" if interactions == expected_interactions else "partial"
+        advanced_interactions = {
+            *expected_interactions,
+        }
+        advanced_interactions.remove(
+            (
+                users_by_role["negative"].id,
+                "warden-of-glass",
+                InteractionType.RATED,
+                Decimal("4"),
+                None,
+            )
+        )
+        advanced_interactions.add(
+            (
+                users_by_role["negative"].id,
+                "warden-of-glass",
+                InteractionType.RATED,
+                Decimal("5"),
+                None,
+            )
+        )
+        return (
+            "complete"
+            if interactions in (expected_interactions, advanced_interactions)
+            else "partial"
+        )
 
     def _require_complete_scenario(self, session: Session) -> None:
         state = self._scenario_state(session)
@@ -751,6 +833,7 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     for name in (
         "create-cohort",
+        "advance-revision",
         "link-session",
         "arrange-outdated-consent",
         "withdraw-contribution",
@@ -772,6 +855,8 @@ def main() -> None:
         controller, engine = _controller_from_environment()
         if args.command == "create-cohort":
             result = controller.create_cohort(scenario=args.scenario)
+        elif args.command == "advance-revision":
+            result = controller.advance_revision(scenario=args.scenario)
         elif args.command == "link-session":
             result = controller.link_session(
                 scenario=args.scenario,

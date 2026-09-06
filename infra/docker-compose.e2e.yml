@@ -1,5 +1,24 @@
 name: gamelens-ai-e2e
 
+x-e2e-live-runtime: &e2e-live-runtime
+  ENVIRONMENT: test
+  DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@test-db:5432/gamelens_e2e_test
+  CORS_ORIGINS: http://gamelens.test:3000
+  ANONYMOUS_SESSION_SECRET: stage-4-e2e-only-session-secret-not-production
+  ANONYMOUS_SESSION_COOKIE_SECURE: "false"
+  CONSENT_VERSION: stage-4-v1
+  LOG_LEVEL: WARNING
+  MODEL_ARTIFACT_PATH: /tmp/gamelens-e2e/artifact-set/content-v1
+  COLLABORATIVE_ARTIFACT_PATH: ""
+  COLLABORATIVE_LIVE_DATA_ENABLED: "true"
+  COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION: stage-5-contribution-v1
+  COLLABORATIVE_LIVE_PROMOTION_ENABLED: "false"
+  COLLABORATIVE_ALLOW_TEST_FIXTURE: "false"
+
+x-e2e-live-build: &e2e-live-build
+  <<: *e2e-live-runtime
+  COLLABORATIVE_LIVE_PROMOTION_ENABLED: "true"
+
 services:
   test-db:
     image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
@@ -198,6 +217,431 @@ services:
       - /tmp/gamelens-e2e/artifact-set/collaborative-fixture-v1
       - --catalog
       - /workspace/data/catalog/games.json
+    restart: "no"
+
+  e2e-live-evidence-init:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    user: root
+    read_only: true
+    depends_on:
+      e2e-model-validate:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        test -d /tmp/gamelens-e2e/live-evidence &&
+        test -z "$$(find /tmp/gamelens-e2e/live-evidence -mindepth 1 -maxdepth 1 -print -quit)" &&
+        chown --no-dereference gamelens:gamelens /tmp/gamelens-e2e/live-evidence &&
+        chmod 0750 /tmp/gamelens-e2e/live-evidence
+    restart: "no"
+
+  e2e-live-cohort:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+      GAMELENS_TEST_DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@test-db:5432/gamelens_e2e_test
+      GAMELENS_ALLOW_TEST_DATABASE_RESET: "true"
+    depends_on:
+      e2e-live-evidence-init:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m tests.fixtures.collaborative_lifecycle
+        create-cohort --scenario stage-5-disposable-lifecycle-v1)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-cohort.json
+    restart: "no"
+
+  e2e-live-audit:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+    depends_on:
+      e2e-live-cohort:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m app.commands.collaborative_snapshot
+        audit --source live --format json)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-audit.json
+    restart: "no"
+
+  e2e-live-guard-failures:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-build
+      GAMELENS_TEST_DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@test-db:5432/gamelens_e2e_test
+      GAMELENS_ALLOW_TEST_DATABASE_RESET: "true"
+    depends_on:
+      e2e-live-audit:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m tests.fixtures.e2e_live_source guard-failures)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-guard-failures.json
+    restart: "no"
+
+  e2e-live-registration-failure:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-build
+      GAMELENS_TEST_DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@test-db:5432/gamelens_e2e_test
+      GAMELENS_ALLOW_TEST_DATABASE_RESET: "true"
+    depends_on:
+      e2e-live-guard-failures:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m tests.fixtures.e2e_live_source registration-failure)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-registration-failure.json
+    restart: "no"
+
+  e2e-live-previous-recover:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-build
+    depends_on:
+      e2e-live-registration-failure:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m app.commands.collaborative_artifact
+        recover
+        --artifact /tmp/gamelens-e2e/artifact-set/collaborative-live-previous-v1
+        --build-id stage8f-live-previous-v1
+        --confirm-live-recovery stage8f-live-previous-v1)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-previous-recover.json
+    restart: "no"
+
+  e2e-live-previous-validate:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+    depends_on:
+      e2e-live-previous-recover:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set:ro
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m app.commands.collaborative_artifact
+        validate
+        --artifact /tmp/gamelens-e2e/artifact-set/collaborative-live-previous-v1
+        --catalog /workspace/data/catalog/games.json)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-previous-validate.json
+    restart: "no"
+
+  e2e-live-previous-inspect:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+    depends_on:
+      e2e-live-previous-validate:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set:ro
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m app.commands.collaborative_artifact
+        inspect
+        --artifact /tmp/gamelens-e2e/artifact-set/collaborative-live-previous-v1
+        --catalog /workspace/data/catalog/games.json)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-previous-inspect.json
+    restart: "no"
+
+  e2e-live-revision:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+      GAMELENS_TEST_DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@test-db:5432/gamelens_e2e_test
+      GAMELENS_ALLOW_TEST_DATABASE_RESET: "true"
+    depends_on:
+      e2e-live-previous-inspect:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m tests.fixtures.collaborative_lifecycle
+        advance-revision --scenario stage-5-disposable-lifecycle-v1)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-revision.json
+    restart: "no"
+
+  e2e-live-current-model:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-build
+    depends_on:
+      e2e-live-revision:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        test "$$(id -u)" -ne 0 &&
+        output="$$(python -m app.commands.collaborative_artifact
+        build --source live
+        --output /tmp/gamelens-e2e/artifact-set/collaborative-live-current-v1
+        --build-id stage8f-live-current-v1
+        --confirm-live-build stage8f-live-current-v1)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-current-build.json
+    restart: "no"
+
+  e2e-live-current-validate:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+    depends_on:
+      e2e-live-current-model:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set:ro
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m app.commands.collaborative_artifact
+        validate
+        --artifact /tmp/gamelens-e2e/artifact-set/collaborative-live-current-v1
+        --catalog /workspace/data/catalog/games.json)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-current-validate.json
+    restart: "no"
+
+  e2e-live-current-inspect:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+    depends_on:
+      e2e-live-current-validate:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set:ro
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m app.commands.collaborative_artifact
+        inspect
+        --artifact /tmp/gamelens-e2e/artifact-set/collaborative-live-current-v1
+        --catalog /workspace/data/catalog/games.json)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-current-inspect.json
+    restart: "no"
+
+  e2e-live-existing-target:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-build
+      GAMELENS_TEST_DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@test-db:5432/gamelens_e2e_test
+      GAMELENS_ALLOW_TEST_DATABASE_RESET: "true"
+    depends_on:
+      e2e-live-current-inspect:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set:ro
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m tests.fixtures.e2e_live_source existing-target)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-existing-target.json
+    restart: "no"
+
+  e2e-live-rollback:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+    depends_on:
+      e2e-live-existing-target:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set:ro
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        output="$$(python -m app.commands.collaborative_artifact
+        rollback-check
+        --artifact /tmp/gamelens-e2e/artifact-set/collaborative-live-previous-v1)" &&
+        printf '%s\n' "$$output" &&
+        printf '%s\n' "$$output" >
+        /tmp/gamelens-e2e/live-evidence/.stage8f-rollback.json
+    restart: "no"
+
+  e2e-live-verify:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+      GAMELENS_TEST_DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@test-db:5432/gamelens_e2e_test
+      GAMELENS_ALLOW_TEST_DATABASE_RESET: "true"
+    depends_on:
+      e2e-live-rollback:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set:ro
+      - e2e_live_evidence:/tmp/gamelens-e2e/live-evidence:ro
+    command:
+      - python
+      - -m
+      - tests.fixtures.e2e_live_source
+      - verify
+    restart: "no"
+
+  e2e-live-api:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      COLLABORATIVE_ARTIFACT_PATH: /tmp/gamelens-e2e/artifact-set/collaborative-live-current-v1
+    depends_on:
+      e2e-live-verify:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    networks:
+      default:
+        aliases:
+          - gamelens.test
+          - api.gamelens.test
+
+  e2e-live-smoke:
+    profiles:
+      - live-source
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+      GAMELENS_TEST_DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@test-db:5432/gamelens_e2e_test
+      GAMELENS_ALLOW_TEST_DATABASE_RESET: "true"
+      LIVE_API_URL: http://e2e-live-api:8000
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set:ro
+    command:
+      - python
+      - -m
+      - tests.fixtures.e2e_live_source
+      - saved-hybrid
     restart: "no"
 
   e2e-fallback-artifacts:
@@ -639,4 +1083,5 @@ services:
 
 volumes:
   e2e_artifact_set:
+  e2e_live_evidence:
   e2e_test_evidence:

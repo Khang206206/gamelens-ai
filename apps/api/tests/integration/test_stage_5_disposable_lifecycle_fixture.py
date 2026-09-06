@@ -206,6 +206,50 @@ def test_missing_catalog_refuses_without_creating_a_partial_cohort(
     assert postgres_session.scalar(select(func.count()).select_from(User)) == 0
 
 
+def test_revision_control_advances_once_without_changing_positive_profiles(
+    postgres_engine: Engine,
+    postgres_session: Session,
+    integration_settings: Settings,
+) -> None:
+    _seed_catalog(postgres_session)
+    _controller(postgres_engine, integration_settings).create_cohort(scenario=SCENARIO_NAME)
+
+    with Session(postgres_engine) as session:
+        begin_collaborative_snapshot(session)
+        before = CollaborativeSnapshotRepository(session).extract(
+            personalization_consent_version=PERSONALIZATION_CONSENT_VERSION,
+            contribution_consent_version=CONTRIBUTION_CONSENT_VERSION,
+        )
+        session.rollback()
+
+    advanced = _run_scenario_cli("advance-revision")
+    repeated = _run_scenario_cli("advance-revision")
+
+    with Session(postgres_engine) as session:
+        begin_collaborative_snapshot(session)
+        after = CollaborativeSnapshotRepository(session).extract(
+            personalization_consent_version=PERSONALIZATION_CONSENT_VERSION,
+            contribution_consent_version=CONTRIBUTION_CONSENT_VERSION,
+        )
+        session.rollback()
+
+    assert advanced["status"] == "updated"
+    assert advanced["data_revision"] == {
+        "before": before.data_revision,
+        "after": before.data_revision + 1,
+    }
+    assert advanced["positive_labels_changed"] is False
+    assert repeated["status"] == "unchanged"
+    assert repeated["data_revision"] == {
+        "before": before.data_revision + 1,
+        "after": before.data_revision + 1,
+    }
+    assert after.data_revision == before.data_revision + 1
+    assert after.profiles == before.profiles
+    _assert_private_output(advanced)
+    _assert_private_output(repeated)
+
+
 def test_partial_cohort_refuses_implicit_repair_without_deleting_data(
     postgres_engine: Engine,
     postgres_session: Session,
