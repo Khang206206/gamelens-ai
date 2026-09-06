@@ -34,6 +34,9 @@ COPY --chown=gamelens:gamelens apps/api/alembic.ini ./
 COPY --chown=gamelens:gamelens apps/api/alembic ./alembic
 COPY --chown=gamelens:gamelens apps/api/tests ./tests
 COPY --chown=gamelens:gamelens data/catalog /workspace/data/catalog
+COPY --chown=gamelens:gamelens \
+    data/fixtures/interactions/collaborative-interactions.json \
+    /workspace/data/fixtures/interactions/collaborative-interactions.json
 
 RUN python -m pip install --no-deps --no-build-isolation .
 

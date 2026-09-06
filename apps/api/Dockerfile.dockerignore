@@ -15,6 +15,9 @@
 !data
 !data/catalog
 !data/catalog/**
+!data/fixtures
+!data/fixtures/interactions
+!data/fixtures/interactions/collaborative-interactions.json
 !ml
 !ml/pyproject.toml
 !ml/README.md
