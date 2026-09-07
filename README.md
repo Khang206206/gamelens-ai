@@ -11,8 +11,8 @@ game metadata, but they will not replace the recommendation engine.
 ## Current status
 
 **Stage 4 complete and verified 2026-08-13; Stage 5 implementation Phases 0–7
-verified through 2026-09-03; Phase 8 Docker, configuration, and full-stack
-fixtures is next**
+and Phase 8 slices 8A–8G verified through 2026-09-07; Phase 8 isolation/handoff
+and final documentation reconciliation remain**
 
 The detailed
 [Stage 5 collaborative-and-hybrid engineering plan](docs/stage-5-collaborative-hybrid-ranking-plan.md)
@@ -37,6 +37,14 @@ invalidation/retirement, valid-only rollback checks, previewed confirmed cleanup
 and a monotonic database lifecycle guard. Product contribution consent and an
 approved production live cohort remain intentionally separate from saved-
 personalization consent.
+
+Phase 8 slices 8A–8G add explicit container configuration, guarded fixture and
+database-derived build workflows, real hybrid/fallback browser acceptance, and
+serialized lifecycle scenarios for removal, withdrawal, clear-data, re-consent,
+restart, rollback, retirement, and confirmed cleanup. Each lifecycle scenario
+uses a fresh disposable PostgreSQL project and synthetic test authority; this is
+functional safety evidence, not production-data approval or ranking-quality
+evidence.
 
 The repository now provides:
 
@@ -357,6 +365,9 @@ contract checks use the same API base URL.
 | `make test` / `make test-integration`                      | Run fast API or disposable-PostgreSQL tests                       |
 | `make test-web`                                            | Run web type, lint, format, test, build, and contract-drift gates |
 | `make test-web-e2e`                                        | Run browser tests against isolated tmpfs PostgreSQL               |
+| `make test-e2e-fixture`                                    | Build and probe the isolated two-artifact fixture stack twice     |
+| `make test-e2e-live-source`                                | Build/register disposable PostgreSQL-derived live artifacts       |
+| `make test-e2e-lifecycle`                                  | Run serialized live invalidation/re-consent/cleanup scenarios     |
 | `make lint` / `make format`                                | Check or apply Ruff rules                                         |
 | `make lint-web` / `make format-web`                        | Check or apply web lint/format rules                              |
 | `make api-types`                                           | Refresh web types from the running API OpenAPI document           |
@@ -554,8 +565,9 @@ evidence.
   The guarded live build/lifecycle command set is implemented and verified only
   against explicitly enabled disposable test data. No product contribution-
   consent flow, approved production live cohort, or approved external interaction
-  dataset exists. Phase 8 still owns the guarded full-stack lifecycle fixture;
-  formal comparative evaluation remains roadmap Stage 6.
+  dataset exists. Phase 8's remaining 8H/8I work owns the combined isolation
+  handoff and broad documentation reconciliation; formal comparative evaluation
+  remains roadmap Stage 6.
 - No external metadata service or approved remote cover-image source.
 - Seed ratings and popularity values are synthetic development signals.
 - Social metadata currently uses a localhost development base. A validated

@@ -376,6 +376,27 @@ def test_public_consent_does_not_grant_contribution_and_private_controls_are_rep
     assert linked["status"] == "updated"
     assert linked_again["status"] == "unchanged"
 
+    withdrawn = _run_scenario_cli(
+        "withdraw-contribution",
+        private_input=raw_token,
+    )
+    withdrawn_again = controller.withdraw_contribution(
+        scenario=SCENARIO_NAME,
+        raw_token=raw_token,
+    )
+    regranted = _run_scenario_cli(
+        "regrant-contribution",
+        private_input=raw_token,
+    )
+    regranted_again = controller.regrant_contribution(
+        scenario=SCENARIO_NAME,
+        raw_token=raw_token,
+    )
+    assert withdrawn["status"] == "updated"
+    assert withdrawn_again["status"] == "unchanged"
+    assert regranted["status"] == "updated"
+    assert regranted_again["status"] == "unchanged"
+
     outdated = _run_scenario_cli(
         "arrange-outdated-consent",
         private_input=raw_token,
@@ -386,18 +407,16 @@ def test_public_consent_does_not_grant_contribution_and_private_controls_are_rep
     )
     assert outdated["status"] == "updated"
     assert outdated_again["status"] == "unchanged"
-
-    withdrawn = _run_scenario_cli(
-        "withdraw-contribution",
-        private_input=raw_token,
-    )
-    withdrawn_again = controller.withdraw_contribution(
-        scenario=SCENARIO_NAME,
-        raw_token=raw_token,
-    )
-    assert withdrawn["status"] == "updated"
-    assert withdrawn_again["status"] == "unchanged"
-    for result in (linked, linked_again, outdated, outdated_again, withdrawn, withdrawn_again):
+    for result in (
+        linked,
+        linked_again,
+        outdated,
+        outdated_again,
+        withdrawn,
+        withdrawn_again,
+        regranted,
+        regranted_again,
+    ):
         _assert_private_output(result, raw_token, raw_digest)
 
     postgres_session.rollback()
@@ -407,7 +426,7 @@ def test_public_consent_does_not_grant_contribution_and_private_controls_are_rep
         .where(User.anonymous_token_digest == raw_digest)
     )
     assert contribution is not None
-    assert contribution.withdrawn_at is not None
+    assert contribution.withdrawn_at is None
     controlled_user = postgres_session.scalar(
         select(User).where(User.anonymous_token_digest == raw_digest)
     )
@@ -416,7 +435,7 @@ def test_public_consent_does_not_grant_contribution_and_private_controls_are_rep
 
     inspected = controller.inspect(scenario=SCENARIO_NAME)
     assert inspected["cohort"]["contribution_rows"] == 18  # type: ignore[index]
-    assert inspected["cohort"]["withdrawn_contribution_rows"] == 1  # type: ignore[index]
+    assert inspected["cohort"]["withdrawn_contribution_rows"] == 0  # type: ignore[index]
     _assert_private_output(inspected, raw_token, raw_digest)
 
 

@@ -16,11 +16,12 @@ import {
 } from "./hybrid-fixture-helpers";
 
 export type BrowserFallbackReason =
-  "artifact_missing" | "artifact_corrupt" | "no_supported_sources";
+  "artifact_missing" | "artifact_corrupt" | "privacy_invalid" | "no_supported_sources";
 
 const FALLBACK_COPY: Record<BrowserFallbackReason, RegExp> = {
   artifact_missing: /not available to the server/i,
   artifact_corrupt: /could not be read safely/i,
+  privacy_invalid: /no longer eligible for use/i,
   no_supported_sources: /no retained aggregate interaction support/i,
 };
 
@@ -28,6 +29,7 @@ const SOURCE_BY_REASON: Record<BrowserFallbackReason, { gameId: number; slug: st
   {
     artifact_missing: { gameId: 1, slug: "emberfall-tactics" },
     artifact_corrupt: { gameId: 1, slug: "emberfall-tactics" },
+    privacy_invalid: { gameId: 1, slug: "emberfall-tactics" },
     no_supported_sources: { gameId: 4, slug: "abyssal-signal" },
   };
 
@@ -36,6 +38,7 @@ export function expectedBrowserFallbackReason(): BrowserFallbackReason {
   if (
     value !== "artifact_missing" &&
     value !== "artifact_corrupt" &&
+    value !== "privacy_invalid" &&
     value !== "no_supported_sources"
   ) {
     throw new Error(`Unsupported browser fallback reason: ${value ?? "missing"}`);
@@ -43,7 +46,7 @@ export function expectedBrowserFallbackReason(): BrowserFallbackReason {
   return value;
 }
 
-async function stage4Reference(
+export async function stage4Reference(
   request: APIRequestContext,
   selectedGameId: number,
 ): Promise<RecommendationResponse> {
@@ -62,7 +65,7 @@ async function stage4Reference(
   return (await response.json()) as RecommendationResponse;
 }
 
-function expectExactStage4Result(
+export function expectExactStage4Result(
   result: PersonalizedRecommendationResponse,
   reference: RecommendationResponse,
   expectedReason: BrowserFallbackReason,

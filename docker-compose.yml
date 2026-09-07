@@ -202,9 +202,11 @@ services:
       - ./data/external/ucsd-steam/manifest.json:/workspace/data/external/ucsd-steam/manifest.json:ro
       - ./data/fixtures:/workspace/data/fixtures:ro
       - ./data/external/ucsd-steam/suitability-audit.json:/workspace/data/external/ucsd-steam/suitability-audit.json:ro
+      - ./docker-compose.yml:/workspace/docker-compose.yml:ro
       - ./infra/docker-compose.e2e.yml:/workspace/infra/docker-compose.e2e.yml:ro
       - ./infra/run-e2e-fixture.sh:/workspace/infra/run-e2e-fixture.sh:ro
       - ./infra/run-e2e-live-source.sh:/workspace/infra/run-e2e-live-source.sh:ro
+      - ./infra/run-e2e-lifecycle.sh:/workspace/infra/run-e2e-lifecycle.sh:ro
       - ./Makefile:/workspace/Makefile:ro
       - ./ml:/workspace/ml
 

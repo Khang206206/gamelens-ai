@@ -317,6 +317,30 @@ class DisposableCollaborativeScenario:
             contribution.withdrawn_at = now
         return self._control_result("withdraw-contribution", "updated")
 
+    def regrant_contribution(
+        self,
+        *,
+        scenario: str,
+        raw_token: str,
+    ) -> dict[str, object]:
+        self._require_named_scenario(scenario)
+        with self._write_session() as session:
+            now = session.scalar(select(func.clock_timestamp()))
+            assert now is not None
+            self._require_complete_scenario(session)
+            user = self._locked_session_user(session, raw_token)
+            if not self._personalization_is_current(user, now=now):
+                raise ScenarioControlError(
+                    "session_authority_invalid",
+                    "Contribution re-grant requires current personalization authority",
+                )
+            contribution = self._require_linked_contribution(session, user)
+            if contribution.withdrawn_at is None:
+                return self._control_result("regrant-contribution", "unchanged")
+            contribution.granted_at = now
+            contribution.withdrawn_at = None
+        return self._control_result("regrant-contribution", "updated")
+
     def advance_revision(self, *, scenario: str) -> dict[str, object]:
         """Advance the disposable source revision without changing a positive label."""
 
@@ -837,6 +861,7 @@ def main() -> None:
         "link-session",
         "arrange-outdated-consent",
         "withdraw-contribution",
+        "regrant-contribution",
     ):
         command_parser = commands.add_parser(name)
         command_parser.add_argument("--scenario", choices=(SCENARIO_NAME,), required=True)
@@ -869,6 +894,11 @@ def main() -> None:
             )
         elif args.command == "withdraw-contribution":
             result = controller.withdraw_contribution(
+                scenario=args.scenario,
+                raw_token=_read_private_token(),
+            )
+        elif args.command == "regrant-contribution":
+            result = controller.regrant_contribution(
                 scenario=args.scenario,
                 raw_token=_read_private_token(),
             )

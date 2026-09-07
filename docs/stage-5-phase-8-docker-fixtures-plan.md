@@ -232,7 +232,7 @@ registry gate: diagnose those at 8C/8F first.
 
 ### 8G — Browser lifecycle and operator transitions
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on 8D, 8E, and 8F.
+**Status: IMPLEMENTED — VERIFIED (2026-09-07).** Depends on 8D, 8E, and 8F.
 
 - Scope: lifecycle browser specs, explicit scenario runner, and guarded helper
   assertions. Serialize scenarios that mutate shared cohort/registry/consent;
@@ -361,7 +361,7 @@ docs impact. Do not prefill counts or mark a slice verified from inherited Phase
 | 8D | IMPLEMENTED — VERIFIED | `7f8cf1b` | Real hybrid Chromium and cross-browser smoke passed; see the record below. |
 | 8E | IMPLEMENTED — VERIFIED | `4711979` | Full optional-component fallback matrix and browsers passed; see the record below. |
 | 8F | IMPLEMENTED — VERIFIED | `4769d5d` | Disposable PostgreSQL/live-source gate passed; see the record below. |
-| 8G | PLANNED — NOT IMPLEMENTED | — | Not run |
+| 8G | IMPLEMENTED — VERIFIED | this commit | Six isolated live lifecycle scenarios passed; see the record below. |
 | 8H | PLANNED — NOT IMPLEMENTED | — | Not run |
 | 8I | PLANNED — NOT IMPLEMENTED | — | Not run |
 
@@ -474,6 +474,59 @@ invalidation, re-consent, clear-data, retirement, cross-platform claims, and the
 broad documentation reconciliation remain explicitly deferred to 8G–8I. This
 record does not grant production-data authority or provide ranking-quality
 evidence.
+
+### Slice 8G verification record — 2026-09-07
+
+- **Implementation commit and tested tree:** this atomic commit; the final hash
+  is reported from Git after commit creation. The complete lifecycle workflow
+  ran before Ruff-only formatting, followed by green unit, integration, lint,
+  format, and focused topology reruns on the final tree.
+- **Mode and isolation:** the explicit `lifecycle` profile ran six serialized,
+  fresh Compose projects. Each project owned its tmpfs PostgreSQL database,
+  immutable artifact volume, private browser-evidence volume, two live-source
+  builds, API/web containers, and browser container, then removed those resources
+  with project-local `down --volumes --remove-orphans`.
+- **Browser and serving evidence:** 26 no-retry one-test Playwright phases passed:
+  Chromium covered preference removal, feedback removal, contribution withdrawal,
+  clear-data, valid previous/current selection, re-consent after invalidation,
+  restart, rollback, retirement, and cleanup; Firefox repeated clear-data; WebKit
+  repeated real outdated-consent refusal/re-consent. Requests used the real
+  exact-host API and web containers without response interception.
+- **Artifact and lifecycle evidence:** every fresh project audited and built
+  live PostgreSQL data twice. Builds retained 13 contributors; ordinary scenarios
+  used revisions 231/232, while feedback setup used 235/236. Committed transitions
+  invalidated both registered lineages before the observer's next saved request.
+  Across scenarios, the private helper verified 19 observer generation IDs as
+  exactly-once `stage-5-v1` events with truthful mode/reason, and the independent
+  observer retained its saved data without receiving contribution consent.
+- **Consent, deletion, and operator evidence:** clear-data removed only the
+  contributor session, cookie, preferences, feedback, and contribution authority;
+  public re-consent restored personalization authority but never revived lineage
+  or missing preferences. Guarded contribution re-grant remained private. The
+  operator scenario rejected post-invalidation rollback/recovery and mismatched
+  cleanup confirmation, retired only the eligible unconfigured previous build,
+  removed exactly that bundle, and preserved the configured current and content
+  paths.
+
+| Verification command | Result |
+| --- | --- |
+| `sh infra/run-e2e-lifecycle.sh` | Exit 0 in approximately 17m12s; all six fresh PostgreSQL/live-build/browser scenarios and exact project-local teardowns passed. |
+| `docker compose run --build --rm --no-deps quality python -m pytest tests/unit -q -p no:cacheprovider` | 487 passed in 54.29s. |
+| `docker compose -f infra/docker-compose.test.yml run --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_disposable_lifecycle_fixture.py -q -p no:cacheprovider` | 8 passed in 15.68s against disposable PostgreSQL; the test project was then removed. |
+| Full Ruff check and format check over API/ML sources and tests | Passed; 205 files were already formatted. |
+| Web TypeScript, ESLint, Prettier, and Vitest | Passed; 12 files / 86 tests passed in 39.20s. |
+| Root Compose with `quality`/`source-audit`, test Compose, and E2E Compose with `lifecycle`, each using `config --quiet` | Passed. |
+| `sh -n infra/run-e2e-lifecycle.sh` and `git diff --check` | Passed. |
+
+GNU Make was unavailable on the Windows host, so the documented direct POSIX
+runner was used without reducing scope. Git Bash path conversion required the
+runner to set `MSYS_NO_PATHCONV=1`; browser project selection therefore remains
+in the Compose service command rather than a dynamically supplied `/bin/sh`
+argument. Review found and corrected the corresponding topology assertion before
+the clean 487-test rerun. The project-authored cohort remains functional test data,
+not recommendation-quality evidence or production contribution authority. Slice
+8H isolation/combined-handoff work and slice 8I broad documentation reconciliation
+remain explicitly unstarted.
 
 Phase 8 exits only when a fresh isolated stack reproducibly builds and validates
 both artifact types, serves hybrid, invalidates a real registered test build,

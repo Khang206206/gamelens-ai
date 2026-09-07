@@ -644,6 +644,141 @@ services:
       - saved-hybrid
     restart: "no"
 
+  e2e-lifecycle-evidence-init:
+    profiles:
+      - lifecycle
+    image: gamelens-ai-api:e2e
+    user: root
+    read_only: true
+    depends_on:
+      e2e-model-validate:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_lifecycle_evidence:/tmp/gamelens-e2e/lifecycle-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        test -d /tmp/gamelens-e2e/lifecycle-evidence &&
+        test -z "$$(find /tmp/gamelens-e2e/lifecycle-evidence -mindepth 1 -maxdepth 1 -print -quit)" &&
+        chown --no-dereference 1001:1000 /tmp/gamelens-e2e/lifecycle-evidence &&
+        chmod 0770 /tmp/gamelens-e2e/lifecycle-evidence
+    restart: "no"
+
+  e2e-lifecycle-control:
+    profiles:
+      - lifecycle
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-build
+      COLLABORATIVE_ARTIFACT_PATH: /tmp/gamelens-e2e/artifact-set/collaborative-lifecycle-current-v1
+      GAMELENS_TEST_DATABASE_URL: postgresql+psycopg://gamelens_e2e:gamelens_e2e_only@test-db:5432/gamelens_e2e_test
+      GAMELENS_ALLOW_TEST_DATABASE_RESET: "true"
+      STAGE8G_SCENARIO: ${STAGE8G_SCENARIO:-preference-removal}
+    depends_on:
+      e2e-lifecycle-evidence-init:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set
+      - e2e_lifecycle_evidence:/tmp/gamelens-e2e/lifecycle-evidence
+    tmpfs:
+      - /tmp:mode=1777
+    command:
+      - python
+      - -m
+      - tests.fixtures.e2e_lifecycle
+      - --help
+    restart: "no"
+
+  e2e-lifecycle-api:
+    profiles:
+      - lifecycle
+    image: gamelens-ai-api:e2e
+    read_only: true
+    environment:
+      <<: *e2e-live-runtime
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      COLLABORATIVE_ARTIFACT_PATH: ${E2E_LIFECYCLE_ARTIFACT_PATH:-}
+    depends_on:
+      e2e-model-validate:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_artifact_set:/tmp/gamelens-e2e/artifact-set:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    networks:
+      default:
+        aliases:
+          - gamelens.test
+          - api.gamelens.test
+
+  e2e-lifecycle-web:
+    profiles:
+      - lifecycle
+    image: gamelens-ai-web:e2e
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: http://gamelens.test:8000
+      NEXT_PUBLIC_CONSENT_VERSION: stage-4-v1
+    depends_on:
+      e2e-lifecycle-api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "Promise.all([fetch('http://localhost:3000'), fetch('http://localhost:3000/games'), fetch('http://localhost:3000/recommendations')]).then((responses) => { if (responses.some((response) => !response.ok)) process.exit(1) })"
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 8s
+    network_mode: service:e2e-lifecycle-api
+
+  e2e-lifecycle-browser:
+    profiles:
+      - lifecycle
+    image: gamelens-ai-playwright:stage4
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile.e2e
+    user: "1001:1000"
+    environment:
+      WEB_BASE_URL: http://gamelens.test:3000
+      STAGE4_ORACLE_API_URL: http://gamelens.test:8000
+      PLAYWRIGHT_EXTERNAL_SERVER: "1"
+      COLLABORATIVE_LIFECYCLE_E2E: "1"
+      STAGE5_EVENT_EVIDENCE_DIR: /tmp/gamelens-e2e/lifecycle-evidence
+      STAGE8G_EVIDENCE_DIR: /tmp/gamelens-e2e/lifecycle-evidence
+      STAGE8G_SCENARIO: ${STAGE8G_SCENARIO:-preference-removal}
+      STAGE8G_PHASE: ${STAGE8G_PHASE:-prepare}
+    depends_on:
+      e2e-lifecycle-web:
+        condition: service_healthy
+      e2e-lifecycle-evidence-init:
+        condition: service_completed_successfully
+    volumes:
+      - e2e_lifecycle_evidence:/tmp/gamelens-e2e/lifecycle-evidence
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        umask 007 && npm run test:e2e -- --workers=1 --retries=0
+        --project="$${STAGE8G_BROWSER_PROJECT}" e2e/lifecycle.live.smoke.spec.ts
+    ipc: host
+
   e2e-fallback-artifacts:
     profiles:
       - fallback
@@ -1083,5 +1218,6 @@ services:
 
 volumes:
   e2e_artifact_set:
+  e2e_lifecycle_evidence:
   e2e_live_evidence:
   e2e_test_evidence:

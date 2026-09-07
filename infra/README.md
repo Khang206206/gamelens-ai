@@ -123,24 +123,26 @@ metadata, caches, test output, and untracked data from generic root-context
 builds. The API Dockerfile has a stricter Dockerfile-specific deny-all
 allowlist; the web images use `apps/web/.dockerignore` at their context root.
 
-## Stage 5 Phase 0–6 artifact and saved-contract topology
+## Stage 5 Phase 0–8G artifact and saved-contract topology
 
 The
 [Stage 5 collaborative-and-hybrid plan](../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-has completed implementation Phases 0–6. Phases 0–4 add the contribution/
-revision contract, default-off audit commands, guarded fixture artifact
-workflow, pure scorer/materializers, and hybrid policy. Phase 5 adds the API
-load-once optional component, PostgreSQL live build/contributor lineage,
+has completed implementation Phases 0–7 and Phase 8 slices 8A–8G. Phases 0–4
+add the contribution/revision contract, default-off audit commands, guarded
+fixture artifact workflow, pure scorer/materializers, and hybrid policy. Phase 5
+adds the API load-once optional component, PostgreSQL live build/contributor lineage,
 transactional invalidation, one-row readiness, additive status, and internal
 saved-request orchestration. Phase 6 adds the synchronized public hybrid-or-
 fallback response, `stage-5-v1` event, generated client contract, and focused
-browser evidence. The guarded two-artifact lifecycle E2E topology remains Phase
-8 work.
+browser evidence. Phase 7 adds guarded registration/recovery, invalidation,
+retirement, valid-only rollback checks, and previewed confirmed cleanup.
 
-The implemented guarded workflow audits the project-authored fixture, builds a
-separate immutable collaborative bundle, validates it with the production
-loader, and promotes only to an unused path. Live audit/build remains default-
-off and unapproved. The normal API already receives
+The implemented Phase 8 workflows audit the project-authored fixture, build a
+separate immutable collaborative bundle, and independently audit/build/register
+live artifacts from a guarded synthetic cohort in disposable PostgreSQL. Both
+paths validate with the production loader and write only unused paths. Live
+audit/build remains default-off and unapproved outside its explicit guarded test
+profile. The normal API already receives
 `COLLABORATIVE_ARTIFACT_PATH` and mounts the common artifact root read-only; it
 loads a configured bundle only at construction. Fixture loading is accepted only
 in the explicit test environment/gate, while a live artifact also requires
@@ -148,19 +150,37 @@ matching active database lineage. A collaborative bundle is never trained or
 mutated by API/web startup, a request, migration, seed, broad test, or ordinary
 teardown.
 
-The disposable PostgreSQL project already proves fixture/live readiness,
-authority and included-label invalidation, exact Stage 4 fallback, hybrid
-decision projection, and `stage-5-v1` event truth against tmpfs PostgreSQL.
-Phase 8 must extend the E2E project to build both artifacts, exercise public
-hybrid/fallback and lifecycle browser paths, and remove only its tmpfs database
-and disposable volumes. Development data and artifacts must remain untouched.
-Fixture artifacts require both the test environment and explicit test-only flag;
-ordinary development and production reject them.
+Run the complete slice 8G lifecycle acceptance from the repository root:
+
+```sh
+make test-e2e-lifecycle
+# Direct equivalent when GNU Make is unavailable:
+sh infra/run-e2e-lifecycle.sh
+```
+
+The runner serializes six fresh Compose projects: Chromium preference removal,
+feedback removal, contribution withdrawal, and clear-data; Firefox clear-data;
+and WebKit outdated-consent/re-consent. Every project creates its own tmpfs
+PostgreSQL database, immutable artifact volume, private browser-state/evidence
+volume, previous/current live builds, and exact-host API/web stack. Browser
+mutations use existing public routes; contribution grant/re-grant and aggregate
+database/event assertions stay in the guarded private control container. The API
+is explicitly recreated to select an artifact and never hot-reloads one.
+
+Each scenario proves ready hybrid before mutation and exact Stage 4
+`privacy_invalid` fallback afterward, including after re-consent and API restart.
+The operator scenario additionally proves valid rollback selection before
+invalidation, invalid rollback/recovery rejection afterward, retirement of the
+unconfigured previous build, mismatched-confirmation rejection, and exact cleanup
+that preserves content and the configured current path. No response interception
+is lifecycle evidence. Private browser state is removed before the project-local
+`down --volumes --remove-orphans`; development data/artifacts are never mounted
+or targeted.
 
 Audit, fixture build, validation, aggregate inspection, and immutable promotion
-have direct commands. Database invalidation is implemented transactionally, but
-protected live build registration/promotion, operator invalidation, rollback,
-retirement, and physical deletion remain future lifecycle work. Cleanup remains
-preview-first with exact confirmation and cannot target an active artifact or a
-broad directory. A production scheduler, registry service, or hot reload remains
-Stage 7 work.
+have direct commands. Cleanup remains preview-first with exact confirmation and
+cannot target an active artifact or a broad directory. Fixture artifacts still
+require both the test environment and explicit test-only flag; development and
+production reject them. Phase 8 slices 8H/8I still own the combined isolation
+handoff and broad documentation reconciliation. A production scheduler, registry
+service, or hot reload remains outside this test topology.
