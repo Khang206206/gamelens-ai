@@ -168,8 +168,8 @@ def test_live_source_runner_uses_one_unique_project_and_always_tears_down() -> N
     assert "compose config --quiet" in runner
     assert "compose up --detach --wait e2e-live-api" in runner
     assert "compose run --rm --no-deps e2e-live-smoke" in runner
-    assert runner.count("teardown") >= 3
-    assert "down --volumes --remove-orphans" in runner
+    assert ". infra/e2e-ownership.sh" in runner
+    assert "trap cleanup EXIT" in runner
     assert "docker system prune" not in runner
     assert "docker volume prune" not in runner
     assert str(Path("data") / "external") not in runner

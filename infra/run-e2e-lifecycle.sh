@@ -2,6 +2,8 @@
 
 set -eu
 
+. infra/e2e-ownership.sh
+
 compose_file="infra/docker-compose.e2e.yml"
 project=""
 scenario=""
@@ -11,30 +13,6 @@ stack_active=0
 compose() {
     MSYS_NO_PATHCONV=1 docker compose --project-name "$project" --file "$compose_file" \
         --profile lifecycle "$@"
-}
-
-teardown() {
-    if [ "$stack_active" -eq 1 ]; then
-        compose down --volumes --remove-orphans
-        stack_active=0
-    fi
-}
-
-cleanup() {
-    code=$?
-    trap - EXIT HUP INT TERM
-    if [ "$code" -ne 0 ] && [ "$stack_active" -eq 1 ]; then
-        compose ps --all || true
-        compose logs --no-color e2e-lifecycle-api e2e-lifecycle-web || true
-    fi
-    teardown || true
-    exit "$code"
-}
-
-handle_signal() {
-    trap - EXIT HUP INT TERM
-    teardown || true
-    exit 130
 }
 
 control() {
@@ -100,6 +78,18 @@ run_scenario() {
     fi
     start_serving "/tmp/gamelens-e2e/artifact-set/collaborative-lifecycle-current-v1"
     browser_phase ready
+
+    before=$(control isolation)
+    # Rejoin the API network namespace after API restart; localhost health alone
+    # cannot detect a web process stranded in the previous namespace.
+    compose stop e2e-lifecycle-web
+    compose restart e2e-lifecycle-api
+    compose up --detach --wait --no-deps e2e-lifecycle-api
+    compose up --detach --wait --force-recreate --no-deps e2e-lifecycle-web
+    compose restart e2e-lifecycle-web
+    compose up --detach --wait --no-deps e2e-lifecycle-web
+    compose run --rm --no-deps e2e-setup
+    test "$before" = "$(control isolation)"
 
     if [ "$scenario" = "contribution-withdrawal" ]; then
         control private-transition withdraw-contribution

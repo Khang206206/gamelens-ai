@@ -181,6 +181,47 @@ Audit, fixture build, validation, aggregate inspection, and immutable promotion
 have direct commands. Cleanup remains preview-first with exact confirmation and
 cannot target an active artifact or a broad directory. Fixture artifacts still
 require both the test environment and explicit test-only flag; development and
-production reject them. Phase 8 slices 8H/8I still own the combined isolation
-handoff and broad documentation reconciliation. A production scheduler, registry
+production reject them. Slice 8I still owns broad documentation reconciliation.
+A production scheduler, registry
 service, or hot reload remains outside this test topology.
+
+### Phase 8 combined isolation gate
+
+From the repository root, run `python infra/run-phase8.py` (or
+`make test-phase8`). This explicit, long-running gate requires Python 3.12+,
+a POSIX `sh` (Git Bash on the verified Windows host), and a running Docker
+Desktop Linux engine. It does not run during ordinary test collection.
+
+The gate validates all Compose modes, runs API unit/ML/PostgreSQL checks,
+Stage 1–4 browsers, web type/lint/format/unit/production-build/OpenAPI drift
+checks, actual setup/validation/browser failure and signal teardown probes,
+two clean fixture builds, and two complete live-source/lifecycle replays.
+Web checks run in the built Playwright image against the disposable API.
+The live-source probe compares artifact bytes and registered lineage around
+ordinary startup/restart, migration, catalog seed and fast tests. Lifecycle
+scenarios also compare snapshots around API/web restart and idempotent setup.
+The fixture probe checks readiness and semantic identity after restart.
+Because web shares the API network namespace for exact-host cookies, the restart
+probe stops web, restarts API, and recreates web to join the new namespace before
+testing web restart separately. Fixture traffic is also checked from the browser
+container; a localhost-only health check cannot prove this network boundary.
+
+Each run retains commands, exit codes, durations, runtime versions, safe image
+identities, aggregate artifact sizes/hashes and replay comparisons under
+`tmp/phase8-<timestamp>/`. Raw logs remain local and are scanned for credential
+URLs and private identity fields; do not publish failed logs without review.
+Browser traces are disabled; private browser state and any failure reports stay
+inside disposable containers/volumes and are not exported by this gate.
+
+All standalone E2E runners use `e2e-ownership.sh` to capture project-labelled
+resource IDs before removal and verify no resources remain. Cleanup failure
+is a failing exit, including during error/signal handling. The content-only
+`make test-web-e2e` route now calls `sh infra/run-e2e-content.sh`, which gives
+each run its own project. No runner prunes global resources or deletes host
+artifacts. Artifact retirement/cleanup remains the separate guarded operator
+workflow. Abrupt engine/host termination cannot execute shell traps; ownership
+records identify the exact project for recovery after Docker returns.
+
+These are functional synthetic-data checks on Linux containers. They do not
+establish native Windows/macOS filesystem behavior, production contribution
+authority, ranking quality, or the Phase 9/10 release gates.

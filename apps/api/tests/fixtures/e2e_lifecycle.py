@@ -786,6 +786,7 @@ def main() -> None:
         "assert-invalidated",
         "assert-transition",
         "operator-cleanup",
+        "isolation",
     ):
         commands.add_parser(name)
     build_parser = commands.add_parser("build")
@@ -805,7 +806,11 @@ def main() -> None:
     final_parser.add_argument("--operator", action="store_true")
     args = parser.parse_args()
 
-    if args.command == "cohort":
+    if args.command == "isolation":
+        from tests.fixtures.e2e_isolation import snapshot
+
+        result = snapshot()
+    elif args.command == "cohort":
         result = create_cohort()
     elif args.command == "link":
         result = link_browser_session()

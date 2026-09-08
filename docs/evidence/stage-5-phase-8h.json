@@ -1,0 +1,1653 @@
+{
+  "slice": "8H",
+  "status": "verified",
+  "recorded_at_utc": "2026-09-08T18:13:32.197316+00:00",
+  "implementation_commit": "this atomic commit; hash reported after creation",
+  "baseline": "693808f1b6c4eafafc32e2071e0b021cf9ca44f6",
+  "authority": "project-authored synthetic fixture and disposable PostgreSQL cohort only",
+  "quality_evidence": false,
+  "host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.10",
+    "tested_revision": "693808f1b6c4eafafc32e2071e0b021cf9ca44f6",
+    "note": "working tree implementation; synthetic test data only"
+  },
+  "runtime_versions": {
+    "compose-version": "Docker Compose version v5.4.0",
+    "docker-host": "linux Docker Desktop x86_64",
+    "api-python": "Python 3.12.13",
+    "web-node": "v24.18.0",
+    "web-npm": "11.16.0",
+    "postgres-version": "postgres (PostgreSQL) 16.14",
+    "migration-head": "INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.\nINFO  [alembic.runtime.migration] Will assume transactional DDL.\n0011_stage_5_lifecycle_guard (head)"
+  },
+  "docker_version": {
+    "Client": {
+      "Version": "29.7.2",
+      "ApiVersion": "1.55",
+      "DefaultAPIVersion": "1.55",
+      "GitCommit": "a7dcaa6",
+      "GoVersion": "go1.26.5",
+      "Os": "windows",
+      "Arch": "amd64",
+      "BuildTime": "Wed Aug  5 18:31:33 2026",
+      "Context": "desktop-linux"
+    },
+    "Server": {
+      "Platform": {
+        "Name": "Docker Desktop 4.88.1 (237512)"
+      },
+      "Version": "29.7.2",
+      "ApiVersion": "1.55",
+      "MinAPIVersion": "1.40",
+      "Os": "linux",
+      "Arch": "amd64",
+      "Components": [
+        {
+          "Name": "Engine",
+          "Version": "29.7.2",
+          "Details": {
+            "ApiVersion": "1.55",
+            "Arch": "amd64",
+            "BuildTime": "Wed Aug  5 18:28:36 2026",
+            "Experimental": "false",
+            "GitCommit": "6a43e3d",
+            "GoVersion": "go1.26.5",
+            "KernelVersion": "5.15.167.4-microsoft-standard-WSL2",
+            "MinAPIVersion": "1.40",
+            "Module": "github.com/moby/moby/v2",
+            "ModuleVersion": "v2.0.0+unknown",
+            "Os": "linux"
+          }
+        },
+        {
+          "Name": "containerd",
+          "Version": "v2.3.3",
+          "Details": {
+            "GitCommit": "aad11006b869517fcd3009450b6f82da282e1a9b"
+          }
+        },
+        {
+          "Name": "runc",
+          "Version": "1.4.3",
+          "Details": {
+            "GitCommit": "v1.4.3-0-gbb14dabe"
+          }
+        },
+        {
+          "Name": "docker-init",
+          "Version": "0.19.0",
+          "Details": {
+            "GitCommit": "de40ad0"
+          }
+        }
+      ],
+      "GitCommit": "6a43e3d",
+      "GoVersion": "go1.26.5",
+      "KernelVersion": "5.15.167.4-microsoft-standard-WSL2",
+      "BuildTime": "2026-08-05T18:28:36.000000000+00:00"
+    }
+  },
+  "image_ids": {
+    "gamelens-ai-api:e2e": "sha256:2a01278ca437a787c2d965afa7056c012ad2378b5b797449102bcd9f824728bd [\"gamelens-ai-api@sha256:2a01278ca437a787c2d965afa7056c012ad2378b5b797449102bcd9f824728bd\"]",
+    "gamelens-ai-web:e2e": "sha256:e1c9257930145dc51f3cd657acb8f3c9ce32bd2235b30d60ffd663aeefb635d6 [\"gamelens-ai-web@sha256:e1c9257930145dc51f3cd657acb8f3c9ce32bd2235b30d60ffd663aeefb635d6\"]",
+    "gamelens-ai-playwright:stage4": "sha256:1115f8831d888ab00e5219e4b3bd2052186a77d8965e8bdee527dc85aa69ceab [\"gamelens-ai-playwright@sha256:1115f8831d888ab00e5219e4b3bd2052186a77d8965e8bdee527dc85aa69ceab\"]"
+  },
+  "counts": {
+    "api_unit": 502,
+    "ml": 333,
+    "postgresql": 151,
+    "web_unit": 86,
+    "stage1_4_browser": 38,
+    "fixture_browser": 18,
+    "lifecycle_browser_per_replay": [
+      26,
+      26
+    ]
+  },
+  "accepted_execution_seconds": 4357.03,
+  "execution_note": "Accepted same-implementation prefix through fixture completed before host/runner interruption. Exact recorded projects were removed; live/lifecycle suffix ran afresh twice. Failed/aborted exploratory runs are excluded from accepted counts. Final runner formatting and static checks followed separately.",
+  "replay": [
+    {
+      "live_ordering": [
+        "161d8d81a9c07f7ca2ab1ea11f4b1dea581e8f5e4b288a1716d51e88fc7754e8"
+      ],
+      "lifecycle_events": [
+        "4",
+        "3",
+        "3",
+        "3",
+        "3",
+        "3"
+      ]
+    },
+    {
+      "live_ordering": [
+        "161d8d81a9c07f7ca2ab1ea11f4b1dea581e8f5e4b288a1716d51e88fc7754e8"
+      ],
+      "lifecycle_events": [
+        "4",
+        "3",
+        "3",
+        "3",
+        "3",
+        "3"
+      ]
+    }
+  ],
+  "live_artifact_snapshots": [
+    {
+      "run": 1,
+      "bundle_bytes": {
+        "collaborative-live-current-v1": 3639,
+        "collaborative-live-previous-v1": 3640,
+        "content-v1": 69743
+      },
+      "files": {
+        "collaborative-live-current-v1/item-slugs.json": {
+          "bytes": 115,
+          "sha256": "c56ec10fba83139a2214710621bfaccf1c7461dbb0b0b0cf8044ab7a70251ff6"
+        },
+        "collaborative-live-current-v1/item-support.npy": {
+          "bytes": 176,
+          "sha256": "0d0b0da11b0e3e83d5e9c9dc1dea58a0e0956f5bdaa5b9e182441f088316fbad"
+        },
+        "collaborative-live-current-v1/manifest.json": {
+          "bytes": 2488,
+          "sha256": "e8514e1d24d2a93935df9d14befc505fe97baecc82a069549b7d69dd519cd9a4"
+        },
+        "collaborative-live-current-v1/neighbors-indices.npy": {
+          "bytes": 208,
+          "sha256": "d079ceeedb92d2046b4b83d52189aa2da63e438995770afc974a6f2d962c73c3"
+        },
+        "collaborative-live-current-v1/neighbors-indptr.npy": {
+          "bytes": 156,
+          "sha256": "4ebaa6f38edb023522d1ebd457221da59bfe638759c47db7472460926fbacc63"
+        },
+        "collaborative-live-current-v1/pair-support.npy": {
+          "bytes": 288,
+          "sha256": "8f28c9270af8a771a3bf3f4925c29dfb7a507fe5d185a9536d51e7908134b8d3"
+        },
+        "collaborative-live-current-v1/similarity-units.npy": {
+          "bytes": 208,
+          "sha256": "88191ee2e6f1ae379f19225ed45e63cf4fa2a943b28a40474ce549be2a62bc53"
+        },
+        "collaborative-live-previous-v1/item-slugs.json": {
+          "bytes": 115,
+          "sha256": "c56ec10fba83139a2214710621bfaccf1c7461dbb0b0b0cf8044ab7a70251ff6"
+        },
+        "collaborative-live-previous-v1/item-support.npy": {
+          "bytes": 176,
+          "sha256": "0d0b0da11b0e3e83d5e9c9dc1dea58a0e0956f5bdaa5b9e182441f088316fbad"
+        },
+        "collaborative-live-previous-v1/manifest.json": {
+          "bytes": 2489,
+          "sha256": "6448ed75a620ba83d430703a38c738974e31c8c76f5eb107c258806c57cc1e5d"
+        },
+        "collaborative-live-previous-v1/neighbors-indices.npy": {
+          "bytes": 208,
+          "sha256": "d079ceeedb92d2046b4b83d52189aa2da63e438995770afc974a6f2d962c73c3"
+        },
+        "collaborative-live-previous-v1/neighbors-indptr.npy": {
+          "bytes": 156,
+          "sha256": "4ebaa6f38edb023522d1ebd457221da59bfe638759c47db7472460926fbacc63"
+        },
+        "collaborative-live-previous-v1/pair-support.npy": {
+          "bytes": 288,
+          "sha256": "8f28c9270af8a771a3bf3f4925c29dfb7a507fe5d185a9536d51e7908134b8d3"
+        },
+        "collaborative-live-previous-v1/similarity-units.npy": {
+          "bytes": 208,
+          "sha256": "88191ee2e6f1ae379f19225ed45e63cf4fa2a943b28a40474ce549be2a62bc53"
+        },
+        "content-v1/catalog-items.json": {
+          "bytes": 17745,
+          "sha256": "1a304ac3686742022ef41828bf48467412e34bd0e882c9b428cc723a5e2685e1"
+        },
+        "content-v1/inverse-document-frequency.npy": {
+          "bytes": 8424,
+          "sha256": "d1f7dd7165eb1df36b2557cceb54252e008621b7b1a4f1ff2dca0b7b8831b03f"
+        },
+        "content-v1/manifest.json": {
+          "bytes": 2957,
+          "sha256": "ee268324cabab913ab9feeef96fddfa7e2169fd1ebcf7e648dd0ee4e297a5b41"
+        },
+        "content-v1/matrix-data.npy": {
+          "bytes": 11320,
+          "sha256": "6a27fda7b707ada19d25c7cdd46a9d178918549a05e7026551e270e2b981f3a9"
+        },
+        "content-v1/matrix-indices.npy": {
+          "bytes": 5724,
+          "sha256": "578d425c096574582c8d3a69f5cb0d399bf9c2879b4e22c745bee303ae4fcbcf"
+        },
+        "content-v1/matrix-indptr.npy": {
+          "bytes": 252,
+          "sha256": "24398b5b25354e9d278a3d855e17d168f6cf7962d53432ddf100ca107fdcf1bd"
+        },
+        "content-v1/popularity.npy": {
+          "bytes": 368,
+          "sha256": "29b6ff5fef3e3ab2ad1bbb7caa0476a649923d4a5cb135172db95ac98540417e"
+        },
+        "content-v1/vectorizer-config.json": {
+          "bytes": 360,
+          "sha256": "cca4b77368712e7e377146e4196f6193386f8aea48e1c4f60c8433a6967c043b"
+        },
+        "content-v1/vocabulary.json": {
+          "bytes": 22593,
+          "sha256": "b0e367cfb5b60a16403c7c303129028c6e9cfbab3e335da69d47fcae1e89003e"
+        }
+      },
+      "registry": {
+        "collaborative_artifact_builds": {
+          "rows": 2,
+          "sha256": "914ada0ea0937c972fd7413be9b8a672e585c3fb02d585118d61dc2678633b43"
+        },
+        "collaborative_artifact_contributors": {
+          "rows": 24,
+          "sha256": "e8b1acff96c01ec2c4a1604079eb351a95f87554be65763d490e8455dc3be384"
+        },
+        "collaborative_data_revision": {
+          "rows": 1,
+          "sha256": "d65964fe6ee640b11e7fe200c0226dc7694e007f89f653e46e2475b314a60d0c"
+        }
+      },
+      "runtime_uid": 1000
+    },
+    {
+      "run": 2,
+      "bundle_bytes": {
+        "collaborative-live-current-v1": 3639,
+        "collaborative-live-previous-v1": 3640,
+        "content-v1": 69743
+      },
+      "files": {
+        "collaborative-live-current-v1/item-slugs.json": {
+          "bytes": 115,
+          "sha256": "c56ec10fba83139a2214710621bfaccf1c7461dbb0b0b0cf8044ab7a70251ff6"
+        },
+        "collaborative-live-current-v1/item-support.npy": {
+          "bytes": 176,
+          "sha256": "0d0b0da11b0e3e83d5e9c9dc1dea58a0e0956f5bdaa5b9e182441f088316fbad"
+        },
+        "collaborative-live-current-v1/manifest.json": {
+          "bytes": 2488,
+          "sha256": "5aeec1ec0092be8ab4243baccf8defa16b23c633dbfb0cb33c15ea29d640bd09"
+        },
+        "collaborative-live-current-v1/neighbors-indices.npy": {
+          "bytes": 208,
+          "sha256": "d079ceeedb92d2046b4b83d52189aa2da63e438995770afc974a6f2d962c73c3"
+        },
+        "collaborative-live-current-v1/neighbors-indptr.npy": {
+          "bytes": 156,
+          "sha256": "4ebaa6f38edb023522d1ebd457221da59bfe638759c47db7472460926fbacc63"
+        },
+        "collaborative-live-current-v1/pair-support.npy": {
+          "bytes": 288,
+          "sha256": "8f28c9270af8a771a3bf3f4925c29dfb7a507fe5d185a9536d51e7908134b8d3"
+        },
+        "collaborative-live-current-v1/similarity-units.npy": {
+          "bytes": 208,
+          "sha256": "88191ee2e6f1ae379f19225ed45e63cf4fa2a943b28a40474ce549be2a62bc53"
+        },
+        "collaborative-live-previous-v1/item-slugs.json": {
+          "bytes": 115,
+          "sha256": "c56ec10fba83139a2214710621bfaccf1c7461dbb0b0b0cf8044ab7a70251ff6"
+        },
+        "collaborative-live-previous-v1/item-support.npy": {
+          "bytes": 176,
+          "sha256": "0d0b0da11b0e3e83d5e9c9dc1dea58a0e0956f5bdaa5b9e182441f088316fbad"
+        },
+        "collaborative-live-previous-v1/manifest.json": {
+          "bytes": 2489,
+          "sha256": "364ec53c97ad033f0800d08ad2ca02e00d7b2c4ba753111b8be97d2d78d3642b"
+        },
+        "collaborative-live-previous-v1/neighbors-indices.npy": {
+          "bytes": 208,
+          "sha256": "d079ceeedb92d2046b4b83d52189aa2da63e438995770afc974a6f2d962c73c3"
+        },
+        "collaborative-live-previous-v1/neighbors-indptr.npy": {
+          "bytes": 156,
+          "sha256": "4ebaa6f38edb023522d1ebd457221da59bfe638759c47db7472460926fbacc63"
+        },
+        "collaborative-live-previous-v1/pair-support.npy": {
+          "bytes": 288,
+          "sha256": "8f28c9270af8a771a3bf3f4925c29dfb7a507fe5d185a9536d51e7908134b8d3"
+        },
+        "collaborative-live-previous-v1/similarity-units.npy": {
+          "bytes": 208,
+          "sha256": "88191ee2e6f1ae379f19225ed45e63cf4fa2a943b28a40474ce549be2a62bc53"
+        },
+        "content-v1/catalog-items.json": {
+          "bytes": 17745,
+          "sha256": "1a304ac3686742022ef41828bf48467412e34bd0e882c9b428cc723a5e2685e1"
+        },
+        "content-v1/inverse-document-frequency.npy": {
+          "bytes": 8424,
+          "sha256": "d1f7dd7165eb1df36b2557cceb54252e008621b7b1a4f1ff2dca0b7b8831b03f"
+        },
+        "content-v1/manifest.json": {
+          "bytes": 2957,
+          "sha256": "0123e6b609fccfb273e3bee15dd18f49654f185e8840a2b22d71e852a5ad42c2"
+        },
+        "content-v1/matrix-data.npy": {
+          "bytes": 11320,
+          "sha256": "6a27fda7b707ada19d25c7cdd46a9d178918549a05e7026551e270e2b981f3a9"
+        },
+        "content-v1/matrix-indices.npy": {
+          "bytes": 5724,
+          "sha256": "578d425c096574582c8d3a69f5cb0d399bf9c2879b4e22c745bee303ae4fcbcf"
+        },
+        "content-v1/matrix-indptr.npy": {
+          "bytes": 252,
+          "sha256": "24398b5b25354e9d278a3d855e17d168f6cf7962d53432ddf100ca107fdcf1bd"
+        },
+        "content-v1/popularity.npy": {
+          "bytes": 368,
+          "sha256": "29b6ff5fef3e3ab2ad1bbb7caa0476a649923d4a5cb135172db95ac98540417e"
+        },
+        "content-v1/vectorizer-config.json": {
+          "bytes": 360,
+          "sha256": "cca4b77368712e7e377146e4196f6193386f8aea48e1c4f60c8433a6967c043b"
+        },
+        "content-v1/vocabulary.json": {
+          "bytes": 22593,
+          "sha256": "b0e367cfb5b60a16403c7c303129028c6e9cfbab3e335da69d47fcae1e89003e"
+        }
+      },
+      "registry": {
+        "collaborative_artifact_builds": {
+          "rows": 2,
+          "sha256": "7aef76e8b693d80c195d6199f204f5351f14b7cf22662310e0812b6d533e59f1"
+        },
+        "collaborative_artifact_contributors": {
+          "rows": 24,
+          "sha256": "ef568798697aa70c91d9562799d22662b5a1f0effebc298264c21bd3573877dc"
+        },
+        "collaborative_data_revision": {
+          "rows": 1,
+          "sha256": "f7e36d8dc0f7c4c30da99af6036cd857969983295487af45ec6984302260e24c"
+        }
+      },
+      "runtime_uid": 1000
+    }
+  ],
+  "fixture_semantics": [
+    {
+      "collaborative": {
+        "artifact_schema_version": 1,
+        "build_id": "stage5-fixture-22197350a7b9d5316a98a14f7a819f64a5aef98c879e26a1ec597927c9af60b9",
+        "catalog_fingerprint": "1a304ac3686742022ef41828bf48467412e34bd0e882c9b428cc723a5e2685e1",
+        "interaction_fingerprint": "d2ec587ef4e06eeaaf918447e58d8c233840575a33299556eb9765b786a1c003",
+        "item_support": {
+          "maximum": 7,
+          "minimum": 2,
+          "total": 36
+        },
+        "matrix": {
+          "pair_contributions": 36,
+          "retained_contributors": 12,
+          "retained_items": 6,
+          "retained_positive_edges": 36
+        },
+        "model": {
+          "name": "gamelens-item-item-cosine",
+          "version": "1.0.0"
+        },
+        "neighbors": {
+          "count_distribution": {
+            "0": 1,
+            "1": 0,
+            "10-24": 0,
+            "100": 0,
+            "2": 0,
+            "25-49": 0,
+            "3-4": 5,
+            "5-9": 0,
+            "50-99": 0
+          },
+          "maximum_per_item": 4,
+          "minimum_per_item": 0,
+          "nonzero": 20,
+          "shape": [
+            6,
+            6
+          ]
+        },
+        "source": {
+          "fixture_id": "stage-5-collaborative-interactions-v1",
+          "kind": "fixture",
+          "quality_evidence": false
+        },
+        "thresholds": {
+          "activation_minimum_edges": 20,
+          "activation_minimum_items": 5,
+          "activation_minimum_users": 10,
+          "minimum_item_support": 2,
+          "minimum_pair_support": 2,
+          "minimum_profile_items": 2
+        }
+      },
+      "content": {
+        "artifact_schema_version": "1",
+        "data_fingerprint": "1a304ac3686742022ef41828bf48467412e34bd0e882c9b428cc723a5e2685e1",
+        "item_count": 30,
+        "matrix_nonzero": 1399,
+        "model": {
+          "name": "gamelens-content-tfidf",
+          "version": "1.0.0"
+        },
+        "status": "valid",
+        "vocabulary_size": 1037
+      }
+    },
+    {
+      "collaborative": {
+        "artifact_schema_version": 1,
+        "build_id": "stage5-fixture-22197350a7b9d5316a98a14f7a819f64a5aef98c879e26a1ec597927c9af60b9",
+        "catalog_fingerprint": "1a304ac3686742022ef41828bf48467412e34bd0e882c9b428cc723a5e2685e1",
+        "interaction_fingerprint": "d2ec587ef4e06eeaaf918447e58d8c233840575a33299556eb9765b786a1c003",
+        "item_support": {
+          "maximum": 7,
+          "minimum": 2,
+          "total": 36
+        },
+        "matrix": {
+          "pair_contributions": 36,
+          "retained_contributors": 12,
+          "retained_items": 6,
+          "retained_positive_edges": 36
+        },
+        "model": {
+          "name": "gamelens-item-item-cosine",
+          "version": "1.0.0"
+        },
+        "neighbors": {
+          "count_distribution": {
+            "0": 1,
+            "1": 0,
+            "10-24": 0,
+            "100": 0,
+            "2": 0,
+            "25-49": 0,
+            "3-4": 5,
+            "5-9": 0,
+            "50-99": 0
+          },
+          "maximum_per_item": 4,
+          "minimum_per_item": 0,
+          "nonzero": 20,
+          "shape": [
+            6,
+            6
+          ]
+        },
+        "source": {
+          "fixture_id": "stage-5-collaborative-interactions-v1",
+          "kind": "fixture",
+          "quality_evidence": false
+        },
+        "thresholds": {
+          "activation_minimum_edges": 20,
+          "activation_minimum_items": 5,
+          "activation_minimum_users": 10,
+          "minimum_item_support": 2,
+          "minimum_pair_support": 2,
+          "minimum_profile_items": 2
+        }
+      },
+      "content": {
+        "artifact_schema_version": "1",
+        "data_fingerprint": "1a304ac3686742022ef41828bf48467412e34bd0e882c9b428cc723a5e2685e1",
+        "item_count": 30,
+        "matrix_nonzero": 1399,
+        "model": {
+          "name": "gamelens-content-tfidf",
+          "version": "1.0.0"
+        },
+        "status": "valid",
+        "vocabulary_size": 1037
+      }
+    }
+  ],
+  "lifecycle_teardowns_per_replay": [
+    [
+      "gamelens-ai-e2e-lifecycle-chromium-preference-removal-1762",
+      "gamelens-ai-e2e-lifecycle-chromium-feedback-removal-1762",
+      "gamelens-ai-e2e-lifecycle-chromium-contribution-withdrawal-1762",
+      "gamelens-ai-e2e-lifecycle-chromium-clear-data-1762",
+      "gamelens-ai-e2e-lifecycle-firefox-smoke-clear-data-1762",
+      "gamelens-ai-e2e-lifecycle-webkit-smoke-reconsent-1762"
+    ],
+    [
+      "gamelens-ai-e2e-lifecycle-chromium-preference-removal-1835",
+      "gamelens-ai-e2e-lifecycle-chromium-feedback-removal-1835",
+      "gamelens-ai-e2e-lifecycle-chromium-contribution-withdrawal-1835",
+      "gamelens-ai-e2e-lifecycle-chromium-clear-data-1835",
+      "gamelens-ai-e2e-lifecycle-firefox-smoke-clear-data-1835",
+      "gamelens-ai-e2e-lifecycle-webkit-smoke-reconsent-1835"
+    ]
+  ],
+  "privacy_findings": {
+    "command_log_scans": "passed",
+    "raw_browser_state_or_media_exported": false,
+    "secret_expanded_compose_collected": false,
+    "snapshot_registry_rows": "aggregate hashes and counts only"
+  },
+  "untested": [
+    "native Windows or macOS artifact filesystem behavior",
+    "other Docker host architectures",
+    "host/engine death cannot execute shell traps; exact-project recovery was measured separately"
+  ],
+  "commands": [
+    {
+      "name": "docker-version",
+      "command": [
+        "docker",
+        "version",
+        "--format",
+        "{{json .}}"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.16,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e1e23459f5dde40fb7240b8548949740cf83c51ae2e11c34e9976d0f471711a4"
+    },
+    {
+      "name": "compose-version",
+      "command": [
+        "docker",
+        "compose",
+        "version"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.16,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "93e83daaa2dd97f728db02b3831685f03cb27215bc3920a834db43f909a7fe30"
+    },
+    {
+      "name": "docker-host",
+      "command": [
+        "docker",
+        "info",
+        "--format",
+        "{{.OSType}} {{.OperatingSystem}} {{.Architecture}}"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.31,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "d372adb33c81fd86d67479a38c67e297ff6623c9f81bd88f3aa19737c58d072e"
+    },
+    {
+      "name": "root-config",
+      "command": [
+        "docker",
+        "compose",
+        "--profile",
+        "model",
+        "--profile",
+        "quality",
+        "--profile",
+        "source-audit",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.33,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "test-config",
+      "command": [
+        "docker",
+        "compose",
+        "-f",
+        "infra/docker-compose.test.yml",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.34,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "config-content",
+      "command": [
+        "docker",
+        "compose",
+        "-f",
+        "infra/docker-compose.e2e.yml",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.36,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "config-fixture",
+      "command": [
+        "docker",
+        "compose",
+        "-f",
+        "infra/docker-compose.e2e.yml",
+        "--profile",
+        "fixture",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.34,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "config-fallback",
+      "command": [
+        "docker",
+        "compose",
+        "-f",
+        "infra/docker-compose.e2e.yml",
+        "--profile",
+        "fallback",
+        "--profile",
+        "fixture",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.36,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "config-live-source",
+      "command": [
+        "docker",
+        "compose",
+        "-f",
+        "infra/docker-compose.e2e.yml",
+        "--profile",
+        "live-source",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.36,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "config-lifecycle",
+      "command": [
+        "docker",
+        "compose",
+        "-f",
+        "infra/docker-compose.e2e.yml",
+        "--profile",
+        "lifecycle",
+        "config",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.36,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "api-unit",
+      "command": [
+        "docker",
+        "compose",
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "pytest",
+        "tests/unit",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 77.75,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "16608a7d830b3403486fc59fefbf12a2436fa6bbc13489b6f070f33f4aaaebe3"
+    },
+    {
+      "name": "ml",
+      "command": [
+        "docker",
+        "compose",
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "pytest",
+        "/workspace/ml/tests",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 16.33,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "f975f3b58531467b534a757d0aedbb4ff9f1c5c2a3217874ac845de581b39fe8"
+    },
+    {
+      "name": "ruff",
+      "command": [
+        "docker",
+        "compose",
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "ruff",
+        "check",
+        "--no-cache",
+        "app",
+        "tests",
+        "alembic",
+        "/workspace/ml/src",
+        "/workspace/ml/tests"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 3.19,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "ca326e02fe1d56127d5b0c15b71e7200851a066ddcd047cb960af9b883e1fbb4"
+    },
+    {
+      "name": "ruff-format",
+      "command": [
+        "docker",
+        "compose",
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "ruff",
+        "format",
+        "--no-cache",
+        "--check",
+        "app",
+        "tests",
+        "alembic",
+        "/workspace/ml/src",
+        "/workspace/ml/tests"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 3.03,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "05178e30d4fe47febcdc07c15a2ee0d7bd38c946ae2fbcef8d3cedcf67d14978"
+    },
+    {
+      "name": "postgresql",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-integration-3176",
+        "--file",
+        "infra/docker-compose.test.yml",
+        "run",
+        "--build",
+        "--rm",
+        "test-api"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 55.91,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "b76d6f73957c6e15f191fa560d5d8efec623c20755eb1c7c3b80f80c02458e5b"
+    },
+    {
+      "name": "gamelens-ai-e2e-integration-3176-container-ownership",
+      "command": [
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-integration-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.19,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "5b67b439f6ebbe0f5c8038e3652a953ccc6078010e57acbae362ba8051a5d208"
+    },
+    {
+      "name": "gamelens-ai-e2e-integration-3176-network-ownership",
+      "command": [
+        "docker",
+        "network",
+        "ls",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-integration-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.17,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "af72ea3efb269364a2ce708f3da1c0d571d8871ab34656527f51e873fe5cca48"
+    },
+    {
+      "name": "gamelens-ai-e2e-integration-3176-volume-ownership",
+      "command": [
+        "docker",
+        "volume",
+        "ls",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-integration-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.16,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "gamelens-ai-e2e-integration-3176-down",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-integration-3176",
+        "--file",
+        "infra/docker-compose.test.yml",
+        "down",
+        "--volumes",
+        "--remove-orphans"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 1.69,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "c3f818ec06a3066aea1bedbe05932da7c887e91f39f41083db15b9da6d7787bc"
+    },
+    {
+      "name": "gamelens-ai-e2e-integration-3176-container-removed",
+      "command": [
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-integration-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.14,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "gamelens-ai-e2e-integration-3176-network-removed",
+      "command": [
+        "docker",
+        "network",
+        "ls",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-integration-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.14,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "gamelens-ai-e2e-integration-3176-volume-removed",
+      "command": [
+        "docker",
+        "volume",
+        "ls",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-integration-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.16,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "content-build",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "build",
+        "e2e-setup",
+        "e2e-web",
+        "e2e"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 2.02,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "a4b61e55d1035f231c7daaa35f530a8fbaca401e58ad6b287f7500b63ad71544"
+    },
+    {
+      "name": "content-up",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "up",
+        "--detach",
+        "--wait",
+        "e2e-web"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 41.92,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "115a78d0e15e1a195b6984e5ff1944ae5d67a3559b6aa1ca87a198e8e4a86b1f"
+    },
+    {
+      "name": "e2e-api-runtime",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "exec",
+        "--no-TTY",
+        "e2e-api",
+        "python",
+        "-c",
+        "from pathlib import Path; import json; uid=Path('/proc/1/status').read_text().split('Uid:')[1].split()[0]; assert int(uid)>0; assert not any(p.name == '.env' or p.suffix in ('.key','.pem') for p in Path('/workspace').rglob('*')); assert not Path('/workspace/data/external').exists(); assert not Path('/workspace/ml/artifacts').exists(); print(json.dumps({'runtime_uid':int(uid),'image_privacy':'passed'}))"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.58,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "f4b8e6409114fdd5b165af36fda64576843838a4f8472ce8a6dc7d5bd6b0d1f8"
+    },
+    {
+      "name": "e2e-web-runtime",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "exec",
+        "--no-TTY",
+        "e2e-web",
+        "node",
+        "-e",
+        "const fs=require('fs'); const uid=+fs.readFileSync('/proc/1/status','utf8').split('Uid:')[1].trim().split(/\\s/)[0];if(!uid)process.exit(1); console.log(JSON.stringify({runtime_uid:uid}));"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.44,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e86c31fa5b6b5db444760a904380869bf11b32e27a4a845888bc2cb2ec3039dc"
+    },
+    {
+      "name": "api-python",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "exec",
+        "--no-TTY",
+        "e2e-api",
+        "python",
+        "--version"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.39,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "55ae85cf4bdb38743edbcd53ea68ff36511997ec6c21b1e83d8bebc939bf056b"
+    },
+    {
+      "name": "web-node",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "exec",
+        "--no-TTY",
+        "e2e-web",
+        "node",
+        "--version"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.41,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "8f9258d5e9da5443c42966a661aee09292b49d1c64e718dcc5f72976500bac48"
+    },
+    {
+      "name": "web-npm",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "exec",
+        "--no-TTY",
+        "e2e-web",
+        "npm",
+        "--version"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.48,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "041fb0a6f23ccf0102a18d4591e1bfa36eebc17d27d348727a5eee18806d1c3c"
+    },
+    {
+      "name": "postgres-version",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "exec",
+        "--no-TTY",
+        "test-db",
+        "postgres",
+        "--version"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.42,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "80934e40e0f1a4ed1be70ee70e548550e4064edbbccadc37063c1ba215d55014"
+    },
+    {
+      "name": "migration-head",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "exec",
+        "--no-TTY",
+        "e2e-api",
+        "python",
+        "-m",
+        "alembic",
+        "current"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 1.73,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "7e0fce4860176d7738f8e65913355050c421a6828d43bf66232d44e5763f6ff2"
+    },
+    {
+      "name": "stage1-4-e2e",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "run",
+        "--rm",
+        "--no-deps",
+        "e2e"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 92.08,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "c7b67a8b867ac22642107e9745e004bb31d71d9c3c6dbd7a6612bd88e3f93857"
+    },
+    {
+      "name": "web-typecheck",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "run",
+        "--rm",
+        "--no-deps",
+        "-e",
+        "NEXT_PUBLIC_API_URL=http://gamelens.test:8000",
+        "-e",
+        "NEXT_PUBLIC_CONSENT_VERSION=stage-4-v1",
+        "e2e",
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 6.23,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "0aee58af6e8a7c6b1a24dff976cca64f25dac0f30799b40de2a81d251c42c866"
+    },
+    {
+      "name": "web-lint",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "run",
+        "--rm",
+        "--no-deps",
+        "-e",
+        "NEXT_PUBLIC_API_URL=http://gamelens.test:8000",
+        "-e",
+        "NEXT_PUBLIC_CONSENT_VERSION=stage-4-v1",
+        "e2e",
+        "npm",
+        "run",
+        "lint"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 7.5,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "1f16a931681f9dd606144898b590e0eefcb9542c989986b2dc8a3c5c209041af"
+    },
+    {
+      "name": "web-format-check",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "run",
+        "--rm",
+        "--no-deps",
+        "-e",
+        "NEXT_PUBLIC_API_URL=http://gamelens.test:8000",
+        "-e",
+        "NEXT_PUBLIC_CONSENT_VERSION=stage-4-v1",
+        "e2e",
+        "npm",
+        "run",
+        "format:check"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 4.81,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "a0e876016f26757725225b70aefb2f1fbd9d48de16e386b91a09c13ad06efa82"
+    },
+    {
+      "name": "web-test",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "run",
+        "--rm",
+        "--no-deps",
+        "-e",
+        "NEXT_PUBLIC_API_URL=http://gamelens.test:8000",
+        "-e",
+        "NEXT_PUBLIC_CONSENT_VERSION=stage-4-v1",
+        "e2e",
+        "npm",
+        "run",
+        "test"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 8.3,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "d54d0bd603133b3ba323b601918380c0087dd06a3fd97d5419ae9fa6f13d5167"
+    },
+    {
+      "name": "web-build",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "run",
+        "--rm",
+        "--no-deps",
+        "-e",
+        "NEXT_PUBLIC_API_URL=http://gamelens.test:8000",
+        "-e",
+        "NEXT_PUBLIC_CONSENT_VERSION=stage-4-v1",
+        "e2e",
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 12.62,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "dd5b597284b6e99b894c9927c2b417a7eebf706ba932af77203cf9c27cfa62c0"
+    },
+    {
+      "name": "web-api-types-check",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "run",
+        "--rm",
+        "--no-deps",
+        "-e",
+        "NEXT_PUBLIC_API_URL=http://gamelens.test:8000",
+        "-e",
+        "NEXT_PUBLIC_CONSENT_VERSION=stage-4-v1",
+        "e2e",
+        "npm",
+        "run",
+        "api:types:check"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 2.83,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "f23faae8eb14edb108d91be9bb963f3a77f0bd5832b322d0745991f5c7390762"
+    },
+    {
+      "name": "gamelens-ai-e2e-content-3176-container-ownership",
+      "command": [
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-content-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.23,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "a4aa09cfe10f038a02c1b671d1e48952211bba002b0ee5c8af08d3957a2ca04e"
+    },
+    {
+      "name": "gamelens-ai-e2e-content-3176-network-ownership",
+      "command": [
+        "docker",
+        "network",
+        "ls",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-content-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.16,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "19363b810f5a8164783729bc5141bea210d4bc8e844d49847686e6b484e540de"
+    },
+    {
+      "name": "gamelens-ai-e2e-content-3176-volume-ownership",
+      "command": [
+        "docker",
+        "volume",
+        "ls",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-content-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.19,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "30f33bc5d29adc53d47fda4348c8c25ca71a2964492da7d06b76d24c7c985c24"
+    },
+    {
+      "name": "gamelens-ai-e2e-content-3176-down",
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-ai-e2e-content-3176",
+        "--file",
+        "infra/docker-compose.e2e.yml",
+        "down",
+        "--volumes",
+        "--remove-orphans"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 5.08,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "88aa757f9366d27111d3dd421e0392453f797972b9c5bdbf731a0a01149fcaa9"
+    },
+    {
+      "name": "gamelens-ai-e2e-content-3176-container-removed",
+      "command": [
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-content-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.14,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "gamelens-ai-e2e-content-3176-network-removed",
+      "command": [
+        "docker",
+        "network",
+        "ls",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-content-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.16,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "gamelens-ai-e2e-content-3176-volume-removed",
+      "command": [
+        "docker",
+        "volume",
+        "ls",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-ai-e2e-content-3176",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.14,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "teardown-pass",
+      "command": [
+        "sh",
+        "infra/run-e2e-teardown-probe.sh",
+        "pass"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 17.75,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "5d71d62fc9aa65589af5e44a6809f8818d3b841e257eed2bed397ccd1341d782"
+    },
+    {
+      "name": "teardown-setup",
+      "command": [
+        "sh",
+        "infra/run-e2e-teardown-probe.sh",
+        "setup"
+      ],
+      "exit_code": 41,
+      "expected_exit": 41,
+      "seconds": 17.72,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "12ae82c911ddbc2e745839f23a3c07a484c298c5bc4e93494fea77e8a7d7ebb4"
+    },
+    {
+      "name": "teardown-validation",
+      "command": [
+        "sh",
+        "infra/run-e2e-teardown-probe.sh",
+        "validation"
+      ],
+      "exit_code": 1,
+      "expected_exit": 1,
+      "seconds": 20.89,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "a08bfc673b0c65b03b17b6026ddcfa42fd25c1026ed8c24bb4f6a472b4843d38"
+    },
+    {
+      "name": "teardown-browser",
+      "command": [
+        "sh",
+        "infra/run-e2e-teardown-probe.sh",
+        "browser"
+      ],
+      "exit_code": 1,
+      "expected_exit": 1,
+      "seconds": 59.7,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "af282b3f5e0cb125f777561d6f3ebebcfba15c3f10a615fd7a25eee382293842"
+    },
+    {
+      "name": "teardown-interrupt",
+      "command": [
+        "sh",
+        "infra/run-e2e-teardown-probe.sh",
+        "interrupt"
+      ],
+      "exit_code": 130,
+      "expected_exit": 130,
+      "seconds": 16.44,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "6455aed3060857b63c078953c0461209ea0cbc86aa89860b7aaab03c26837ecf"
+    },
+    {
+      "name": "fixture",
+      "command": [
+        "sh",
+        "infra/run-e2e-fixture.sh"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 638.06,
+      "privacy_scan": "passed",
+      "record": "phase8-1788853163847012000",
+      "log_sha256": "067949e31d2c9ef6b23b2af8fa8d24b48f19b48f8a2dad62c11734284b3fbf7c"
+    },
+    {
+      "name": "live-1",
+      "command": [
+        "sh",
+        "infra/run-e2e-live-source.sh"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 121.64,
+      "privacy_scan": "passed",
+      "record": "phase8-1788871033904979200",
+      "log_sha256": "db356502061d3ed00a18f49472116d5ae7d7d2a620e03a4bdef1d094be35bba9"
+    },
+    {
+      "name": "lifecycle-1",
+      "command": [
+        "sh",
+        "infra/run-e2e-lifecycle.sh"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 1527.17,
+      "privacy_scan": "passed",
+      "record": "phase8-1788871033904979200",
+      "log_sha256": "f0f95c8a23c748bcfef785240cc4adb2a78489e47d3db5a36bd950bddbc167d9"
+    },
+    {
+      "name": "live-2",
+      "command": [
+        "sh",
+        "infra/run-e2e-live-source.sh"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 115.55,
+      "privacy_scan": "passed",
+      "record": "phase8-1788871033904979200",
+      "log_sha256": "969ef0faea536ac8bbbcd2c0a8bc75a4693e4f8cbf02ea7738f0ff368096cc58"
+    },
+    {
+      "name": "lifecycle-2",
+      "command": [
+        "sh",
+        "infra/run-e2e-lifecycle.sh"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 1470.94,
+      "privacy_scan": "passed",
+      "record": "phase8-1788871033904979200",
+      "log_sha256": "d03923d72d0a9e2afd8c87aec0db3c93698ecab5cb74f4b9eedfe247f99e2ab0"
+    },
+    {
+      "name": "images",
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "gamelens-ai-api:e2e",
+        "gamelens-ai-web:e2e",
+        "gamelens-ai-playwright:stage4",
+        "--format",
+        "{{.Id}} {{json .RepoDigests}}"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.31,
+      "privacy_scan": "passed",
+      "record": "phase8-1788871033904979200",
+      "log_sha256": "8d0be22320c25e0d9c64c4d8e1adeda5c1339bc5d8d6ae372e49559bb90076cb"
+    },
+    {
+      "name": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "seconds": 0.06,
+      "privacy_scan": "passed",
+      "record": "phase8-1788871033904979200",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

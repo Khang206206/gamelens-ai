@@ -98,8 +98,8 @@ def test_lifecycle_runner_serializes_fresh_scenarios_and_operator_recreation() -
     assert "private-transition regrant-contribution" in runner
     assert "control operator-cleanup" in runner
     assert runner.count("control audit") >= 2
-    assert runner.count("teardown") >= 3
-    assert "down --volumes --remove-orphans" in runner
+    assert ". infra/e2e-ownership.sh" in runner
+    assert "trap cleanup EXIT" in runner
     assert "docker system prune" not in runner
     assert "docker volume prune" not in runner
     assert str(Path("data") / "external") not in runner

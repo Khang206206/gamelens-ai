@@ -207,6 +207,11 @@ services:
       - ./infra/run-e2e-fixture.sh:/workspace/infra/run-e2e-fixture.sh:ro
       - ./infra/run-e2e-live-source.sh:/workspace/infra/run-e2e-live-source.sh:ro
       - ./infra/run-e2e-lifecycle.sh:/workspace/infra/run-e2e-lifecycle.sh:ro
+      - ./infra/e2e-ownership.sh:/workspace/infra/e2e-ownership.sh:ro
+      - ./infra/run-e2e-teardown-probe.sh:/workspace/infra/run-e2e-teardown-probe.sh:ro
+      - ./infra/run-e2e-content.sh:/workspace/infra/run-e2e-content.sh:ro
+      - ./infra/run-phase8.py:/workspace/infra/run-phase8.py:ro
+      - ./infra/docker-compose.test.yml:/workspace/infra/docker-compose.test.yml:ro
       - ./Makefile:/workspace/Makefile:ro
       - ./ml:/workspace/ml
 

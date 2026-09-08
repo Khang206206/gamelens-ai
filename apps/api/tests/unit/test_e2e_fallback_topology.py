@@ -87,7 +87,7 @@ def test_fallback_probes_cover_api_event_oracle_and_required_content_boundaries(
     ):
         assert f"run_fallback_scenario {reason}" in runner
     assert "required-content" in runner
-    assert runner.count("--force-recreate --no-deps") == 4
+    assert runner.count("scenario_compose up --detach --wait --force-recreate --no-deps") == 4
     assert "e2e-fallback-api >&2" in runner
     assert "e2e-fallback-web >&2" in runner
     assert "scenario_compose rm --stop --force e2e-fallback-web e2e-fallback-api" in runner
@@ -140,7 +140,8 @@ def test_fallback_runner_prepares_recreates_and_tears_down_only_its_project() ->
     assert "compose run --rm --no-deps e2e-fallback-artifacts" in runner
     assert "e2e-fixture-development-rejection" in runner
     assert "e2e-fixture-production-rejection" in runner
-    assert "compose down --volumes --remove-orphans" in runner
+    assert ". infra/e2e-ownership.sh" in runner
+    assert "trap cleanup EXIT" in runner
     assert "docker system prune" not in runner
     assert "docker volume prune" not in runner
     assert str(Path("data") / "external") not in runner

@@ -266,7 +266,7 @@ registry gate: diagnose those at 8C/8F first.
 
 ### 8H — Isolation, teardown, and combined gate
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on 8A–8G.
+**Status: IMPLEMENTED — VERIFIED (2026-09-09).** Depends on 8A–8G.
 
 - Scope: focused topology/safety regression checks, explicit runners and retained
   aggregate evidence. Do not add a blanket trainer to broad test collection.
@@ -361,8 +361,8 @@ docs impact. Do not prefill counts or mark a slice verified from inherited Phase
 | 8D | IMPLEMENTED — VERIFIED | `7f8cf1b` | Real hybrid Chromium and cross-browser smoke passed; see the record below. |
 | 8E | IMPLEMENTED — VERIFIED | `4711979` | Full optional-component fallback matrix and browsers passed; see the record below. |
 | 8F | IMPLEMENTED — VERIFIED | `4769d5d` | Disposable PostgreSQL/live-source gate passed; see the record below. |
-| 8G | IMPLEMENTED — VERIFIED | this commit | Six isolated live lifecycle scenarios passed; see the record below. |
-| 8H | PLANNED — NOT IMPLEMENTED | — | Not run |
+| 8G | IMPLEMENTED — VERIFIED | `693808f` | Six isolated live lifecycle scenarios passed; see the record below. |
+| 8H | IMPLEMENTED — VERIFIED | this commit | Combined gate, isolation, fault teardown and two clean replays passed; see the record below. |
 | 8I | PLANNED — NOT IMPLEMENTED | — | Not run |
 
 ### Slices 8A–8E verification record — 2026-09-06
@@ -527,6 +527,76 @@ the clean 487-test rerun. The project-authored cohort remains functional test da
 not recommendation-quality evidence or production contribution authority. Slice
 8H isolation/combined-handoff work and slice 8I broad documentation reconciliation
 remain explicitly unstarted.
+
+### Slice 8H verification record — 2026-09-09
+
+- **Implementation:** this atomic commit, based on clean revision
+  `693808f1b6c4eafafc32e2071e0b021cf9ca44f6`; its final hash is reported after
+  commit creation. Changes are confined to test infrastructure, regression checks
+  and this slice's documentation. No serving, ranking, response/event contract or
+  migration change was made. Schema head remains `0011_stage_5_lifecycle_guard`.
+- **Retained evidence:** [aggregate machine-readable record](evidence/stage-5-phase-8h.json)
+  contains exact command arrays, expected/actual exits, durations, log SHA256s,
+  runtime versions, image IDs/digests, artifact hashes/sizes, registry aggregates,
+  fixture semantic identities and replay comparisons. Raw logs and private browser
+  state are not committed. Accepted command execution totals **4357.03 seconds**;
+  this excludes aborted/exploratory attempts and supplemental final static checks.
+- **Invocation:** `python infra/run-phase8.py` ran all configuration, quality,
+  PostgreSQL, web, teardown-fault and fixture gates. Host/runner interruptions
+  required exact-project recovery and resuming the remaining
+  `sh infra/run-e2e-live-source.sh` and `sh infra/run-e2e-lifecycle.sh` commands.
+  Each completed twice on fresh disposable projects with the same implementation.
+  Evidence therefore combines a successful prefix and resumed replay suffix;
+  it is not claimed as one uninterrupted process. GNU Make was unavailable, so
+  Python/direct shell/Docker equivalents exercised the commands behind the targets.
+- **Combined results:** all Compose definitions/modes parsed; **502 API unit,
+  333 ML, 151 PostgreSQL integration, 86 web unit, 38 Stage 1–4 browser tests**
+  passed. The content browser invocation had 14 intentional mode-specific skips.
+  Web typecheck, lint, format, production build and live OpenAPI drift checks
+  passed, as did API/ML Ruff lint and format. The standalone
+  `sh infra/run-e2e-content.sh` wrapper also passed its 38 browser tests and cleanup.
+- **Fixture/live/lifecycle:** fixture builds replayed twice with identical
+  semantic identities; all seven optional fallback reasons and required-content
+  503/no-event behavior passed (**18 browser tests**). Live-source saved hybrid
+  requests committed exactly one matching event each. Both live ordering hashes
+  were `161d8d81a9c07f7ca2ab1ea11f4b1dea581e8f5e4b288a1716d51e88fc7754e8`.
+  Each lifecycle replay passed six scenarios, **26 browser phases** and event
+  counts `[4, 3, 3, 3, 3, 3]`, with six verified project teardowns.
+- **No implicit mutation:** before/after snapshots matched around ordinary
+  startup/restart, migration, catalog seed and ordinary config/health tests.
+  Lifecycle restart/setup preserved artifact and registry snapshots too. Each
+  live snapshot contained 23 files: content **69743 bytes**, previous collaborative
+  **3640 bytes**, current collaborative **3639 bytes**; registry aggregates had
+  two builds, 24 contributor-lineage rows and one revision row. Cross-run live
+  comparison uses semantic ordering; captured cutoffs need not be byte-identical.
+- **Isolation/privacy/teardown:** actual API/web processes ran as UID 1000;
+  project-owned API artifact mounts were read-only. Image/topology checks passed
+  for private payload exclusion, server-only secrets, no Docker socket, no host
+  data mounts and no published test ports. Credential/identity log scans passed;
+  snapshots emit only hashes/counts. Shared ownership-aware cleanup passed normal
+  completion, setup failure, missing-artifact validation failure, actual injected
+  Playwright failure and SIGTERM with expected exits **0/41/1/1/130**. Ownership
+  was captured before removal and zero leftovers verified. Final Docker inventory
+  contained no E2E resources; existing development resources were not removed.
+- **Host:** Windows 11 `10.0.26200`, Docker Desktop Linux x86_64, Engine 29.7.2,
+  Compose 5.4.0, host Python 3.12.10, API Python 3.12.13, Node 24.18.0,
+  npm 11.16.0 and PostgreSQL 16.14. Exact image SHA256s are in the evidence file.
+  Native Windows/macOS artifact filesystems and other architectures remain
+  untested; these functional synthetic-data results confer no production-data
+  authority or ranking-quality evidence.
+- **Review fixes/deviations:** added writable temporary space for ordinary pytest
+  in the read-only smoke container, corrected stale topology assertions and
+  validated actual fault exit codes. Restart testing exposed web remaining in an
+  old shared API network namespace; runners now stop web, restart API, recreate
+  web into the current namespace, then check web restart separately. Browser-side
+  connectivity and regression checks cover this boundary. Final runner Ruff
+  lint/format, individual shell syntax checks and `git diff --check` passed after
+  review. Host termination cannot execute traps; exact interrupted projects were
+  recovered separately. These are execution/infrastructure adjustments, with no
+  reduction of the slice acceptance scope.
+- **Docs boundary:** updated only the infra usage notes and 8H evidence/status.
+  Slice **8I remains PLANNED and unstarted**; broad documentation reconciliation,
+  Phase 9/10 gates and final Stage 5/6 handoff remain separate work.
 
 Phase 8 exits only when a fresh isolated stack reproducibly builds and validates
 both artifact types, serves hybrid, invalidates a real registered test build,

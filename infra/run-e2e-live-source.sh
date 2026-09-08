@@ -2,6 +2,8 @@
 
 set -eu
 
+. infra/e2e-ownership.sh
+
 compose_file="infra/docker-compose.e2e.yml"
 project="gamelens-ai-e2e-live-source-$$"
 stack_active=0
@@ -9,30 +11,6 @@ stack_active=0
 compose() {
     docker compose --project-name "$project" --file "$compose_file" \
         --profile live-source "$@"
-}
-
-teardown() {
-    if [ "$stack_active" -eq 1 ]; then
-        compose down --volumes --remove-orphans
-        stack_active=0
-    fi
-}
-
-cleanup() {
-    code=$?
-    trap - EXIT HUP INT TERM
-    if [ "$code" -ne 0 ] && [ "$stack_active" -eq 1 ]; then
-        compose ps --all || true
-        compose logs --no-color || true
-    fi
-    teardown || true
-    exit "$code"
-}
-
-handle_signal() {
-    trap - EXIT HUP INT TERM
-    teardown || true
-    exit 130
 }
 
 trap cleanup EXIT
@@ -54,6 +32,25 @@ compose logs --no-color \
     e2e-live-rollback \
     e2e-live-verify
 compose run --rm --no-deps e2e-live-smoke
+
+isolation_snapshot() {
+    compose run --rm --no-deps e2e-live-smoke python -m tests.fixtures.e2e_isolation
+}
+before=$(isolation_snapshot)
+# Ordinary operations use only this disposable analogue.
+compose up --detach --wait --no-deps e2e-live-api
+compose restart e2e-live-api
+compose up --detach --wait --no-deps e2e-live-api
+compose run --rm --no-deps e2e-setup
+compose run --rm --no-deps \
+    -e COLLABORATIVE_LIVE_DATA_ENABLED=false \
+    -e COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION= \
+    e2e-live-smoke python -m pytest \
+    tests/unit/test_config.py tests/unit/test_health.py -q -p no:cacheprovider
+after=$(isolation_snapshot)
+test "$before" = "$after"
+printf '%s\n' "$after"
+printf '%s\n' "Ordinary operations preserved artifact bytes and registered lineage"
 
 teardown
 trap - EXIT HUP INT TERM

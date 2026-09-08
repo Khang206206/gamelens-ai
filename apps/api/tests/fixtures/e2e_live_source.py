@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import errno
+import hashlib
 import json
 import os
 import subprocess
@@ -712,6 +713,11 @@ def saved_hybrid_smoke() -> dict[str, object]:
         "event": {"committed_exactly_once": True, "matched_response": True},
         "ranking_mode": "hybrid",
         "saved_session_cleaned": True,
+        "semantic_ordering_sha256": hashlib.sha256(
+            json.dumps(
+                [(item["game"]["slug"], item["rank"], item["ranking_score"]) for item in items]
+            ).encode()
+        ).hexdigest(),
     }
 
 

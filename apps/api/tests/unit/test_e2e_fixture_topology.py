@@ -139,8 +139,8 @@ def test_fixture_runner_replays_fresh_volume_and_always_tears_down() -> None:
     assert '--project-name "$project"' in runner
     assert "--profile fixture --profile fallback" in runner
     assert runner.count("start_fresh_stack") == 3
-    assert runner.count("teardown") >= 4
-    assert "down --volumes --remove-orphans" in runner
+    assert ". infra/e2e-ownership.sh" in runner
+    assert "trap cleanup EXIT" in runner
     assert "compose run --rm --no-deps e2e-test-evidence-init" in runner
     assert "e2e_fixture_stack runtime" in runner
     assert "compose run --rm --no-deps e2e-fixture" in runner

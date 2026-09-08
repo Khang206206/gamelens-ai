@@ -2,6 +2,8 @@
 
 set -eu
 
+. infra/e2e-ownership.sh
+
 compose_file="infra/docker-compose.e2e.yml"
 project="gamelens-ai-e2e-fixture-$$"
 stack_active=0
@@ -9,30 +11,6 @@ stack_active=0
 compose() {
     docker compose --project-name "$project" --file "$compose_file" \
         --profile fixture --profile fallback "$@"
-}
-
-teardown() {
-    if [ "$stack_active" -eq 1 ]; then
-        compose down --volumes --remove-orphans
-        stack_active=0
-    fi
-}
-
-cleanup() {
-    code=$?
-    trap - EXIT HUP INT TERM
-    if [ "$code" -ne 0 ] && [ "$stack_active" -eq 1 ]; then
-        compose ps --all || true
-        compose logs --no-color || true
-    fi
-    teardown || true
-    exit "$code"
-}
-
-handle_signal() {
-    trap - EXIT HUP INT TERM
-    teardown || true
-    exit 130
 }
 
 trap cleanup EXIT
@@ -127,6 +105,15 @@ run_fallback_acceptance() {
 start_fresh_stack
 first_identity=$(probe_stack)
 printf '%s\n' "$first_identity"
+compose stop e2e-fixture-web
+compose restart e2e-fixture-api
+compose up --detach --wait --no-deps e2e-fixture-api
+compose up --detach --wait --force-recreate --no-deps e2e-fixture-web
+compose restart e2e-fixture-web
+compose up --detach --wait --no-deps e2e-fixture-web
+compose run --rm --no-deps e2e-fixture node -e \
+    "fetch('http://gamelens.test:3000/recommendations').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
+test "$first_identity" = "$(probe_stack)"
 run_fallback_acceptance
 run_event_probe
 teardown

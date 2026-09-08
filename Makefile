@@ -33,6 +33,7 @@ help:
 	@echo "  make test-e2e-fixture  Build and probe the isolated two-artifact fixture stack twice"
 	@echo "  make test-e2e-live-source  Build and register disposable PostgreSQL-derived artifacts"
 	@echo "  make test-e2e-lifecycle  Verify disposable collaborative lifecycle transitions"
+	@echo "  make test-phase8  Run the combined isolation gate and two clean live/lifecycle replays"
 	@echo "  make lint    Run Ruff lint and formatting checks"
 	@echo "  make lint-web  Run web lint and formatting checks"
 	@echo "  make format  Apply Ruff fixes and formatting"
@@ -126,7 +127,7 @@ test-web:
 	cd apps/web && npm run api:types:check
 
 test-web-e2e:
-	@code=0; trap 'docker compose -f infra/docker-compose.e2e.yml down --volumes --remove-orphans' EXIT; docker compose -f infra/docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from e2e e2e || code=$$?; exit $$code
+	sh infra/run-e2e-content.sh
 
 test-e2e-fixture:
 	sh infra/run-e2e-fixture.sh
@@ -136,6 +137,10 @@ test-e2e-live-source:
 
 test-e2e-lifecycle:
 	sh infra/run-e2e-lifecycle.sh
+
+.PHONY: test-phase8
+test-phase8:
+	python infra/run-phase8.py
 
 lint:
 	docker compose run --build --rm --no-deps quality python -m ruff check --no-cache app tests alembic /workspace/ml/src /workspace/ml/tests
