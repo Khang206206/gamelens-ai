@@ -2026,10 +2026,11 @@ execution and historical limitations are recorded in Section 21.
 
 ## 16. Implementation Phase 9: Test Matrix and Quality Gate
 
-**Status: PLANNED — NOT IMPLEMENTED (2026-09-09).** The survey and slice plan
-below are documentation only. No Phase 9 code, test, migration, configuration,
-dependency change, test execution, or live build is included in this planning
-commit. Phase 8 is complete; Phase 9 gates and Phase 10 remain pending.
+**Status: IN PROGRESS (2026-09-09).** Slice 9A acceptance inventory is complete;
+9B–9L and Phase 10 remain planned and unstarted. The original survey below is
+historical planning evidence. 9A changes only documentation and inventory data;
+no runtime test, migration, configuration, dependency or live-build change is
+included. Phase 8 is complete; the Phase 9 runtime/release gates remain pending.
 
 ### Objective
 
@@ -2177,15 +2178,15 @@ finalize Stage 5 while required release decisions remain unresolved.
 
 ### Phase 9 Slice Ledger and Dependency Order
 
-Every row below is **PLANNED — NOT IMPLEMENTED**; implementation commit and
-execution evidence are pending. Each slice ends with **one commit** containing
-its bounded work, focused checks and truthful ledger update. The current
-planning docs commit is separate and does not count as completion of 9A or 9L.
-The suggested subjects are future commit messages, not existing commits.
+Slice **9A is COMPLETE** as an inventory-only gate; **9B–9L remain PLANNED —
+NOT IMPLEMENTED** with runtime execution evidence pending. Each slice ends with
+**one commit** containing its bounded work, focused checks and truthful ledger
+update. The original planning commit `f4d9be7` is separate from 9A completion.
+The remaining suggested subjects are future commit messages, not existing commits.
 
 | Slice | Depends on | Deliverable / suggested commit subject |
 | --- | --- | --- |
-| 9A | Completed 8I and this plan | Acceptance-to-test inventory — `docs(test): map stage 5 acceptance gates` |
+| 9A (COMPLETE) | Completed 8I and this plan | Acceptance-to-test inventory — `docs(test): map stage 5 acceptance gates` |
 | 9B | 9A | Snapshot/provenance boundary gaps — `test(api): close snapshot and provenance gaps` |
 | 9C | 9A | Sparse math and pure scorer gaps — `test(ml): close collaborative numeric gaps` |
 | 9D | 9C | Hybrid/fallback matrix and five-baseline diagnostic — `test(ml): verify hybrid and baseline diagnostics` |
@@ -2211,7 +2212,19 @@ in the ledger instead of hiding it or rewriting the meaning of its old evidence.
 
 ### 9A — Acceptance Inventory and Evidence Contract
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on completed 8I and this plan.
+**Status: COMPLETE — INVENTORY VERIFIED (2026-09-09).** Based on completed 8I
+`d0e86f9`, consolidation `47d132b` and clean planning parent `f4d9be7`.
+
+The [acceptance inventory](stage-5-acceptance-inventory.md),
+[canonical route data](evidence/stage-5-acceptance-inventory.json) and
+[static verification record](evidence/stage-5-phase-9a.json) map all 47 Section 19
+bullets, all 22 Section 16 suite bullets, 171 inherited Stage 1–4 acceptance
+bullets through ten gate families, and all 15 fallback reasons. Existing
+assertions are not marked as freshly passed;
+public contribution routes/actual cohort authority and later-slice evidence
+remain explicitly absent or blocked. No test implementation, PostgreSQL, Docker
+or live build was needed. The single owning commit hash is reported after
+creation, not invented here; 9B and subsequent slices are unstarted.
 
 - Scope: docs/test inventory only. Give every Section 19 bullet a stable ID and
   retain its wording; map all Section 16 suite requirements and inherited Stage
@@ -2665,106 +2678,106 @@ commands require exact targets and fail safely on ambiguity.
 
 Stage 5 is complete only when all applicable criteria below pass:
 
-- All Stage 1–4 migrations, contracts, privacy behavior, commands, artifacts,
+- **S5-AC-01.** All Stage 1–4 migrations, contracts, privacy behavior, commands, artifacts,
   fast tests, integration tests, web tests, browser tests, and Docker workflows
   remain green.
-- `POST /api/v1/recommendations` remains cookie-agnostic, content-only,
+- **S5-AC-02.** `POST /api/v1/recommendations` remains cookie-agnostic, content-only,
   request-scoped, read-only, and contract-compatible.
-- Data source, purpose, authority, cutoff, catalog mapping, consent, retention,
+- **S5-AC-03.** Data source, purpose, authority, cutoff, catalog mapping, consent, retention,
   deletion, provenance, and limitations are documented.
-- Existing Stage 4 consent is not silently reused for aggregate training.
-- Declining contribution does not create training eligibility; the documented
+- **S5-AC-04.** Existing Stage 4 consent is not silently reused for aggregate training.
+- **S5-AC-05.** Declining contribution does not create training eligibility; the documented
   request-only or saved-personalization fallback remains usable.
-- The audit is read-only, aggregate-only, deterministic, bounded, and returns
+- **S5-AC-06.** The audit is read-only, aggregate-only, deterministic, bounded, and returns
   typed suitability reasons without fitting.
-- Snapshot cutoff comes from PostgreSQL and one repeatable-read, read-only
+- **S5-AC-07.** Snapshot cutoff comes from PostgreSQL and one repeatable-read, read-only
   transaction.
-- Temporal state, reaction precedence, rating threshold, saved positive game
+- **S5-AC-08.** Temporal state, reaction precedence, rating threshold, saved positive game
   preference, and duplicate-source collapse match the frozen label policy.
-- Unknown, viewed, played-only, wishlist-only, low-rating, disliked, and
+- **S5-AC-09.** Unknown, viewed, played-only, wishlist-only, low-rating, disliked, and
   recommendation-event rows never become positive cosine edges.
-- Recommendation events remain committed-generation audit records and are
+- **S5-AC-10.** Recommendation events remain committed-generation audit records and are
   excluded from training by code, query, test, and documentation.
-- Internal IDs and credentials remain outside snapshots, artifacts, logs,
+- **S5-AC-11.** Internal IDs and credentials remain outside snapshots, artifacts, logs,
   events, responses, browser state, reports, and committed fixtures.
-- Live user label rows and ephemeral cohort mappings are not retained as a
+- **S5-AC-12.** Live user label rows and ephemeral cohort mappings are not retained as a
   reusable snapshot file after build success or failure.
-- Any identity-bearing contributor lineage stays protected in PostgreSQL and
+- **S5-AC-13.** Any identity-bearing contributor lineage stays protected in PostgreSQL and
   exists only to enforce lifecycle invalidation.
-- Cleared, withdrawn, revoked, expired, or deleted contributions cannot enter a
+- **S5-AC-14.** Cleared, withdrawn, revoked, expired, or deleted contributions cannot enter a
   new build or continue through a serveable old artifact.
-- Artifact/registry revision identity, bounded readiness/invalidation state,
+- **S5-AC-15.** Artifact/registry revision identity, bounded readiness/invalidation state,
   expected contributor count, consent version, validity horizon, and catalog
   fingerprint are checked before use without a per-request contributor scan;
   promotion also proves the source revision did not change during
   extraction/build.
-- The deterministic fixture is explicitly project-authored, isolated from
+- **S5-AC-16.** The deterministic fixture is explicitly project-authored, isolated from
   development data, and never presented as a real-user or quality dataset.
-- A fixture artifact is serveable only in guarded disposable test/E2E mode and
+- **S5-AC-17.** A fixture artifact is serveable only in guarded disposable test/E2E mode and
   is rejected by ordinary development and production configuration.
-- Structural and activation thresholds fail with `insufficient_data` rather than
+- **S5-AC-18.** Structural and activation thresholds fail with `insufficient_data` rather than
   promoting a trivial live artifact.
-- Fitting and serving use bounded sparse operations and never persist an
+- **S5-AC-19.** Fitting and serving use bounded sparse operations and never persist an
   unbounded dense user-item or item-item matrix.
-- Hand-calculated item support, pair support, raw cosine, quantization,
+- **S5-AC-20.** Hand-calculated item support, pair support, raw cosine, quantization,
   self-edge removal, pruning, and tie-breaks match implementation exactly.
-- The artifact has exact model/schema/code identity, source kind, cutoff,
+- **S5-AC-21.** The artifact has exact model/schema/code identity, source kind, cutoff,
   catalog and interaction fingerprints, label policy, thresholds, build ID,
   revision, validity, aggregates, resource limits, and member checksums.
-- Artifact files contain no executable pickle, user matrix, user row, user ID,
+- **S5-AC-22.** Artifact files contain no executable pickle, user matrix, user row, user ID,
   stable pseudonym, credential, or raw interaction payload.
-- Missing, corrupt, incompatible, oversized, stale, expired, privacy-invalid,
+- **S5-AC-23.** Missing, corrupt, incompatible, oversized, stale, expired, privacy-invalid,
   retired, or catalog-mismatched bundles never become collaborative-ready.
-- Build targets are immutable; validation is read-only; promotion is crash-safe;
+- **S5-AC-24.** Build targets are immutable; validation is read-only; promotion is crash-safe;
   rollback accepts only a still-valid registered artifact.
-- The collaborative scorer is pure, bounded, identity-free, deterministic, and
+- **S5-AC-25.** The collaborative scorer is pure, bounded, identity-free, deterministic, and
   excludes all source and disliked games.
-- Unsupported users, sources, items, or pairs receive no fabricated
+- **S5-AC-26.** Unsupported users, sources, items, or pairs receive no fabricated
   collaborative score.
-- Candidate union allows a valid collaborative-only candidate before exclusions
+- **S5-AC-27.** Candidate union allows a valid collaborative-only candidate before exclusions
   and top-K.
-- A collaborative-only candidate receives explicitly materialized
+- **S5-AC-28.** A collaborative-only candidate receives explicitly materialized
   content/platform/popularity/base/affinity evidence without weakening the
   existing Stage 3 zero-content eligibility contract.
-- Hybrid weights are request-wide, versioned engineering defaults rather than
+- **S5-AC-29.** Hybrid weights are request-wide, versioned engineering defaults rather than
   learned or quality-optimized values.
-- Under an active collaborative request, a candidate with no retained edge has
+- **S5-AC-30.** Under an active collaborative request, a candidate with no retained edge has
   unsupported/zero collaborative evidence and no candidate-level weight
   reallocation; this behavior is golden-tested and deferred to Stage 6 for
   evaluation.
-- A reproducible fixture comparison records baseline candidates, components, and
+- **S5-AC-31.** A reproducible fixture comparison records baseline candidates, components, and
   ranks while making no recommendation-quality claim.
-- Base, platform, popularity, feedback affinity, collaborative, played, and
+- **S5-AC-32.** Base, platform, popularity, feedback affinity, collaborative, played, and
   final values remain independently observable and reconstructible.
-- Each named signal is weighted once; component contributions sum exactly in
+- **S5-AC-33.** Each named signal is weighted once; component contributions sum exactly in
   fixed-point units.
-- Played adjustment occurs once after the pre-played hybrid score, dislikes
+- **S5-AC-34.** Played adjustment occurs once after the pre-played hybrid score, dislikes
   remain hard exclusions, and wishlist remains neutral.
-- Every collaborative-unavailable or unsupported path matches Stage 4 scores,
+- **S5-AC-35.** Every collaborative-unavailable or unsupported path matches Stage 4 scores,
   order, response reason, and evidence exactly.
-- Content readiness survives optional collaborative failure, while model status
+- **S5-AC-36.** Content readiness survives optional collaborative failure, while model status
   and personalized output expose truthful mode and bounded reason.
-- The saved response, `stage-5-v1` event, and generated browser type share the
+- **S5-AC-37.** The saved response, `stage-5-v1` event, and generated browser type share the
   same model/data/policy identity and component units.
-- Every commit-acknowledged personalized HTTP 200 has exactly one matching
+- **S5-AC-38.** Every commit-acknowledged personalized HTTP 200 has exactly one matching
   bounded event; known pre-commit failures have none; ambiguous commit
   acknowledgement is not returned as success.
-- Event payloads contain no prose, credentials, identities, unbounded source
+- **S5-AC-39.** Event payloads contain no prose, credentials, identities, unbounded source
   lists, or state dump, and never become training labels.
-- Browser code preserves server order and performs no ranking math.
-- Collaborative explanation appears only for a positive applied contribution and
+- **S5-AC-40.** Browser code preserves server order and performs no ranking math.
+- **S5-AC-41.** Collaborative explanation appears only for a positive applied contribution and
   makes no “users like you” or quality claim.
-- Consent, withdrawal, fallback, loading, empty, failure, keyboard, focus,
+- **S5-AC-42.** Consent, withdrawal, fallback, loading, empty, failure, keyboard, focus,
   announcement, accessibility, and responsive states pass their gates.
-- Commands have direct equivalents, immutable paths, stable exit behavior,
+- **S5-AC-43.** Commands have direct equivalents, immutable paths, stable exit behavior,
   read-only defaults where appropriate, and guarded destructive confirmation.
-- Ordinary startup, request handling, migration, seed, tests, and teardown do
+- **S5-AC-44.** Ordinary startup, request handling, migration, seed, tests, and teardown do
   not train, promote, retire, or delete artifacts or user data.
-- Dependency locks, licenses, security checks, Compose validation, non-root
+- **S5-AC-45.** Dependency locks, licenses, security checks, Compose validation, non-root
   execution, OpenAPI drift, privacy scan, and final release review pass.
-- Documentation distinguishes current Stage 4 behavior, implemented Stage 5
+- **S5-AC-46.** Documentation distinguishes current Stage 4 behavior, implemented Stage 5
   evidence, provisional policy defaults, and deferred Stage 6 evaluation.
-- No Precision/Recall/NDCG or other formal quality result, superiority claim,
+- **S5-AC-47.** No Precision/Recall/NDCG or other formal quality result, superiority claim,
   real-user claim, invented count, timing, or artifact size appears without the
   appropriate later evidence.
 

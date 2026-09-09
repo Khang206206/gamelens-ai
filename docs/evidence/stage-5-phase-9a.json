@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "slice": "9A",
+  "date": "2026-09-09",
+  "status": "VERIFIED_STATIC_INVENTORY_ONLY",
+  "baseline": "f4d9be76bd1d1516f6e61f2331befdd303754b3b",
+  "branch": "feat/stage-5-collaborative-and-hybrid-ranking",
+  "dependencies": {
+    "8I": "d0e86f9",
+    "plan_consolidation": "47d132b",
+    "phase9_plan": "f4d9be7"
+  },
+  "scope": "Docs/test inventory only. No runtime, schema, config, dependency or application test change. 9B–9L unstarted.",
+  "candidate": {
+    "diff_sha256": "6c6a13c9a8c84188f271fa5e20a28720d5c26caa7cffc79702b005880b7c4f33",
+    "files_sha256_git_normalized": {
+      "docs/evidence/stage-5-acceptance-inventory.json": "fb93b93f11de4ae1adaa9c9dca86c73726d943bd4f1a98c3c0deb48c65e4cffc",
+      "docs/stage-5-acceptance-inventory.md": "524de653287a47ec99c340d4d5f0550e029ba79c9b0efb2f58ad5cf8f66188b2",
+      "docs/stage-5-collaborative-hybrid-ranking-plan.md": "d1eadb55fcc2ebe6db2d8964308edfac0b803701173dda7e9dc4c3ebbd6bf1a2"
+    },
+    "hash_scope": "Exact staged --binary diff for the three inventory/plan files, before adding this verification record. This record is output, excluded to avoid a self-referential hash. Final commit is reported after creation."
+  },
+  "checks": [
+    {
+      "label": "inventory",
+      "argv": ["python", "tmp/check_9a.py"],
+      "cwd": ".",
+      "fixture_mode": "static inventory only",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.97,
+      "local_log": "tmp/phase9-9a/inventory.log",
+      "log_sha256": "2833f3bd773bd5d1aeea691fe1af21596fa84f4469648bf44c84b21b83410958"
+    },
+    {
+      "label": "prettier",
+      "argv": [
+        "node",
+        "node_modules/prettier/bin/prettier.cjs",
+        "--check",
+        "../../docs/stage-5-acceptance-inventory.md",
+        "../../docs/evidence/stage-5-acceptance-inventory.json"
+      ],
+      "cwd": "apps/web",
+      "fixture_mode": "static inventory only",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.394,
+      "local_log": "tmp/phase9-9a/prettier.log",
+      "log_sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+    },
+    {
+      "label": "diff-check",
+      "argv": ["git", "diff", "--cached", "--check"],
+      "cwd": ".",
+      "fixture_mode": "static inventory only",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.036,
+      "local_log": "tmp/phase9-9a/diff-check.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "inventory_validation": {
+    "acceptance_bullets": 47,
+    "suite_bullets": 22,
+    "inherited_bullets": 171,
+    "fallback_reasons": 15,
+    "python_node_references": 124,
+    "web_literal_titles": 15,
+    "resolved_markdown_links": 584,
+    "elapsed_seconds": 0.89,
+    "result": "PASS"
+  },
+  "validator": {
+    "path": "tmp/check_9a.py",
+    "sha256": "6c75820e313ed3b57f9f8e7c40957d7c3273ab6bb867d298d495884725869427",
+    "retention": "Local ignored validation script and raw logs; not product tests or committed runtime code. Checks compare unchanged criteria to the recorded clean planning baseline; AST-resolve exact test definitions/assertions; compare 15 Literal reasons; verify suite/inherited crosswalk, links/anchors/fences/table shape and docs-only scope."
+  },
+  "runtime": {
+    "python": "3.12.10",
+    "node": "v24.18.0",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "runtime_tests": {
+    "executed": false,
+    "test_counts": null,
+    "skips": null,
+    "reason": "Slice 9A explicitly requires static mapping, source/assertion/path/Markdown/diff checks only. PostgreSQL, Docker, live build and web production build are not required and were not run. Counts in inventory_validation are mapping counts, not passing runtime tests."
+  },
+  "review": {
+    "outcome": "PASS for 9A inventory scope",
+    "fixes": [
+      "Kept seven fixture API fallback probes distinct from three browser-selected fixture reasons; privacy_invalid uses the lifecycle browser.",
+      "Corrected generated-type unit assertion to backward compatibility only; generated ownership and live drift remain separate pending gates.",
+      "Mapped 171 inherited bullets individually and called out historical capability extensions instead of requiring stale always-untrained/planned copy.",
+      "Resolved surveyed implementation paths and retained exact test nodes; formatting warnings fixed before final checks.",
+      "Initial link check encountered the not-yet-created evidence output; the evidence path exists and final checks pass."
+    ],
+    "privacy": "Only source paths/test names, stable gate IDs, synthetic functional descriptions, command conventions and aggregate validation/hash metadata retained. No raw logs, credentials, user rows, artifacts, browser state or coverage output staged. This is a docs-scope review, not the future 9J release privacy scan.",
+    "deviations": "No slice scope deviation. Inventory represented as canonical JSON plus readable Markdown; an ignored local static checker verifies mapping integrity. No application tests added, as planned.",
+    "remaining": [
+      "Public contribution grant/re-consent/withdrawal routes and actual cohort approval absent/blocked.",
+      "Five-baseline diagnostic, coverage, current dependency/license/security checks, combined reruns and final release docs belong to later slices.",
+      "No Phase 8 runtime evidence is relabelled as a Phase 9 pass."
+    ]
+  }
+}
