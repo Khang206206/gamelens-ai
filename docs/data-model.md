@@ -329,10 +329,19 @@ triggers. Revisions `0007`–`0009` preserve existing application rows while
 adding registry, authority, count, cutoff, and label-invalidation constraints.
 Revision `0010` adds nullable columns before replacing the prior identity check;
 downgrade restores the Stage 4/legacy constraint and removes only Stage 5
-columns/indexes. The 109-test PostgreSQL suite covers migration head, populated
-upgrade paths, constraints, cascades, source versus event revision changes,
+columns/indexes. The historical Phase 6 109-test PostgreSQL suite covers its
+head, populated upgrade paths, constraints, cascades, source versus event revision changes,
 label/temporal exclusions, repeatable-read concurrency, exact request-snapshot
 readiness, transactional invalidation, old-row readability, and Stage 5 event
 commit/correlation. Retention, audits, fixture loading, model fitting, live
 build registration/promotion, retirement, and physical cleanup remain
 application or operator actions rather than migration side effects.
+
+Phase 8 adds no migration: the current head remains
+`0011_stage_5_lifecycle_guard`. Its 151-test PostgreSQL gate and real registered
+synthetic-cohort lifecycle replays are recorded in the
+[Phase 8 ledger](stage-5-phase-8-docker-fixtures-plan.md). Test-only cohort rows
+come from the guarded helper, never catalog seed or migration. JSON fixtures
+have no live contributor registry; database-derived test builds retain actual
+lineage and transactional invalidation. The schema, scoring, saved response and
+`stage-5-v1` event contracts remain unchanged.

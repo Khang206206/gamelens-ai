@@ -2,7 +2,12 @@
 
 **Status:** Stage 4 feedback policy complete and verified 2026-08-13; Stage 5
 external-source preflight and implementation Phases 0–7 verified through
-2026-09-03; Phase 8 Docker, configuration, and full-stack fixtures is next.
+2026-09-03; Phase 8 Docker, configuration, and full-stack fixtures are verified
+through 2026-09-09. Phases 9–10 and the final Stage 6 handoff remain pending.
+See the [Phase 8 ledger](../docs/stage-5-phase-8-docker-fixtures-plan.md) for
+333 ML passes and measured fixture/live-source replay identities.
+Run the complete gate from the repository root with `python infra/run-phase8.py`;
+it requires Python 3.12+, POSIX `sh`, and Docker Desktop Linux containers.
 
 This directory owns deterministic catalog normalization, the popularity
 baseline, TF-IDF feature construction, sparse artifact serialization, pure

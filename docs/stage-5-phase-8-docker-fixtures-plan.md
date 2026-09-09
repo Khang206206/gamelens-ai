@@ -1,6 +1,6 @@
 # Stage 5 Phase 8: Docker, Configuration, and Full-Stack Fixtures
 
-- **Status: PLANNED — NOT IMPLEMENTED**
+- **Status: IMPLEMENTED — VERIFIED (8A–8I, 2026-09-09)**
 - **Survey date:** 2026-09-05
 - **Survey baseline:** `a1aab44` on `feat/stage-5-collaborative-and-hybrid-ranking`
 - **Parent scope:** [Stage 5 engineering plan, Section 15](stage-5-collaborative-hybrid-ranking-plan.md#15-implementation-phase-8-docker-configuration-and-full-stack-fixtures)
@@ -12,6 +12,9 @@ or mutate runtime data. A slice remains **PLANNED — NOT IMPLEMENTED** until it
 acceptance gate passes and its implementation commit is recorded.
 
 ## 1. Survey findings and inherited boundaries
+
+This table preserves the historical 2026-09-05 survey, not current configuration.
+Implemented corrections and current sources are reconciled in the 8I record.
 
 | Inspected source | Current behavior and consequence for Phase 8 |
 | --- | --- |
@@ -298,7 +301,7 @@ registry gate: diagnose those at 8C/8F first.
 
 ### 8I — Documentation reconciliation and phase handoff
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on passing 8H.
+**Status: IMPLEMENTED — VERIFIED (2026-09-09).** Depends on passing 8H.
 
 - Scope: documentation only; one separate final docs commit. Reconcile against
   the committed implementation and retained run evidence, not this plan's intended
@@ -362,8 +365,8 @@ docs impact. Do not prefill counts or mark a slice verified from inherited Phase
 | 8E | IMPLEMENTED — VERIFIED | `4711979` | Full optional-component fallback matrix and browsers passed; see the record below. |
 | 8F | IMPLEMENTED — VERIFIED | `4769d5d` | Disposable PostgreSQL/live-source gate passed; see the record below. |
 | 8G | IMPLEMENTED — VERIFIED | `693808f` | Six isolated live lifecycle scenarios passed; see the record below. |
-| 8H | IMPLEMENTED — VERIFIED | this commit | Combined gate, isolation, fault teardown and two clean replays passed; see the record below. |
-| 8I | PLANNED — NOT IMPLEMENTED | — | Not run |
+| 8H | IMPLEMENTED — VERIFIED | `35082f2` | Combined gate, isolation, fault teardown and two clean replays passed; see the record below. |
+| 8I | IMPLEMENTED — VERIFIED | this docs commit | Documentation comparison and focused docs gates passed; see the record below. |
 
 ### Slices 8A–8E verification record — 2026-09-06
 
@@ -477,8 +480,8 @@ evidence.
 
 ### Slice 8G verification record — 2026-09-07
 
-- **Implementation commit and tested tree:** this atomic commit; the final hash
-  is reported from Git after commit creation. The complete lifecycle workflow
+- **Implementation commit and tested tree:** `693808f`; the final hash
+  was reported from Git after commit creation. The complete lifecycle workflow
   ran before Ruff-only formatting, followed by green unit, integration, lint,
   format, and focused topology reruns on the final tree.
 - **Mode and isolation:** the explicit `lifecycle` profile ran six serialized,
@@ -530,8 +533,8 @@ remain explicitly unstarted.
 
 ### Slice 8H verification record — 2026-09-09
 
-- **Implementation:** this atomic commit, based on clean revision
-  `693808f1b6c4eafafc32e2071e0b021cf9ca44f6`; its final hash is reported after
+- **Implementation:** `35082f2`, based on clean revision
+  `693808f1b6c4eafafc32e2071e0b021cf9ca44f6`; its final hash was reported after
   commit creation. Changes are confined to test infrastructure, regression checks
   and this slice's documentation. No serving, ranking, response/event contract or
   migration change was made. Schema head remains `0011_stage_5_lifecycle_guard`.
@@ -595,10 +598,83 @@ remain explicitly unstarted.
   recovered separately. These are execution/infrastructure adjustments, with no
   reduction of the slice acceptance scope.
 - **Docs boundary:** updated only the infra usage notes and 8H evidence/status.
-  Slice **8I remains PLANNED and unstarted**; broad documentation reconciliation,
-  Phase 9/10 gates and final Stage 5/6 handoff remain separate work.
+  At that checkpoint slice **8I remained PLANNED and unstarted**; the subsequent
+  8I record below completes documentation reconciliation. Phase 9/10 gates and
+  final Stage 5/6 handoff remain separate work.
 
 Phase 8 exits only when a fresh isolated stack reproducibly builds and validates
 both artifact types, serves hybrid, invalidates a real registered test build,
 serves exact fallback, exercises real re-consent/clear-data boundaries, and tears
 down safely, with all slice gates and the final documentation comparison recorded.
+
+## 6. Slice 8I reconciliation record — 2026-09-09
+
+**Scope and baseline:** documentation only, based on clean `35082f2` on
+`feat/stage-5-collaborative-and-hybrid-ranking`. That commit owns the passing
+8H implementation; this separate atomic docs commit completes Phase 8. Its hash
+is reported after creation. No runtime, configuration, schema, dependency or
+test behavior changes are included. No Phase 9/10 work was started.
+
+### Required comparison inventory
+
+Each row was checked against the committed implementation and retained 8H
+execution, not inferred from the original proposed topology.
+
+| Document | Outcome | Compared source and finding |
+| --- | --- | --- |
+| [Root README](../README.md) | Corrected | [Makefile](../Makefile), [root Compose](../docker-compose.yml), [8H evidence](evidence/stage-5-phase-8h.json): Phase 8 completion, combined command, explicit live-build capability and remaining release boundaries. Existing development startup commands reviewed/no-change. |
+| [API README](../apps/api/README.md) | Corrected | [CLI parser](../apps/api/app/commands/collaborative_artifact.py), [operator safety](../apps/api/app/commands/operator_safety.py), [retirement service](../apps/api/app/services/collaborative_retirement.py): command context, test temporary-root paths, current evidence and lifecycle status. Endpoint/response contract reviewed/no-change. |
+| [ML README](../ml/README.md) | Corrected | [interaction contract](../ml/src/gamelens_recommender/interaction_snapshot.py), [CLI parser](../apps/api/app/commands/collaborative_artifact.py), [8H evidence](evidence/stage-5-phase-8h.json): completion and ML count; frozen policies, caps, fixture audit/build/validate/inspect syntax reviewed/no-change. |
+| [Web README](../apps/web/README.md) | Corrected | [package scripts](../apps/web/package.json), [Playwright configuration](../apps/web/playwright.config.ts), [content runner](../infra/run-e2e-content.sh), [lifecycle runner](../infra/run-e2e-lifecycle.sh): current browser evidence, ownership-aware direct command and separate contribution authority. |
+| [Infra README](../infra/README.md) | Corrected | [E2E Compose](../infra/docker-compose.e2e.yml), [combined runner](../infra/run-phase8.py), [ownership helper](../infra/e2e-ownership.sh): current schema head, mode selection, paths, build/validation ordering, restart and teardown, measured host limitations and resumed execution. |
+| [Scripts README](../scripts/README.md) | Corrected | [Makefile](../Makefile) and [infra runner](../infra/run-phase8.py): scripts directory remains reserved; actual orchestration lives under infra and requires repository-root invocation. |
+| [Data README](../data/README.md) | Corrected | [cohort helper](../apps/api/tests/fixtures/collaborative_lifecycle.py), [live probe](../apps/api/tests/fixtures/e2e_live_source.py), [lifecycle helper](../apps/api/tests/fixtures/e2e_lifecycle.py): JSON versus real database-derived source, guards, database-time eligibility, separate authority, lineage and aggregate-only outputs. External-source policy reviewed/no-change. |
+| [Fixture README](../data/fixtures/README.md) | Corrected | [JSON fixture](../data/fixtures/interactions/collaborative-interactions.json), [cohort helper](../apps/api/tests/fixtures/collaborative_lifecycle.py): implemented loader/build language and distinct synthetic PostgreSQL cohort; fixture cannot receive live registry status. |
+| [Architecture](architecture.md) | Corrected | [component factory](../apps/api/app/services/recommendation/application.py), [lifecycle service](../apps/api/app/services/collaborative_lifecycle.py), [isolation probe](../apps/api/tests/fixtures/e2e_isolation.py): full-stack completion, one-time selection and ordinary-operation immutability. Component and registry boundaries reviewed/no-change. |
+| [Data model](data-model.md) | Corrected | [migrations](../apps/api/alembic/versions), [registry repository](../apps/api/app/repositories/collaborative_registry.py), [8H evidence](evidence/stage-5-phase-8h.json): historical count labelled, current head and PostgreSQL evidence; no new schema or event contract. |
+| [Recommendation design](recommendation-design.md) | Corrected | [fallback/fixture probe](../apps/api/tests/fixtures/e2e_fixture_stack.py), [response projection](../apps/api/app/services/recommendation/projection.py): full-stack completion; scoring/response/event semantics reviewed/no-change. |
+| [Roadmap](roadmap.md) | Corrected | [8H evidence](evidence/stage-5-phase-8h.json) and this ledger: Phase 8 complete, Stage 5 pending Phases 9–10, Stage 6 quality handoff provisional. |
+| [Parent plan](stage-5-collaborative-hybrid-ranking-plan.md), Section 15 | Corrected | [combined runner](../infra/run-phase8.py) and [8H evidence](evidence/stage-5-phase-8h.json): measured completion, counts, replays, host and interruption caveats. |
+| Parent plan, Section 18 | Corrected | [Makefile](../Makefile), [artifact parser](../apps/api/app/commands/collaborative_artifact.py), [audit parser](../apps/api/app/commands/collaborative_snapshot.py): actual runner equivalents, shell/working-directory requirements, summary versus JSON output, exact placeholders. |
+| Parent plan, Section 21 | Corrected | [8H evidence](evidence/stage-5-phase-8h.json) and owning `35082f2`: as-built decisions and execution deviations; remaining release requirements separated. |
+| Parent plan, Section 22 | Corrected | Phase 8 synthetic functional evidence acknowledged; final Stage 6 handoff remains provisional until Stage 5 acceptance/release gates pass. |
+| Parent plan, Section 23 | Reviewed/no-change to pending status; references corrected | Full Stage 5 completion remains pending; Phase 8 evidence does not finalize the release inventory. |
+| This plan and slice ledger | Corrected | Git history resolves 8G to `693808f` and 8H to `35082f2`; original survey and older verification records remain explicitly historical. All slice statuses and current handoff reconciled. |
+| Configuration descriptions across the inventory | Reviewed/no-change to configuration | [.env.example](../.env.example), [Settings](../apps/api/app/core/config.py), [root Compose](../docker-compose.yml), [test Compose](../infra/docker-compose.test.yml), [E2E Compose](../infra/docker-compose.e2e.yml), [frozen constants](../ml/src/gamelens_recommender/interaction_snapshot.py): blank optional path; separate default-off extraction/promotion, contribution version and test-only fixture gate; mutual exclusion; normal services force fixture off; minima 2/2/2 and 10/20/5 are constants, not environment knobs. Server authority stays out of `NEXT_PUBLIC_*`. |
+
+### Verification and evidence provenance
+
+The retained 8H record was reconciled with all 57 local logs: every SHA256,
+expected/actual exit and privacy-scan result matched. Recorded command durations
+sum to 4357.03 seconds. Test summaries confirm 502 API unit, 333 ML, 151
+PostgreSQL integration, 86 web unit, 38 inherited browser, 18 fixture/fallback
+browser and 26 lifecycle phases in each of two replays. These are 8H results,
+not newly executed 8I test counts. Existing earlier-phase counts remain labelled
+as historical; no current release/security or quality claim is inferred from them.
+
+The commands newly documented here are the exact Make/runner equivalents already
+executed in 8H. Native PowerShell operator examples describe parser syntax with
+operator-selected paths, not a claim of a verified native filesystem build.
+No new PostgreSQL/live-source/browser build was needed for prose reconciliation,
+as required by the 8I gate. Existing command/isolation regression tests were run
+as a focused supplemental check; no tests were added for documentation changes.
+
+| 8I check | Result |
+| --- | --- |
+| Local-link targets/Markdown heading anchors, balanced fences and formatting review of every changed document | Passed: 159 local links across 14 Markdown documents. |
+| From `apps/web`: `node node_modules/prettier/bin/prettier.cjs --check README.md` | Passed after formatting. |
+| PowerShell AST parse of API README command blocks; documented Make/runner equality and Python AST check | 20 PowerShell blocks and 5 exact runner equivalents passed; combined Python runner syntax passed. |
+| Root Compose (`model`, `quality`, `source-audit`), test Compose, E2E content, fixture, fixture+fallback, live-source and lifecycle `config --quiet` | Passed. Fallback requires the fixture profile, as selected by its runner. |
+| Individual `sh -n` checks for the five E2E runners and shared ownership helper | Passed. |
+| `docker compose --profile quality run --rm --no-deps quality python -m pytest tests/unit/test_collaborative_artifact_command.py tests/unit/test_collaborative_artifact_entrypoint.py tests/unit/test_e2e_isolation.py -q -p no:cacheprovider` | 49 passed in 36.69s; CLI/runner/Make comparison passed. |
+| `git diff --check` and final staged diff review | Passed; documentation only. |
+
+**Review fixes and deviations:** corrected stale completion and fixture-only
+build claims, obsolete schema-head/browser descriptions, operator path/context
+ambiguity and the old direct Compose browser invocation. An initial standalone
+`fallback` profile parse failed because it depends on `fixture`; checking the
+actual runner combination passed. This was a verification invocation correction,
+not a topology change. Prettier initially could not resolve its plugin when
+invoked from the repository root; running it from `apps/web`, as required by the
+package workflow, passed. All 8H interruption/recovery and platform limitations
+remain visible. No slice scope deviation; no new live build or next slice.

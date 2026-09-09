@@ -11,7 +11,8 @@
   readiness, and internal API orchestration verified on 2026-08-30; Phase 6
   response, event, OpenAPI, and product integration verified on 2026-09-01;
   Phase 7 derived-data lifecycle and safe commands verified on 2026-09-03.
-  Phase 8 Docker, configuration, and full-stack fixtures is next.
+  Phase 8 Docker, configuration, full-stack fixtures and docs reconciliation
+  verified on 2026-09-09; Phases 9–10 remain pending.
 - **Stage 4 prerequisite:** Complete and verified on 2026-08-13.
 - **Planning and target implementation branch:**
   `feat/stage-5-collaborative-and-hybrid-ranking`
@@ -720,7 +721,7 @@ entries remain `(+ planned)`; generated snapshots and artifacts remain ignored.
 |   `-- web/
 |       |-- src/lib/api/generated.ts                    (+ Phase 6 contract)
 |       |-- src/features/recommendations/               (+ Phase 6 results)
-|       `-- e2e/                                        (* Phase 8 planned)
+|       `-- e2e/                                        (+ Phase 8 implemented)
 |-- data/
 |   |-- catalog/games.json                              (existing)
 |   |-- external/ucsd-steam/                            (metadata/audit only)
@@ -1679,12 +1680,18 @@ output checks, and `git diff --check`.
 
 ## 15. Implementation Phase 8: Docker, Configuration, and Full-Stack Fixtures
 
-**Status: PLANNED — NOT IMPLEMENTED.** The codebase survey and independent
-one-commit slices 8A–8I are recorded in the
+**Status: IMPLEMENTED — VERIFIED (2026-09-09).** The codebase survey and
+completed slices 8A–8I are recorded in the
 [Phase 8 Docker and fixtures slice plan](stage-5-phase-8-docker-fixtures-plan.md).
-That plan defines dependencies, acceptance gates, required Docker/live-source
-build checkpoints, and the final documentation reconciliation. It adds no
-implementation or verification claim; Phases 9–10 remain separate gates.
+The ledger records exact owning commits, Docker/PostgreSQL/live-source/browser
+results, deviations and final documentation comparison. The combined gate is
+owned by `35082f2`; retained [8H evidence](evidence/stage-5-phase-8h.json) includes
+502 API unit, 333 ML, 151 PostgreSQL, 86 web unit and 38 inherited browser passes,
+18 fixture/fallback browser passes and 26 lifecycle phases per replay. Both
+live/lifecycle replays passed on fresh projects. Host interruptions required a
+resumed suffix, so this is not one uninterrupted combined process. Docker
+Desktop Linux x86_64 was verified; native Windows/macOS artifact filesystems
+and other architectures remain untested. Phases 9–10 remain separate gates.
 
 ### Objective
 
@@ -1890,7 +1897,27 @@ limitations, and leave a precise Stage 6 input contract.
 ## 18. Command Interface Target
 
 The external-source, Phase 0–1 audit, guarded Phase 2 fixture-artifact, and Phase
-7 lifecycle command names are frozen as implemented.
+7 lifecycle command names are frozen as implemented. Commands use the
+repository root unless noted. Bare `python -m app.commands...` syntax requires
+`apps/api` as working directory, installed API/ML dependencies and explicit
+operator settings. Placeholder paths/IDs are not runnable production approval.
+POSIX environment assignments require `sh`; PowerShell uses `$env:NAME`
+assignments as in the API README. Make audit wrappers emit `summary`; the
+`--format json` forms below are parser-supported machine-readable alternatives.
+For exact container wrapper expansions, see the [Makefile](../Makefile).
+
+Phase 8 entry points (POSIX `sh`, Git Bash on Windows, and Docker required):
+
+| Optional Make wrapper | Exact direct equivalent from repository root |
+| --- | --- |
+| `make test-web-e2e` | `sh infra/run-e2e-content.sh` |
+| `make test-e2e-fixture` | `sh infra/run-e2e-fixture.sh` |
+| `make test-e2e-live-source` | `sh infra/run-e2e-live-source.sh` |
+| `make test-e2e-lifecycle` | `sh infra/run-e2e-lifecycle.sh` |
+| `make test-phase8` | `python infra/run-phase8.py` (Python 3.12+) |
+
+The [infra README](../infra/README.md) describes explicit setup/build/validation,
+scenario selection, immutable paths and project-owned failure/teardown handling.
 
 | Capability                                                                                  | Optional Make wrapper                | Required direct equivalent                                                                                                                                                                                                             |
 | ------------------------------------------------------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2577,6 +2604,24 @@ flow.
     bytes. Thirty-five focused UCSD cases and all 105 ML tests pass; the
     committed-report check also passes against the full local source.
 
+### Phase 8 as-built decisions — 2026-09-09
+
+Slices 8A–8I are complete; the [execution ledger](stage-5-phase-8-docker-fixtures-plan.md)
+records the owning commits and final comparison inventory. The committed JSON
+fixture remains test-only and unregistrable as live. Separate guarded synthetic
+PostgreSQL rows exercise real live extraction, immutable builds, lineage and
+invalidation. Builders run explicitly; API selection is load-once/read-only;
+ordinary operations do not mutate artifacts or registry. Shared teardown checks
+ownership and absence of leftover resources. No migration or ranking policy
+changed; schema head remains `0011_stage_5_lifecycle_guard`.
+
+GNU Make was unavailable; direct Python/shell/Docker commands supplied equivalent
+scope. Interrupted combined execution was recovered per exact project and
+resumed, with two successful fresh live/lifecycle suffixes. The web/API shared
+network namespace required web recreation after API restart. Evidence is
+functional and synthetic, with no production contribution authority or Stage 6
+quality conclusion. Slice 8I changes documentation only.
+
 The remaining implementation must resolve and record:
 
 1. Product contribution-consent copy, public grant/re-consent/withdrawal routes,
@@ -2584,9 +2629,10 @@ The remaining implementation must resolve and record:
    remain a separate purpose.
 2. Actual approved live cohort/exclusion aggregates and the explicit decision to
    activate live build or remain fixture-only.
-3. Phase 8 guarded fixture-artifact E2E topology and public
-   hybrid/fallback/lifecycle browser acceptance, plus final dependency/license,
-   security, artifact-size, runtime, privacy, and Stage 1–4 regression evidence.
+3. Phases 9–10 final dependency/license, security, coverage, acceptance inventory
+   and release documentation. Phase 8 guarded fixture/live-source topology,
+   hybrid/fallback/lifecycle browser acceptance and isolation are now verified;
+   their evidence does not substitute for these remaining release gates.
 
 Unresolved items may not become silent defaults. At Stage 5 completion, this
 checklist must be replaced by exact as-built decisions and passing evidence.
@@ -2622,8 +2668,9 @@ examples, and successful UI flows are not recommendation-quality evidence.
 Phases 5–7 have verified lifecycle registry/readiness, synchronized public
 response/event projection, generated client ownership, cautious browser
 presentation, and guarded operator lifecycle safety. The handoff is not final:
-later phases must complete guarded full-stack browser acceptance and the full
-release gate.
+Phase 8 has completed guarded full-stack browser acceptance and reproducible
+isolation checks over synthetic data. Phases 9–10 must still complete the full
+release gate and final documentation; this Stage 6 handoff remains provisional.
 Before Stage 5 is marked complete, this section must change from “should leave”
 to verified facts only.
 
@@ -2632,7 +2679,8 @@ to verified facts only.
 Pending complete Stage 5 implementation. The verified Phase 0–7 source/audit,
 offline-artifact, pure-scoring, hybrid-policy, lifecycle-readiness,
 internal-orchestration, response/event, generated-client, and
-browser-presentation, and operator-lifecycle slices are recorded in Section 21;
+browser-presentation, and operator-lifecycle slices, plus the completed Phase 8
+isolation/documentation handoff, are recorded in Section 21 and the slice ledger;
 they are not a Stage 5 completion claim.
 
 When every Section 19 gate passes, this section must record the implementation

@@ -48,9 +48,9 @@ volume's owner and exits; the model builder itself runs as the non-root
 `gamelens` user. The API receives the finished artifact read-only. Network-only
 API and web services then support the exact Playwright 1.62.0 image pinned by
 digest. `down --volumes --remove-orphans` removes the E2E containers, network,
-and artifact volume; it never touches persistent development data. The verified
-matrix contains 25 Playwright passes: 15 Chromium plus five smoke cases in each
-of Firefox and WebKit.
+and artifact volume; it never touches persistent development data. The inherited
+content-only matrix now has 38 passing browser cases; the earlier Stage 3 matrix
+had 25.
 
 The
 [Stage 4 feedback-and-persistence plan](../docs/stage-4-feedback-persistence-plan.md)
@@ -86,7 +86,9 @@ deletes it at an exact instant.
 
 The PostgreSQL integration Compose file supplies the test-only session and
 fixture settings and runs migration/persistence suites against its guarded
-`tmpfs` database. Readiness expects Alembic head `0010_stage_5_event_contract`.
+`tmpfs` database. Readiness expects Alembic head `0011_stage_5_lifecycle_guard`.
+The following Phase 6 counts are historical; the Phase 8 record below supersedes
+them with the combined gate.
 The Phase 6 handoff passes 109 PostgreSQL integration tests, including
 registry/count constraints, transactional authority and label invalidation,
 component status, same-snapshot saved-request orchestration, populated event
@@ -95,8 +97,7 @@ pass 365 API unit, 331 ML tests with one Windows symbolic-link capability skip,
 and 86 web tests. Ruff lint/format passes across 172 Python files and generated
 OpenAPI types have no drift. Five focused no-retry browser cases cover Phase 6
 axe/responsive behavior. Disposable test containers, networks, and volumes are
-removed after each run; the latest full inherited browser matrix remains the
-verified Stage 4 38/38 run.
+removed after each run; Phase 8 reran the inherited Stage 4 matrix with 38 passes.
 
 The API image is a non-root Python 3.12 development image built from a
 transitive dependency lock. The `quality` Compose service bind-mounts the
@@ -123,12 +124,12 @@ metadata, caches, test output, and untracked data from generic root-context
 builds. The API Dockerfile has a stricter Dockerfile-specific deny-all
 allowlist; the web images use `apps/web/.dockerignore` at their context root.
 
-## Stage 5 Phase 0–8G artifact and saved-contract topology
+## Stage 5 Phase 0–8 artifact and saved-contract topology
 
 The
 [Stage 5 collaborative-and-hybrid plan](../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-has completed implementation Phases 0–7 and Phase 8 slices 8A–8G. Phases 0–4
-add the contribution/revision contract, default-off audit commands, guarded
+has completed implementation Phases 0–8, including the final docs comparison.
+Phases 0–4 add the contribution/revision contract, default-off audit commands, guarded
 fixture artifact workflow, pure scorer/materializers, and hybrid policy. Phase 5
 adds the API load-once optional component, PostgreSQL live build/contributor lineage,
 transactional invalidation, one-row readiness, additive status, and internal
@@ -181,9 +182,33 @@ Audit, fixture build, validation, aggregate inspection, and immutable promotion
 have direct commands. Cleanup remains preview-first with exact confirmation and
 cannot target an active artifact or a broad directory. Fixture artifacts still
 require both the test environment and explicit test-only flag; development and
-production reject them. Slice 8I still owns broad documentation reconciliation.
+production reject them. Slice 8I records the completed documentation comparison.
 A production scheduler, registry
 service, or hot reload remains outside this test topology.
+
+### Phase 8 workflow selection
+
+All commands run from the repository root. GNU Make is optional; the direct
+commands need POSIX `sh` (Git Bash on Windows) and Docker.
+
+| Workflow | Make target | Direct command |
+| --- | --- | --- |
+| Content-only Stage 1–4 | `make test-web-e2e` | `sh infra/run-e2e-content.sh` |
+| JSON fixture hybrid and fallback; two fresh fixture builds | `make test-e2e-fixture` | `sh infra/run-e2e-fixture.sh` |
+| PostgreSQL-derived live build, registry, recovery and HTTP smoke | `make test-e2e-live-source` | `sh infra/run-e2e-live-source.sh` |
+| Six serialized live lifecycle scenarios | `make test-e2e-lifecycle` | `sh infra/run-e2e-lifecycle.sh` |
+| Complete combined gate | `make test-phase8` | `python infra/run-phase8.py` |
+
+The fixture runner selects both `fixture` and `fallback` profiles. Live-source
+and lifecycle runners select their own profiles with fixture access off. They
+use `test-db`, `gamelens_e2e_test` and `/tmp/gamelens-e2e/artifact-set`, with
+committed fixture/catalog inputs only and no host artifact or user-data mounts.
+Fixture setup explicitly builds and validates content and collaborative bundles
+before ready serving; failed validation prevents that pipeline from starting.
+Fallback damage is confined to disposable copies and selected by API recreation.
+Lifecycle setup explicitly links a browser session through private test control,
+builds previous/current live bundles, validates registry readiness, then selects
+the serving path. The browser never receives database credentials.
 
 ### Phase 8 combined isolation gate
 
@@ -221,6 +246,13 @@ each run its own project. No runner prunes global resources or deletes host
 artifacts. Artifact retirement/cleanup remains the separate guarded operator
 workflow. Abrupt engine/host termination cannot execute shell traps; ownership
 records identify the exact project for recovery after Docker returns.
+
+The accepted run is owned by `35082f2`; see the
+[Phase 8 ledger](../docs/stage-5-phase-8-docker-fixtures-plan.md) and
+[machine-readable evidence](../docs/evidence/stage-5-phase-8h.json). It combines
+a successful combined-run prefix with resumed live/lifecycle suffixes after host
+interruptions, not one uninterrupted invocation. Both suffixes completed twice;
+exact-project recovery removed interrupted resources.
 
 These are functional synthetic-data checks on Linux containers. They do not
 establish native Windows/macOS filesystem behavior, production contribution

@@ -11,8 +11,8 @@ game metadata, but they will not replace the recommendation engine.
 ## Current status
 
 **Stage 4 complete and verified 2026-08-13; Stage 5 implementation Phases 0–7
-and Phase 8 slices 8A–8G verified through 2026-09-07; Phase 8 isolation/handoff
-and final documentation reconciliation remain**
+and Phase 8 slices 8A–8I verified through 2026-09-09; Stage 5 remains in
+progress pending Phases 9–10**
 
 The detailed
 [Stage 5 collaborative-and-hybrid engineering plan](docs/stage-5-collaborative-hybrid-ranking-plan.md)
@@ -38,13 +38,15 @@ and a monotonic database lifecycle guard. Product contribution consent and an
 approved production live cohort remain intentionally separate from saved-
 personalization consent.
 
-Phase 8 slices 8A–8G add explicit container configuration, guarded fixture and
+Phase 8 adds explicit container configuration, guarded fixture and
 database-derived build workflows, real hybrid/fallback browser acceptance, and
 serialized lifecycle scenarios for removal, withdrawal, clear-data, re-consent,
 restart, rollback, retirement, and confirmed cleanup. Each lifecycle scenario
 uses a fresh disposable PostgreSQL project and synthetic test authority; this is
 functional safety evidence, not production-data approval or ranking-quality
-evidence.
+evidence. The combined isolation gate and documentation comparison are recorded
+in the [Phase 8 ledger](docs/stage-5-phase-8-docker-fixtures-plan.md) and
+[retained 8H evidence](docs/evidence/stage-5-phase-8h.json).
 
 The repository now provides:
 
@@ -69,8 +71,8 @@ The repository now provides:
   labels and revision changes.
 - A default-off, identity-free live interaction audit plus a deterministic
   project-authored fixture gated to `ENVIRONMENT=test`; neither path writes a
-  row-level snapshot, and only the guarded fixture path may build the separate
-  aggregate collaborative artifact.
+  row-level snapshot. Explicit guarded fixture and separately authorized
+  live-source commands can build the separate aggregate collaborative artifact.
 - A canonical binary CSR and bounded sparse item-item cosine pipeline with
   support pruning, round-half-up similarity units, deterministic top-neighbor
   selection, and stable-slug tie-breaking.
@@ -367,6 +369,7 @@ contract checks use the same API base URL.
 | `make test-web-e2e`                                        | Run browser tests against isolated tmpfs PostgreSQL               |
 | `make test-e2e-fixture`                                    | Build and probe the isolated two-artifact fixture stack twice     |
 | `make test-e2e-live-source`                                | Build/register disposable PostgreSQL-derived live artifacts       |
+| `make test-phase8`                                        | Run the combined isolation gate and two clean live/lifecycle replays |
 | `make test-e2e-lifecycle`                                  | Run serialized live invalidation/re-consent/cleanup scenarios     |
 | `make lint` / `make format`                                | Check or apply Ruff rules                                         |
 | `make lint-web` / `make format-web`                        | Check or apply web lint/format rules                              |
@@ -565,9 +568,9 @@ evidence.
   The guarded live build/lifecycle command set is implemented and verified only
   against explicitly enabled disposable test data. No product contribution-
   consent flow, approved production live cohort, or approved external interaction
-  dataset exists. Phase 8's remaining 8H/8I work owns the combined isolation
-  handoff and broad documentation reconciliation; formal comparative evaluation
-  remains roadmap Stage 6.
+  dataset exists. Phase 8 is verified; Phases 9–10 still own the exhaustive
+  release/security/license/coverage gates and final Stage 5 documentation.
+  Formal comparative evaluation remains roadmap Stage 6.
 - No external metadata service or approved remote cover-image source.
 - Seed ratings and popularity values are synthetic development signals.
 - Social metadata currently uses a localhost development base. A validated

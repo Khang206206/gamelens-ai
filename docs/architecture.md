@@ -420,8 +420,10 @@ materialization, versioned hybrid policy, protected live lifecycle lineage,
 bounded component readiness, additive model status, saved-request orchestration,
 synchronized response/event projection, generated client fields, and cautious
 browser evidence, guarded live build/recovery, lifecycle mutation, valid-only
-rollback checks, and confirmed cleanup. Product contribution consent, an
-approved production live cohort, and the Phase 8 full-stack fixture remain open.
+rollback checks, and confirmed cleanup. Product contribution consent and an
+approved production live cohort remain open. Phase 8 full-stack fixture and
+synthetic PostgreSQL lifecycle workflows are verified; see the
+[Phase 8 record](stage-5-phase-8-docker-fixtures-plan.md).
 
 The Phase 6 handoff passes 365 API unit tests, 109 disposable-PostgreSQL tests,
 331 ML tests with one Windows symbolic-link capability skip, and 86 web tests.
@@ -435,7 +437,11 @@ The Phase 7 handoff passes 782 combined API-unit/ML tests and 143 disposable-
 PostgreSQL integration tests. Ruff lint/format passes across 194 Python files,
 OpenAPI has no drift, and the disposable lifecycle database, containers, network,
 and temporary artifacts are removed after verification. Browser lifecycle
-orchestration remains Phase 8.
+orchestration was subsequently verified in Phase 8. The combined gate proves
+load-once selection, exact fallback after registry invalidation, unchanged
+artifact/registry snapshots around ordinary operations, read-only serving mounts
+and ownership-aware teardown. It changes no ranking or public contracts and
+adds no migration; head remains `0011_stage_5_lifecycle_guard`.
 
 Stage 4 is complete and verified. Its consented identity, durable preferences,
 temporal feedback writes, deterministic feedback adjustment, personalized

@@ -15,12 +15,14 @@ responsive run plus release review pass.
 
 The detailed
 [Stage 5 collaborative-and-hybrid plan](../../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-has completed implementation Phases 0–6. The API exposes additive component status plus
-synchronized lifecycle-aware hybrid/fallback saved responses and `stage-5-v1` events.
-Generated OpenAPI types own the browser shape. The saved results UI preserves server
-order, presents neutral fallback, and shows aggregate-interaction support/source evidence
-only when a positive collaborative contribution was applied. Product contribution-consent
-copy and approved live lifecycle commands remain Phase 7 work.
+has completed implementation Phases 0–8; Stage 5 Phases 9–10 remain pending. The API
+exposes additive component status plus synchronized lifecycle-aware hybrid/fallback saved
+responses and `stage-5-v1` events. Generated OpenAPI types own the browser shape. The
+saved results UI preserves server order, presents neutral fallback, and shows
+aggregate-interaction support/source evidence only when a positive collaborative
+contribution was applied. Product contribution-consent controls and an approved production
+cohort remain separate work. Guarded operator commands and disposable lifecycle browser
+acceptance are implemented.
 
 ## Responsibilities
 
@@ -139,19 +141,19 @@ changes, update `CORS_ORIGINS` to the same web origin. If `API_PORT` changes, up
 `NEXT_PUBLIC_API_URL` to the same API origin. Web startup never migrates, seeds, resets,
 or deletes the database.
 
-The browser acceptance stack is isolated:
+The browser acceptance stack is isolated. From the repository root with Docker and POSIX
+`sh` (Git Bash on Windows), run:
 
-```powershell
-$e2eExitCode = 0
-try {
-    docker compose -f infra/docker-compose.e2e.yml up --build `
-        --abort-on-container-exit --exit-code-from e2e e2e
-    $e2eExitCode = $LASTEXITCODE
-} finally {
-    docker compose -f infra/docker-compose.e2e.yml down --volumes --remove-orphans
-}
-if ($e2eExitCode -ne 0) { exit $e2eExitCode }
+```sh
+sh infra/run-e2e-content.sh
 ```
+
+This is the direct equivalent of `make test-web-e2e`; it creates a unique project and
+checks project-owned teardown on success, failure, and handled signals. For
+hybrid/fallback use `sh infra/run-e2e-fixture.sh`; for real synthetic PostgreSQL lifecycle
+scenarios use `sh infra/run-e2e-lifecycle.sh`. The complete `python infra/run-phase8.py`
+gate also verifies web build and live OpenAPI drift. See
+[infra workflows](../../infra/README.md) for setup and scenario boundaries.
 
 It creates a tmpfs PostgreSQL database, migrates and seeds it in an explicit setup
 service, initializes a disposable named artifact volume, builds the Stage 3 model as the
@@ -215,8 +217,11 @@ presentation. The current web suite passes 86 tests together with strict TypeScr
 ESLint, focused Prettier, production build, and OpenAPI drift. A focused no-retry Docker
 browser run passes five cases: axe on Chromium, Firefox, and WebKit plus request-only and
 saved-personalization responsive checks on Chromium. This focused run verifies the Phase 6
-surface; the 38/38 matrix above remains the most recent complete inherited browser
-regression.
+surface. The [Phase 8 record](../../docs/stage-5-phase-8-docker-fixtures-plan.md)
+supersedes it with 38 inherited browser passes, 18 fixture/fallback browser passes, and 26
+live lifecycle phases per replay on two fresh runs. The 86 web unit tests, typecheck,
+lint, format, production build, and live OpenAPI drift checks passed. These functional
+tests use synthetic data and do not establish ranking quality.
 
 ## Current limitations
 
@@ -229,8 +234,8 @@ regression.
   recommendation quality; formal evaluation remains Stage 6.
 - Stage 5 Phase 6 public personalized hybrid response/event fields and conditional browser
   evidence are complete. The browser does not sort, reweight, or recompute server results.
-  Separate contribution-consent product controls and approved live lifecycle operations
-  remain Phase 7 work.
+  Separate contribution-consent product controls and production-data approval remain
+  outside the implemented guarded test lifecycle workflow.
 - The deterministic catalog has no cover binaries or approved remote image source, so
   every game uses a project-owned generated placeholder.
 - Ratings and popularity are synthetic development signals, not market data or

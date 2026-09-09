@@ -3,7 +3,7 @@
 The GameLens AI API is a Python 3.12 FastAPI application backed by
 PostgreSQL 16. It exposes the deterministic catalog, Stage 3 artifact-backed
 content recommendations, the verified Stage 4 consented persistence slice, and
-Stage 5 Phase 7 derived-data lifecycle handoff. It never trains
+Stage 5 Phase 8 disposable full-stack lifecycle handoff. It never trains
 during startup or a request and never fabricates recommendations when a
 configured component is unavailable.
 
@@ -23,15 +23,16 @@ personalized-event, retention, and revocation contracts are present on the
 implementation branch. The Phase 7 handoff passes 782 combined API-unit/ML
 tests and 143 disposable-PostgreSQL tests. Ruff lint/format passes across 194
 Python files, generated OpenAPI has no drift, and disposable lifecycle resources
-are removed after the runs. Phase 6's 86 web tests and five focused no-retry
-browser checks remain the latest browser evidence; Phase 8 owns the full
-lifecycle browser topology. The endpoint and command tables below describe the
-current worktree.
+are removed after the runs. These are historical Phase 7 results. The
+[Phase 8 ledger](../../docs/stage-5-phase-8-docker-fixtures-plan.md) now records
+502 API unit, 333 ML, 151 PostgreSQL integration and 86 web unit passes, plus
+real fixture/fallback and live lifecycle browser replays. The endpoint and
+command tables below describe the current worktree.
 
 The detailed
 [Stage 5 collaborative-and-hybrid plan](../../docs/stage-5-collaborative-hybrid-ranking-plan.md)
-has completed implementation Phases 0–7. In addition to the governed snapshot,
-fixture artifact, pure scorer/materializers, and hybrid policy, the API now owns
+has completed implementation Phases 0–8; Phases 9–10 remain pending. In addition
+to the governed snapshot, fixture artifact, pure scorer/materializers, and hybrid policy, the API now owns
 an optional immutable collaborative component, protected live build/contributor
 lineage, transactional invalidation, one-row readiness, additive component
 status, saved-request orchestration, one deterministic response/event projector,
@@ -376,6 +377,14 @@ Errors use one envelope:
 
 ## Phase 7 live artifact operator commands
 
+The PowerShell examples below describe parser syntax for an explicitly
+authorized operator, from `apps/api` with API/ML dependencies and configuration
+loaded (see the host workflow above). Paths and confirmations must be selected
+for that environment; they are not production approval. For the measured Linux
+container workflow, run `sh infra/run-e2e-live-source.sh` or
+`sh infra/run-e2e-lifecycle.sh` from the repository root with POSIX `sh` and
+Docker. These runners supply the guarded disposable database and paths.
+
 Live build is default-off. It requires `COLLABORATIVE_LIVE_DATA_ENABLED=true`,
 a separate `COLLABORATIVE_CONTRIBUTION_CONSENT_VERSION`, and
 `COLLABORATIVE_LIVE_PROMOTION_ENABLED=true`. The command validates an unused
@@ -384,7 +393,7 @@ lineage transactionally:
 
 ```powershell
 python -m app.commands.collaborative_artifact build --source live `
-    --output C:\artifacts\collaborative-live-v1 `
+    --output "$env:TEMP\gamelens-e2e\artifact-set\collaborative-live-v1" `
     --build-id collaborative-live-v1 `
     --confirm-live-build collaborative-live-v1
 ```
@@ -396,7 +405,7 @@ registered active build is deterministic.
 
 ```powershell
 python -m app.commands.collaborative_artifact recover `
-    --artifact C:\artifacts\collaborative-live-v1 `
+    --artifact "$env:TEMP\gamelens-e2e\artifact-set\collaborative-live-v1" `
     --build-id collaborative-live-v1 `
     --confirm-live-recovery collaborative-live-v1
 ```
@@ -409,7 +418,7 @@ configuration or reloads the API:
 
 ```powershell
 python -m app.commands.collaborative_artifact rollback-check `
-    --artifact C:\artifacts\collaborative-live-v1
+    --artifact "$env:TEMP\gamelens-e2e\artifact-set\collaborative-live-v1"
 ```
 
 Lifecycle mutation requires an exact build ID and matching confirmation.
@@ -430,13 +439,17 @@ artifact-set directory. Preview lists only registered non-active candidates and
 emits a database/artifact-set/selection-bound confirmation. Cleanup reruns the
 inventory and removes only an exact unchanged selection. It protects active and
 configured collaborative bundles, configured content artifacts, development
-databases, linked or escaping paths, and repository/filesystem roots.
+databases, linked or escaping paths, and repository/filesystem roots. In test
+mode the artifact set must be strictly below the system temporary directory;
+the PowerShell cleanup examples therefore use `$env:TEMP`. Native Windows
+artifact filesystem behavior is untested; the verified container path is
+`/tmp/gamelens-e2e/artifact-set`.
 
 ```powershell
 python -m app.commands.collaborative_artifact retirement-preview `
-    --artifact-set C:\artifacts\collaborative-set
+    --artifact-set "$env:TEMP\gamelens-e2e\artifact-set"
 python -m app.commands.collaborative_artifact cleanup `
-    --artifact-set C:\artifacts\collaborative-set `
+    --artifact-set "$env:TEMP\gamelens-e2e\artifact-set" `
     --confirm-cleanup "<exact cleanup_confirmation from preview>"
 ```
 
@@ -447,8 +460,8 @@ stopped:
 
 ```powershell
 python -m app.commands.collaborative_artifact recover-files `
-    --artifact-set C:\artifacts\collaborative-set `
-    --target C:\artifacts\collaborative-set\collaborative-live-v1 `
+    --artifact-set "$env:TEMP\gamelens-e2e\artifact-set" `
+    --target "$env:TEMP\gamelens-e2e\artifact-set\collaborative-live-v1" `
     --kind build
 ```
 
@@ -597,8 +610,8 @@ structured inserted, updated, and unchanged counters.
   saved-request orchestration, and guarded lifecycle operator commands are
   implemented together with the Stage 5 public personalized response/event
   schema and generated browser contract. No product contribution-consent route,
-  approved production live cohort, approved real interaction dataset, or Phase
-  8 full-stack lifecycle fixture is implemented.
+  approved production live cohort, or approved real interaction dataset exists.
+  Phase 8 full-stack lifecycle fixtures are verified with synthetic test rows.
 - No formal recommendation-quality evaluation on the synthetic seed; that is
   Stage 6 work.
 - No external metadata source is integrated.

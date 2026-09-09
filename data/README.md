@@ -59,3 +59,28 @@ The UCSD Steam source is documented separately at
 identity and aggregate suitability were measured, but license/provenance
 approval, label authority, GameLens catalog mapping, fixture activation, and
 live-data lifecycle gates remain blocked. It is explicitly not integrated.
+
+## Disposable PostgreSQL cohort
+
+Phase 8 also uses a separate project-authored database cohort from
+[the guarded scenario helper](../apps/api/tests/fixtures/collaborative_lifecycle.py).
+The JSON fixture is never inserted or relabelled as live. The helper creates
+synthetic sessions and separate contribution-consent rows only after validating
+both configured and connected test database identity, exact test/reset opt-in,
+an allowlisted host and a database ending `_test`. Eligibility uses captured
+database time, including explicit expired, revoked, outdated, negative and
+pruned examples. Repeated complete setup is bounded/idempotent; partial state
+fails closed. Public personalization consent alone never grants contribution.
+
+The actual extractor/build command produces `source_kind=live` over these
+synthetic PostgreSQL rows. The standalone live-source builds retain 12
+contributors; lifecycle scenarios add a privately linked browser contributor
+and retain 13. Registry lineage stays in PostgreSQL; bundles and retained run
+records contain only item aggregates, hashes and counts. Tokens and cohort
+mappings stay in disposable private test storage and are not exported. Fresh
+project-local teardown removes test state; no development users or artifacts
+are mounted. This is functional lifecycle evidence, not permission to train on
+production users or evidence of recommendation quality.
+
+See the [Phase 8 record](../docs/stage-5-phase-8-docker-fixtures-plan.md) and
+[infra commands](../infra/README.md) for fixture versus live-source execution.

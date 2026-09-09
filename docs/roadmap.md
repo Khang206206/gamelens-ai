@@ -221,8 +221,8 @@ zero, then retire the old secret. The implementation is published as commit
 
 ## Stage 5 — Collaborative and hybrid ranking
 
-**Status:** External-source preflight and implementation Phases 0–7 verified
-through 2026-09-03; Phase 8 Docker, configuration, and full-stack fixtures is next;
+**Status:** External-source preflight and implementation Phases 0–8 verified
+through 2026-09-09; Phases 9–10 remain pending;
 Stage 5 as a whole remains in progress
 
 Detailed execution plan:
@@ -384,11 +384,13 @@ Build the remaining implementation phases one reviewable slice at a time:
 1. Keep product contribution consent and any production live-cohort audit
    blocked unless a separate product policy, copy, and public route contract is
    explicitly approved; saved personalization remains a separate purpose.
-2. Phase 8: extend the disposable E2E topology to build/load the guarded fixture
-   and prove hybrid, fallback, invalidation, re-consent, and clear-data browser
-   paths without touching development data.
-3. Run the complete privacy, dependency, artifact, API, PostgreSQL, web,
-   browser, accessibility, Docker, and Stage 1–4 regression matrix before
+2. Phase 8 is complete: the [slice ledger](stage-5-phase-8-docker-fixtures-plan.md)
+   records fixture/live builds, browser lifecycle, isolation, two clean replays
+   and documentation reconciliation. The combined gate is owned by `35082f2`;
+   it includes resumed commands after host interruptions, explicitly documented
+   in the retained evidence.
+3. Phases 9–10 must finalize the complete privacy, dependency, artifact, API,
+   PostgreSQL, web, browser, accessibility, Docker, and Stage 1–4 regression matrix before
    claiming Stage 5 completion or finalizing the roadmap Stage 6 handoff.
 
 Stage 5 is complete only when the data source and permission are explicit;
