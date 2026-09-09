@@ -2,6 +2,8 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+import numpy as np
+
 from gamelens_recommender.collaborative_artifacts import (
     CollaborativeBuildMetadata,
     build_collaborative_artifact,
@@ -9,7 +11,11 @@ from gamelens_recommender.collaborative_artifacts import (
     load_collaborative_artifact,
 )
 from gamelens_recommender.collaborative_training import fit_collaborative_neighborhoods
-from gamelens_recommender.interaction_snapshot import load_fixture, profile_fingerprint
+from gamelens_recommender.interaction_snapshot import (
+    canonicalize_profiles,
+    load_fixture,
+    profile_fingerprint,
+)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = REPOSITORY_ROOT / "data" / "catalog" / "games.json"
@@ -48,6 +54,11 @@ def test_fixture_pipeline_is_deterministic_identity_free_and_immutable(tmp_path:
         tuple(tuple(reversed(profile)) for profile in reversed(fixture.profiles)),
         catalog_slugs=catalog_slugs,
     )
+    reordered_profiles = canonicalize_profiles(
+        tuple(tuple(reversed(profile)) for profile in reversed(fixture.profiles)),
+        catalog_slugs=catalog_slugs,
+    )
+    assert profile_fingerprint(reordered_profiles) == fingerprint
 
     first_root = build_collaborative_artifact(
         first_neighborhoods,
@@ -69,6 +80,15 @@ def test_fixture_pipeline_is_deterministic_identity_free_and_immutable(tmp_path:
         path.name: path.read_bytes() for path in second_root.iterdir() if path.is_file()
     }
     assert first_members == second_members
+    repeated_root = build_collaborative_artifact(
+        fit_collaborative_neighborhoods(fixture.profiles, catalog_slugs=catalog_slugs),
+        tmp_path / "repeated",
+        metadata=_metadata(fingerprint),
+        allow_fixture=True,
+    )
+    assert first_members == {
+        path.name: path.read_bytes() for path in repeated_root.iterdir() if path.is_file()
+    }
     assert not any(
         marker in payload
         for payload in first_members.values()
@@ -84,6 +104,20 @@ def test_fixture_pipeline_is_deterministic_identity_free_and_immutable(tmp_path:
     assert len(loaded.item_slugs) == 6
     assert loaded.neighbor_indices.size == first_neighborhoods.neighbor_indices.size
     assert loaded.slug_to_index == {slug: index for index, slug in enumerate(loaded.item_slugs)}
+    for root in (second_root, repeated_root):
+        replay = load_collaborative_artifact(
+            root, allow_fixture=True, now=_metadata(fingerprint).built_at
+        )
+        assert replay.manifest == loaded.manifest
+        assert replay.item_slugs == loaded.item_slugs
+        for name in (
+            "item_support",
+            "neighbor_indices",
+            "neighbor_indptr",
+            "similarity_units",
+            "pair_support",
+        ):
+            np.testing.assert_array_equal(getattr(replay, name), getattr(loaded, name))
 
     report = inspect_collaborative_artifact(
         first_root,

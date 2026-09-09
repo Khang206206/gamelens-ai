@@ -475,3 +475,25 @@ def test_hand_authored_neighborhood_fixture_freezes_csr_boundaries_and_storage_o
         "beta-candidate",
         "zeta-source",
     )
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -1, 1_000_001, True, 0.5])
+def test_edge_contract_rejects_nonfinite_noninteger_and_out_of_range_scores(value) -> None:
+    with pytest.raises(CollaborativeScoringError) as error:
+        _edge(similarity_units=value).validate()
+    assert error.value.code == "scoring_result_invalid"
+
+
+@pytest.mark.parametrize("field", ["positive_sources", "saved_game_slugs", "disliked_slugs"])
+def test_raw_source_state_accepts_exact_cap_and_rejects_one_more_before_deduplication(
+    field: str,
+) -> None:
+    config = COLLABORATIVE_SCORING_CONFIG
+    maximum = (
+        config.max_disliked_slugs if field == "disliked_slugs" else config.max_source_state_entries
+    )
+    entry = _positive_source() if field == "positive_sources" else "alpha-source"
+    CollaborativeSourceState(**{field: (entry,) * maximum}).validate()
+    with pytest.raises(CollaborativeScoringError) as error:
+        CollaborativeSourceState(**{field: (entry,) * (maximum + 1)}).validate()
+    assert error.value.code == "scoring_input_invalid"

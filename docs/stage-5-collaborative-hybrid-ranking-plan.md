@@ -2026,8 +2026,8 @@ execution and historical limitations are recorded in Section 21.
 
 ## 16. Implementation Phase 9: Test Matrix and Quality Gate
 
-**Status: IN PROGRESS (2026-09-09).** Slices 9A (inventory) and 9B (synthetic snapshot/provenance checks) are complete;
-9C–9L and Phase 10 remain planned and unstarted. The original survey below is
+**Status: IN PROGRESS (2026-09-09).** Slices 9A (inventory), 9B (synthetic
+snapshot/provenance checks) and 9C (pure ML checks) are complete; 9D–9L and Phase 10 remain planned and unstarted. The original survey below is
 historical planning evidence. 9A changes only documentation and inventory data;
 no runtime test, migration, configuration, dependency or live-build change is
 included. Phase 8 is complete; the Phase 9 runtime/release gates remain pending.
@@ -2178,9 +2178,9 @@ finalize Stage 5 while required release decisions remain unresolved.
 
 ### Phase 9 Slice Ledger and Dependency Order
 
-Slices **9A and 9B are COMPLETE** within their inventory and synthetic extraction
-scopes; **9C–9L remain PLANNED — NOT IMPLEMENTED**. Production authority and
-final release evidence remain blocked/pending. Each slice ends with
+Slices **9A, 9B and 9C are COMPLETE** within their inventory, synthetic extraction
+and pure ML scopes; **9D–9L remain PLANNED — NOT IMPLEMENTED**. Production
+authority and final release evidence remain blocked/pending. Each slice ends with
 **one commit** containing its bounded work, focused checks and truthful ledger
 update. The original planning commit `f4d9be7` is separate from 9A completion.
 The remaining suggested subjects are future commit messages, not existing commits.
@@ -2189,7 +2189,7 @@ The remaining suggested subjects are future commit messages, not existing commit
 | --- | --- | --- |
 | 9A (COMPLETE) | Completed 8I and this plan | Acceptance-to-test inventory — `docs(test): map stage 5 acceptance gates` |
 | 9B (COMPLETE) | 9A | Snapshot/provenance boundary gaps — `test(api): close snapshot and provenance gaps` |
-| 9C | 9A | Sparse math and pure scorer gaps — `test(ml): close collaborative numeric gaps` |
+| 9C (COMPLETE) | 9A | Sparse math and pure scorer gaps — `test(ml): close collaborative numeric gaps` |
 | 9D | 9C | Hybrid/fallback matrix and five-baseline diagnostic — `test(ml): verify hybrid and baseline diagnostics` |
 | 9E | 9A | Bundle rejection and operator safety gaps — `test: harden collaborative artifact safety gates` |
 | 9F | 9B, 9E | PostgreSQL lineage, promotion and lifecycle gates — `test(api): verify registered lifecycle boundaries` |
@@ -2283,7 +2283,32 @@ owning commit hash is reported after creation, not embedded self-referentially.
 
 ### 9C — Collaborative Sparse Math and Pure Scoring
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9A.
+**Status: COMPLETE — PURE ML VERIFIED (2026-09-09).** Depends on 9A
+`9478e27`; clean tested parent `34722b9` includes completed 9B. The
+[9C evidence](evidence/stage-5-phase-9c.json) records exact commands, candidate
+hashes, source review and acceptance routes R11/R12/R16. Only four existing ML
+test files and this slice's inventory/evidence/docs changed; no production,
+policy, schema, configuration or dependency changes were needed.
+
+Focused seven-file suite: **147 passed in 1.53s**; full ML: **386 passed in
+8.98s**, no skips. Ruff lint and format pass across all 37 ML Python files.
+Added 49 parametrized test cases for absent/invalid/nonfinite input, duplicate
+binary edges, independent decimal goldens, threshold-before-pruning and
+support-before-slug ties, allocation/product guards, actual 100-neighbor and
+source-state boundaries, mixed support and pure repeated scoring. Existing
+source/lookup/handoff assertions were reused. The fixture pipeline compares two
+canonical-input permutations and a repeated fresh build, including loaded
+semantic arrays, identities and exact member bytes.
+
+Review found no production defect. It added the total retained-neighbor cap
+and exact raw source-state cap checks, and kept partial later-owner evidence
+explicit in the inventory. Production-sized matrix caps are injected smaller
+for boundary tests; the 100-neighbor, 1000-visited-edge and 100000-raw-source
+limits are exercised at their real values. These are functional synthetic
+checks, not a production-capacity or ranking-quality result. Docker quality
+containers use `--rm --no-deps`; PostgreSQL, live builds and web builds are
+explicitly not required by 9C. No scope deviation or next-slice work. The one
+owning commit hash is reported after creation rather than embedded here.
 
 - Scope: `ml/tests/test_collaborative_{contracts,training,sources,lookup,scorer,pipeline}.py`
   and `test_phase3_handoff.py`; reuse small project-authored inputs and the pure

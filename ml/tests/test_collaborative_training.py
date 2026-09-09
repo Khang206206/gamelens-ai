@@ -390,3 +390,176 @@ def test_similarity_units_use_int32_and_reject_an_unrepresentable_scale() -> Non
     with pytest.raises(CollaborativeTrainingError, match="finite and bounded") as error:
         quantize_similarity(1.0, scale=int(np.iinfo(np.int32).max) + 1)
     assert error.value.code == "similarity_invalid"
+
+
+@pytest.mark.parametrize("profiles", [(), ((),), (("a", "b"),), (("a",),) * 2])
+def test_empty_single_user_and_single_item_have_no_supported_matrix(profiles) -> None:
+    with pytest.raises(CollaborativeTrainingError) as error:
+        build_binary_interaction_matrix(profiles)
+    assert error.value.code == "insufficient_data"
+
+
+@pytest.mark.parametrize(
+    "profiles",
+    [None, (None,), ("ab",), (b"ab",), (("",),), ((" a",),), ((1,),), ((float("nan"),),)],
+)
+def test_invalid_profiles_fail_with_typed_input_error(profiles) -> None:
+    with pytest.raises(CollaborativeTrainingError) as error:
+        build_binary_interaction_matrix(profiles)
+    assert error.value.code == "snapshot_invalid"
+
+
+def test_duplicate_entries_collapse_to_binary_but_duplicate_contributors_remain() -> None:
+    value = build_binary_interaction_matrix((("b", "a", "a"), ("b", "b", "a")))
+    assert value.item_slugs == ("a", "b")
+    assert value.matrix.indptr.tolist() == [0, 2, 4]
+    assert value.matrix.indices.tolist() == [0, 1, 0, 1]
+    assert value.matrix.data.tolist() == [1, 1, 1, 1]
+    assert value.item_support.tolist() == [2, 2]
+    assert (value.retained_contributors, value.retained_positive_edges) == (2, 4)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), -0.1, 1.1, None])
+def test_quantizer_rejects_nonfinite_out_of_range_and_nonnumeric_values(value) -> None:
+    with pytest.raises(CollaborativeTrainingError) as error:
+        quantize_similarity(value)
+    assert error.value.code == "similarity_invalid"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(0.0, 0), (0.000000499999, 0), (0.000000500001, 1), (0.9999995, 1_000_000)],
+)
+def test_quantizer_boundaries_have_independent_decimal_goldens(value, expected) -> None:
+    assert quantize_similarity(value) == expected
+
+
+def test_pair_threshold_and_diagonal_removal_precede_top_neighbor_pruning() -> None:
+    # a has support 3, b 2, c 10. a-b = 1/sqrt(6) > a-c = 2/sqrt(30),
+    # but a-b has only one co-positive; neither it nor the diagonal may consume K=1.
+    profiles = (("a", "b"),) + (("a", "c"),) * 2 + (("b", "d"),) + (("c", "d"),) * 8
+    value = fit_item_item_cosine(build_binary_interaction_matrix(profiles), maximum_neighbors=1)
+    assert value.item_slugs == ("a", "b", "c", "d")
+    assert value.item_support.tolist() == [3, 2, 10, 9]
+    assert value.neighbor_indptr.tolist() == [0, 1, 1, 2, 3]
+    assert value.neighbor_indices.tolist() == [2, 3, 2]
+    assert value.pair_support.tolist() == [2, 8, 8]
+    assert value.similarity_units.tolist() == [365_148, 843_274, 843_274]
+
+
+def test_equal_cosine_uses_pair_support_before_slug_for_top_neighbor() -> None:
+    # a-b = 2/sqrt(6*2), a-c = 4/sqrt(6*8): both 1/sqrt(3).
+    # c wins on pair support 4 versus 2 even though b sorts first.
+    profiles = (("a", "b"),) * 2 + (("a", "c"),) * 4 + (("c", "d"),) * 4
+    value = fit_item_item_cosine(build_binary_interaction_matrix(profiles), maximum_neighbors=1)
+    assert value.neighbor_indices[0] == 2
+    assert value.pair_support[0] == 4
+    assert value.similarity_units[0] == 577_350
+
+
+@pytest.mark.parametrize(
+    ("limit", "maximum", "code"),
+    [
+        ("MAX_PROFILES", 4, "snapshot_limit_exceeded"),
+        ("MAX_POSITIVE_EDGES", 8, "snapshot_limit_exceeded"),
+        ("MAX_UNIQUE_ITEMS", 3, "snapshot_limit_exceeded"),
+        ("MAX_PAIR_CONTRIBUTIONS", 4, "matrix_limit_exceeded"),
+    ],
+)
+def test_matrix_resource_boundaries_reject_before_array_allocation(
+    monkeypatch: pytest.MonkeyPatch, limit: str, maximum: int, code: str
+) -> None:
+    # Inject small caps so both sides of each boundary use the same real input
+    # without allocating production-sized matrices in the fast suite.
+    monkeypatch.setattr(collaborative_training, limit, maximum)
+    assert build_binary_interaction_matrix(_golden_profiles()).retained_positive_edges == 8
+    monkeypatch.setattr(collaborative_training, limit, maximum - 1)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Resource rejection must precede sparse array allocation")
+
+    monkeypatch.setattr(collaborative_training.np, "empty", forbidden)
+    monkeypatch.setattr(collaborative_training.np, "ones", forbidden)
+    with pytest.raises(CollaborativeTrainingError) as error:
+        build_binary_interaction_matrix(_golden_profiles())
+    assert error.value.code == code
+
+
+def test_distinct_pair_boundary_rejects_before_sparse_product(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(collaborative_training, "MAX_DISTINCT_PAIRS", 2)
+    matrix = build_binary_interaction_matrix(_golden_profiles())
+    assert fit_item_item_cosine(matrix).pair_support.tolist() == [2, 2, 2, 2]
+    monkeypatch.setattr(collaborative_training, "MAX_DISTINCT_PAIRS", 1)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Distinct-pair rejection must precede the sparse product")
+
+    monkeypatch.setattr(sparse.csc_matrix, "__matmul__", forbidden)
+    with pytest.raises(CollaborativeTrainingError) as error:
+        fit_item_item_cosine(matrix)
+    assert error.value.code == "matrix_limit_exceeded"
+
+
+@pytest.mark.parametrize("item_count", [101, 102])
+def test_real_hundred_neighbor_boundary_prunes_stable_ties_without_dense_conversion(
+    monkeypatch: pytest.MonkeyPatch, item_count: int
+) -> None:
+    def forbidden(*args, **kwargs):
+        pytest.fail("Training must not convert sparse matrices to dense arrays")
+
+    monkeypatch.setattr(sparse.csr_matrix, "toarray", forbidden)
+    monkeypatch.setattr(sparse.csc_matrix, "toarray", forbidden)
+    slugs = tuple(f"item-{index:03d}" for index in range(item_count))
+    value = fit_item_item_cosine(build_binary_interaction_matrix((slugs,) * 2))
+    assert np.diff(value.neighbor_indptr).tolist() == [100] * item_count
+    for row in range(item_count):
+        start, stop = value.neighbor_indptr[row : row + 2]
+        assert (
+            value.neighbor_indices[start:stop].tolist()
+            == [index for index in range(item_count) if index != row][:100]
+        )
+    assert value.similarity_units.tolist() == [1_000_000] * (100 * item_count)
+    assert value.pair_support.tolist() == [2] * (100 * item_count)
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"maximum_neighbors": 0},
+        {"maximum_neighbors": 101},
+        {"maximum_neighbors": True},
+        {"minimum_pair_support": 1},
+        {"minimum_pair_support": 3},
+    ],
+)
+def test_invalid_fit_configuration_rejects_before_sparse_product(
+    monkeypatch: pytest.MonkeyPatch, options
+) -> None:
+    matrix = build_binary_interaction_matrix(_golden_profiles())
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Invalid configuration must fail before multiplication")
+
+    monkeypatch.setattr(sparse.csc_matrix, "__matmul__", forbidden)
+    with pytest.raises(CollaborativeTrainingError) as error:
+        fit_item_item_cosine(matrix, **options)
+    assert error.value.code == "training_config_invalid"
+
+
+def test_total_neighbor_nonzero_boundary_rejects_before_output_array_materialization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    matrix = build_binary_interaction_matrix(_golden_profiles())
+    monkeypatch.setattr(collaborative_training, "MAX_NEIGHBOR_NONZERO", 4)
+    assert fit_item_item_cosine(matrix).neighbor_indices.size == 4
+    monkeypatch.setattr(collaborative_training, "MAX_NEIGHBOR_NONZERO", 3)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Retained edge limit must precede immutable output allocation")
+
+    monkeypatch.setattr(collaborative_training, "_immutable_array", forbidden)
+    with pytest.raises(CollaborativeTrainingError) as error:
+        fit_item_item_cosine(matrix)
+    assert error.value.code == "matrix_limit_exceeded"

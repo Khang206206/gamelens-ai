@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Stage 5 Phase 9: 9A inventory with 9B snapshot/provenance verification; 9C–9L unstarted",
+  "scope": "Stage 5 Phase 9: 9A inventory, 9B synthetic snapshot/provenance and 9C pure ML verification; 9D–9L unstarted",
   "baseline": "f4d9be7",
   "statuses": {
     "EXISTING_NOT_RERUN": "Source assertion inspected; no Phase 9 execution evidence.",
@@ -170,16 +170,16 @@
       "wording": "Fitting and serving use bounded sparse operations and never persist an unbounded dense user-item or item-item matrix.",
       "owner": "9C",
       "routes": ["R11", "R13", "M02"],
-      "gap": "Sparse caps and member checks exist; boundedness review pending.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified bounded pure fitting/scoring and temporary identity-free sparse artifact in 9C; small injected caps test exact/over boundaries before allocations/products and actual 100-neighbor/1000-visited-edge boundaries pass. Release-wide M02 review remains owned by 9J.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-20",
       "wording": "Hand-calculated item support, pair support, raw cosine, quantization, self-edge removal, pruning, and tie-breaks match implementation exactly.",
       "owner": "9C",
       "routes": ["R12"],
-      "gap": "Exact numeric goldens exist; full edge-case disposition pending 9C.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified exact CSR/support/cosine/decimal goldens, threshold before top-K, support then slug ties, nonfinite rejection and canonical/repeated fixture semantics in 9C.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-21",
@@ -218,16 +218,16 @@
       "wording": "The collaborative scorer is pure, bounded, identity-free, deterministic, and excludes all source and disliked games.",
       "owner": "9C",
       "routes": ["R16", "M02"],
-      "gap": "Exact scorer assertions exist; purity interface review pending.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified pure bounded immutable scoring, source/dislike exclusion, deterministic order, no file I/O and identity-free public contracts in 9C. Release-wide M02 scan remains pending 9J.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-26",
       "wording": "Unsupported users, sources, items, or pairs receive no fabricated collaborative score.",
       "owner": "9C",
       "routes": ["R16", "R20"],
-      "gap": "Typed unsupported paths exist; no fabricated zero-as-support.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified empty, unsupported, zero-degree and mixed pure-scoring contexts and absent pairs without fabricated scores in 9C. Hybrid/API gates remain with 9D/9G.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-27",
@@ -784,12 +784,60 @@
           "node": "test_binary_validator_rejects_noncanonical_and_nonbinary_csr",
           "line": 308,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_binary_validator_rejects_noncanonical_and_nonbinary_csr -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_empty_single_user_and_single_item_have_no_supported_matrix",
+          "line": 396,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_empty_single_user_and_single_item_have_no_supported_matrix -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_invalid_profiles_fail_with_typed_input_error",
+          "line": 406,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_invalid_profiles_fail_with_typed_input_error -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_duplicate_entries_collapse_to_binary_but_duplicate_contributors_remain",
+          "line": 412,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_duplicate_entries_collapse_to_binary_but_duplicate_contributors_remain -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_matrix_resource_boundaries_reject_before_array_allocation",
+          "line": 469,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_matrix_resource_boundaries_reject_before_array_allocation -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_distinct_pair_boundary_rejects_before_sparse_product",
+          "line": 488,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_distinct_pair_boundary_rejects_before_sparse_product -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_real_hundred_neighbor_boundary_prunes_stable_ties_without_dense_conversion",
+          "line": 506,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_real_hundred_neighbor_boundary_prunes_stable_ties_without_dense_conversion -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_invalid_fit_configuration_rejects_before_sparse_product",
+          "line": 537,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_invalid_fit_configuration_rejects_before_sparse_product -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_total_neighbor_nonzero_boundary_rejects_before_output_array_materialization",
+          "line": 551,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_total_neighbor_nonzero_boundary_rejects_before_output_array_materialization -q -p no:cacheprovider"
         }
       ],
       "expect": "Support fixed point and resource caps checked before allocation/multiplication; noncanonical/nonbinary CSR rejected.",
       "mode": "ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9c.json route R11; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9c.json route R11; focused-final and full-ml commands, synthetic temporary fixture mode. Later owner gates remain separate."
     },
     "R12": {
       "owner": "9C",
@@ -836,12 +884,42 @@
           "node": "test_reordered_equivalent_input_produces_identical_semantic_arrays",
           "line": 233,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_reordered_equivalent_input_produces_identical_semantic_arrays -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_quantizer_rejects_nonfinite_out_of_range_and_nonnumeric_values",
+          "line": 423,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_quantizer_rejects_nonfinite_out_of_range_and_nonnumeric_values -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_quantizer_boundaries_have_independent_decimal_goldens",
+          "line": 433,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_quantizer_boundaries_have_independent_decimal_goldens -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_pair_threshold_and_diagonal_removal_precede_top_neighbor_pruning",
+          "line": 437,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_pair_threshold_and_diagonal_removal_precede_top_neighbor_pruning -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_training.py",
+          "node": "test_equal_cosine_uses_pair_support_before_slug_for_top_neighbor",
+          "line": 450,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_training.py::test_equal_cosine_uses_pair_support_before_slug_for_top_neighbor -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_pipeline.py",
+          "node": "test_fixture_pipeline_is_deterministic_identity_free_and_immutable",
+          "line": 45,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_pipeline.py::test_fixture_pipeline_is_deterministic_identity_free_and_immutable -q -p no:cacheprovider"
         }
       ],
       "expect": "Exact support/cosine 707107, missing low-support edges, self-edge-free fixture goldens, sorted CSR and stable pruning/ties; input permutations yield equal arrays.",
       "mode": "ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9c.json route R12; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9c.json route R12; focused-final and full-ml commands, synthetic temporary fixture mode. Later owner gates remain separate."
     },
     "R13": {
       "owner": "9E",
@@ -1002,12 +1080,36 @@
           "node": "test_scorer_rejects_one_over_query_source_limit_before_lookup",
           "line": 364,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_scorer.py::test_scorer_rejects_one_over_query_source_limit_before_lookup -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_scorer.py",
+          "node": "test_mixed_unsupported_and_zero_degree_sources_do_not_dilute_or_invent_scores",
+          "line": 380,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_scorer.py::test_mixed_unsupported_and_zero_degree_sources_do_not_dilute_or_invent_scores -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_scorer.py",
+          "node": "test_scorer_repeated_calls_are_pure_and_do_not_read_artifact_files",
+          "line": 400,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_scorer.py::test_scorer_repeated_calls_are_pure_and_do_not_read_artifact_files -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_contracts.py",
+          "node": "test_edge_contract_rejects_nonfinite_noninteger_and_out_of_range_scores",
+          "line": 481,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_contracts.py::test_edge_contract_rejects_nonfinite_noninteger_and_out_of_range_scores -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_contracts.py",
+          "node": "test_raw_source_state_accepts_exact_cap_and_rejects_one_more_before_deduplication",
+          "line": 488,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_contracts.py::test_raw_source_state_accepts_exact_cap_and_rejects_one_more_before_deduplication -q -p no:cacheprovider"
         }
       ],
       "expect": "Pure bounded scoring; exact edge mean and order; four typed no-support states; source/dislike exclusion; 1000-edge boundary and source cap.",
       "mode": "ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9c.json route R16; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9c.json route R16; focused-final and full-ml commands, synthetic temporary fixture mode. Later owner gates remain separate."
     },
     "R17": {
       "owner": "9D",

@@ -375,3 +375,55 @@ def test_scorer_rejects_one_over_query_source_limit_before_lookup(
         CollaborativeScorer(hand_authored_collaborative_artifact).score(context)
 
     assert captured.value.code == "scoring_input_invalid"
+
+
+def test_mixed_unsupported_and_zero_degree_sources_do_not_dilute_or_invent_scores(
+    hand_authored_collaborative_artifact: LoadedCollaborativeArtifact,
+) -> None:
+    scorer = CollaborativeScorer(hand_authored_collaborative_artifact)
+    supported_only = scorer.score(_context(saved_game_slugs=("alpha-source",)))
+    mixed = scorer.score(
+        _context(saved_game_slugs=("alpha-source", "gamma-empty", "unsupported-source"))
+    )
+    assert mixed.candidates == supported_only.candidates
+    assert mixed.supported_source_slugs == ("alpha-source", "gamma-empty")
+    assert mixed.unsupported_source_slugs == ("unsupported-source",)
+    assert mixed.diagnostics.zero_degree_source_count == 1
+    assert mixed.diagnostics.visited_edge_count == 3
+    assert all(
+        edge.source_slug == "alpha-source"
+        for candidate in mixed.candidates
+        for edge in candidate.source_edges
+    )
+
+
+def test_scorer_repeated_calls_are_pure_and_do_not_read_artifact_files(
+    monkeypatch: pytest.MonkeyPatch,
+    hand_authored_collaborative_artifact: LoadedCollaborativeArtifact,
+) -> None:
+    artifact = hand_authored_collaborative_artifact
+    arrays = (
+        artifact.item_support,
+        artifact.neighbor_indices,
+        artifact.neighbor_indptr,
+        artifact.similarity_units,
+        artifact.pair_support,
+    )
+    before = tuple(array.tobytes() for array in arrays)
+    context = _context(saved_game_slugs=("alpha-source",), disliked_slugs=("beta-candidate",))
+    scorer = CollaborativeScorer(artifact)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Pure scoring must not read or write files")
+
+    with monkeypatch.context() as guard:
+        guard.setattr("builtins.open", forbidden)
+        guard.setattr(Path, "open", forbidden)
+        first = scorer.score(context)
+        assert scorer.score(_context()).candidates == ()
+        assert scorer.score(context) == first
+    assert tuple(array.tobytes() for array in arrays) == before
+    assert all(not array.flags.writeable for array in arrays)
+    assert context == _context(
+        saved_game_slugs=("alpha-source",), disliked_slugs=("beta-candidate",)
+    )

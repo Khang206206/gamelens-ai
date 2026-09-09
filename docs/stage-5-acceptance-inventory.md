@@ -1,6 +1,6 @@
 # Stage 5 acceptance inventory — slice 9A
 
-**9A mapping and 9B focused runtime checks verified on 2026-09-09.** Surveyed clean parent `f4d9be7` after completed 8I (`d0e86f9`), plan consolidation (`47d132b`) and Phase 9 planning (`f4d9be7`). No repository `AGENTS.md` was found. 9A and the synthetic extraction scope of 9B are complete; 9C–9L and Phase 10 remain unstarted. See the [9B evidence](evidence/stage-5-phase-9b.json) for current checks; the 9A mapping below remains historical unless explicitly updated. Schema head remains `0011_stage_5_lifecycle_guard`.
+**9A mapping and 9B/9C focused runtime checks verified on 2026-09-09.** Surveyed clean parent `f4d9be7` after completed 8I (`d0e86f9`), plan consolidation (`47d132b`) and Phase 9 planning (`f4d9be7`). No repository `AGENTS.md` was found. 9A, synthetic extraction 9B and pure ML 9C are complete; 9D–9L and Phase 10 remain unstarted. See the [9B evidence](evidence/stage-5-phase-9b.json) and [9C evidence](evidence/stage-5-phase-9c.json) for current checks; the 9A mapping below remains historical unless explicitly updated. Schema head remains `0011_stage_5_lifecycle_guard`.
 
 The [machine-readable inventory](evidence/stage-5-acceptance-inventory.json) is the canonical route/command contract. This readable view gives every unchanged Section 19 bullet a stable `S5-AC-01`–`S5-AC-47` ID. Route references compose the implementation path, exact assertion node or named review, fixture mode, command, expected result and evidence destination; a route is not a passing gate. The [9A record](evidence/stage-5-phase-9a.json) records only static verification.
 
@@ -11,7 +11,7 @@ The [machine-readable inventory](evidence/stage-5-acceptance-inventory.json) is 
 - **BLOCKED:** Explicit authority/product/release decision required; synthetic checks do not remove block.
 - **VERIFIED:** Only after recorded successful command/review on identified candidate; none of the runtime gates is verified in 9A.
 
-The original 9A automated routes were **EXISTING_NOT_RERUN**. Routes R02–R05 are now **VERIFIED** by 9B; other routes retain their recorded status. A row can additionally have MISSING evidence or a BLOCKED decision. No runtime result is VERIFIED in 9A. Final owners must disposition the whole criterion, including unasserted subclauses, rather than treating the listed representative assertions as exhaustive coverage.
+The original 9A automated routes were **EXISTING_NOT_RERUN**. Routes R02–R05 are now **VERIFIED** by 9B and R11/R12/R16 by 9C; other routes retain their recorded status. A row can additionally have MISSING evidence or a BLOCKED decision. No runtime result is VERIFIED in 9A. Final owners must disposition the whole criterion, including unasserted subclauses, rather than treating the listed representative assertions as exhaustive coverage.
 
 Future evidence is `docs/evidence/stage-5-phase-9<slice>.json`, keyed by route and acceptance IDs; 9K cross-references the focused records. These are reserved destinations, not links to existing evidence. Keep raw output under ignored `tmp/phase9-<run-id>/`; retain only privacy-reviewed aggregate summaries and hashes. The historical [8H record](evidence/stage-5-phase-8h.json) is context only.
 
@@ -297,7 +297,7 @@ Fitting and serving use bounded sparse operations and never persist an unbounded
 
 Owner: **9C**. Routes: [R11](#r11), [R13](#r13), [M02](#m02).
 
-Current disposition: Sparse caps and member checks exist; boundedness review pending.
+Current disposition: Verified bounded pure fitting/scoring and temporary identity-free sparse artifact in 9C; small injected caps test exact/over boundaries before allocations/products and actual 100-neighbor/1000-visited-edge boundaries pass. Release-wide M02 review remains owned by 9J.
 
 ### S5-AC-20
 
@@ -305,7 +305,7 @@ Hand-calculated item support, pair support, raw cosine, quantization, self-edge 
 
 Owner: **9C**. Routes: [R12](#r12).
 
-Current disposition: Exact numeric goldens exist; full edge-case disposition pending 9C.
+Current disposition: Verified exact CSR/support/cosine/decimal goldens, threshold before top-K, support then slug ties, nonfinite rejection and canonical/repeated fixture semantics in 9C.
 
 ### S5-AC-21
 
@@ -345,7 +345,7 @@ The collaborative scorer is pure, bounded, identity-free, deterministic, and exc
 
 Owner: **9C**. Routes: [R16](#r16), [M02](#m02).
 
-Current disposition: Exact scorer assertions exist; purity interface review pending.
+Current disposition: Verified pure bounded immutable scoring, source/dislike exclusion, deterministic order, no file I/O and identity-free public contracts in 9C. Release-wide M02 scan remains pending 9J.
 
 ### S5-AC-26
 
@@ -353,7 +353,7 @@ Unsupported users, sources, items, or pairs receive no fabricated collaborative 
 
 Owner: **9C**. Routes: [R16](#r16), [R20](#r20).
 
-Current disposition: Typed unsupported paths exist; no fabricated zero-as-support.
+Current disposition: Verified empty, unsupported, zero-degree and mixed pure-scoring contexts and absent pairs without fabricated scores in 9C. Hybrid/API gates remain with 9D/9G.
 
 ### S5-AC-27
 
@@ -679,7 +679,7 @@ Evidence: future `docs/evidence/stage-5-phase-9e.json`, route `R10`.
 
 ### R11
 
-Owner: **9C**; mode: **ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9C**; mode: **ML**; status: **VERIFIED**.
 
 Implementation: [ml/src/gamelens_recommender/collaborative_training.py](../ml/src/gamelens_recommender/collaborative_training.py).
 
@@ -688,14 +688,22 @@ Implementation: [ml/src/gamelens_recommender/collaborative_training.py](../ml/sr
 - [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_duplicate_raw_entries_are_bounded_before_profile_materialization`
 - [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_distinct_pair_cap_is_checked_before_sparse_multiplication`
 - [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_binary_validator_rejects_noncanonical_and_nonbinary_csr`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_empty_single_user_and_single_item_have_no_supported_matrix`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_invalid_profiles_fail_with_typed_input_error`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_duplicate_entries_collapse_to_binary_but_duplicate_contributors_remain`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_matrix_resource_boundaries_reject_before_array_allocation`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_distinct_pair_boundary_rejects_before_sparse_product`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_real_hundred_neighbor_boundary_prunes_stable_ties_without_dense_conversion`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_invalid_fit_configuration_rejects_before_sparse_product`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_total_neighbor_nonzero_boundary_rejects_before_output_array_materialization`
 
 Expected: Support fixed point and resource caps checked before allocation/multiplication; noncanonical/nonbinary CSR rejected.
 
-Evidence: future `docs/evidence/stage-5-phase-9c.json`, route `R11`.
+Evidence: [9C verification](evidence/stage-5-phase-9c.json), route `R11`; focused and full ML suites.
 
 ### R12
 
-Owner: **9C**; mode: **ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9C**; mode: **ML**; status: **VERIFIED**.
 
 Implementation: [ml/src/gamelens_recommender/collaborative_training.py](../ml/src/gamelens_recommender/collaborative_training.py).
 
@@ -706,10 +714,15 @@ Implementation: [ml/src/gamelens_recommender/collaborative_training.py](../ml/sr
 - [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_top_k_slug_tie_break_selects_lexicographically_first_neighbor`
 - [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_project_fixture_matches_all_support_and_sparse_neighbor_goldens`
 - [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_reordered_equivalent_input_produces_identical_semantic_arrays`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_quantizer_rejects_nonfinite_out_of_range_and_nonnumeric_values`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_quantizer_boundaries_have_independent_decimal_goldens`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_pair_threshold_and_diagonal_removal_precede_top_neighbor_pruning`
+- [ml/tests/test_collaborative_training.py](../ml/tests/test_collaborative_training.py) `::test_equal_cosine_uses_pair_support_before_slug_for_top_neighbor`
+- [ml/tests/test_collaborative_pipeline.py](../ml/tests/test_collaborative_pipeline.py) `::test_fixture_pipeline_is_deterministic_identity_free_and_immutable`
 
 Expected: Exact support/cosine 707107, missing low-support edges, self-edge-free fixture goldens, sorted CSR and stable pruning/ties; input permutations yield equal arrays.
 
-Evidence: future `docs/evidence/stage-5-phase-9c.json`, route `R12`.
+Evidence: [9C verification](evidence/stage-5-phase-9c.json), route `R12`; focused and full ML suites.
 
 ### R13
 
@@ -761,7 +774,7 @@ Evidence: future `docs/evidence/stage-5-phase-9f.json`, route `R15`.
 
 ### R16
 
-Owner: **9C**; mode: **ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9C**; mode: **ML**; status: **VERIFIED**.
 
 Implementation: [ml/src/gamelens_recommender/collaborative.py](../ml/src/gamelens_recommender/collaborative.py).
 
@@ -771,10 +784,14 @@ Implementation: [ml/src/gamelens_recommender/collaborative.py](../ml/src/gamelen
 - [ml/tests/test_collaborative_scorer.py](../ml/tests/test_collaborative_scorer.py) `::test_equivalent_source_permutations_and_row_visit_order_keep_candidate_output_equal`
 - [ml/tests/test_collaborative_scorer.py](../ml/tests/test_collaborative_scorer.py) `::test_scorer_accepts_exact_one_thousand_edge_boundary`
 - [ml/tests/test_collaborative_scorer.py](../ml/tests/test_collaborative_scorer.py) `::test_scorer_rejects_one_over_query_source_limit_before_lookup`
+- [ml/tests/test_collaborative_scorer.py](../ml/tests/test_collaborative_scorer.py) `::test_mixed_unsupported_and_zero_degree_sources_do_not_dilute_or_invent_scores`
+- [ml/tests/test_collaborative_scorer.py](../ml/tests/test_collaborative_scorer.py) `::test_scorer_repeated_calls_are_pure_and_do_not_read_artifact_files`
+- [ml/tests/test_collaborative_contracts.py](../ml/tests/test_collaborative_contracts.py) `::test_edge_contract_rejects_nonfinite_noninteger_and_out_of_range_scores`
+- [ml/tests/test_collaborative_contracts.py](../ml/tests/test_collaborative_contracts.py) `::test_raw_source_state_accepts_exact_cap_and_rejects_one_more_before_deduplication`
 
 Expected: Pure bounded scoring; exact edge mean and order; four typed no-support states; source/dislike exclusion; 1000-edge boundary and source cap.
 
-Evidence: future `docs/evidence/stage-5-phase-9c.json`, route `R16`.
+Evidence: [9C verification](evidence/stage-5-phase-9c.json), route `R16`; focused and full ML suites.
 
 ### R17
 
@@ -1430,4 +1447,4 @@ Owner **9D**, mapped to S5-AC-31 and M03. Current R27 has Stage 4/hybrid/fallbac
 
 Public contribution grant/re-consent/withdrawal routes and UI are absent, and no actual user cohort has approved authority. This blocks the applicable production acceptance clauses (S5-AC-03/05/14/42); synthetic private lifecycle checks cannot discharge them. Default-off and request-only checks can be verified independently. A future explicit fixture-only release-scope decision must identify exactly which clauses remain blocked; no unexplained N/A or implicit release approval is allowed.
 
-Current final dependency/license/security/privacy evidence (9J), diagnostic coverage/gap disposition (9I), the five-baseline table (9D), clean combined replay (9K) and final docs reconciliation (9L) are missing by design at 9A. Existing tests are assertion routes, not exhaustive-coverage or current-pass claims. 9B has closed snapshot/provenance gaps with focused runtime evidence. 9C–9L own their remaining work and are unstarted.
+Current final dependency/license/security/privacy evidence (9J), diagnostic coverage/gap disposition (9I), the five-baseline table (9D), clean combined replay (9K) and final docs reconciliation (9L) are missing by design at 9A. Existing tests are assertion routes, not exhaustive-coverage or current-pass claims. 9B has closed snapshot/provenance gaps with focused runtime evidence. 9C has closed its pure ML gaps; 9D–9L own their remaining work and are unstarted.

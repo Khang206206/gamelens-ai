@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "slice": "9C",
+  "date": "2026-09-09",
+  "status": "VERIFIED_PURE_ML",
+  "baseline": "34722b90d751198fffa05dd32b462025067af975",
+  "branch": "feat/stage-5-collaborative-and-hybrid-ranking",
+  "dependencies": {
+    "9A": "9478e27",
+    "9B": "34722b9"
+  },
+  "scope": "Four existing ML test files plus 9C documentation/inventory/evidence. No production, schema, policy, configuration or dependency changes. 9D–9L and Phase 10 unstarted.",
+  "acceptance_ids": ["S5-AC-19", "S5-AC-20", "S5-AC-25", "S5-AC-26"],
+  "suite_ids": ["S16-05", "S16-06", "S16-07"],
+  "routes": ["R11", "R12", "R16"],
+  "checks": [
+    {
+      "label": "focused-final",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "pytest",
+        "/workspace/ml/tests/test_collaborative_contracts.py",
+        "/workspace/ml/tests/test_collaborative_training.py",
+        "/workspace/ml/tests/test_collaborative_sources.py",
+        "/workspace/ml/tests/test_collaborative_lookup.py",
+        "/workspace/ml/tests/test_collaborative_scorer.py",
+        "/workspace/ml/tests/test_collaborative_pipeline.py",
+        "/workspace/ml/tests/test_phase3_handoff.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "cwd": "D:/gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 6.281,
+      "local_log": "tmp/phase9-9c/focused-final.log",
+      "log_sha256": "52a47e5540f9b1c97874da55d7be4169265e5639b38be2e855465e4ec1acb39e",
+      "fixture_mode": "Pure ML; temporary project-authored fixture only; no database or live build",
+      "passed": 147,
+      "skipped": 0,
+      "pytest_duration_seconds": 1.53
+    },
+    {
+      "label": "full-ml",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "pytest",
+        "/workspace/ml/tests",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "cwd": "D:/gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 13.281,
+      "local_log": "tmp/phase9-9c/full-ml.log",
+      "log_sha256": "675c27116cd8317dfc01a9863fa4cd092ad70011aa367427ecbbcf29ea558f72",
+      "fixture_mode": "Pure ML; temporary project-authored fixture only; no database or live build",
+      "passed": 386,
+      "skipped": 0,
+      "pytest_duration_seconds": 8.98
+    },
+    {
+      "label": "lint",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "ruff",
+        "check",
+        "/workspace/ml"
+      ],
+      "cwd": "D:/gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 1.703,
+      "local_log": "tmp/phase9-9c/lint.log",
+      "log_sha256": "e6cd3305757cec81e0921f38252413db7d630d01bdd87d08076217229764e08b",
+      "fixture_mode": "Pure ML; temporary project-authored fixture only; no database or live build"
+    },
+    {
+      "label": "format-check",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "/workspace/ml"
+      ],
+      "cwd": "D:/gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 1.796,
+      "local_log": "tmp/phase9-9c/format-check.log",
+      "log_sha256": "30e300533e8d29e680f1339f1c592949238f4cb7ecc0213a7cd75f1f04ae7911",
+      "fixture_mode": "Pure ML; temporary project-authored fixture only; no database or live build"
+    },
+    {
+      "label": "runtime",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-c",
+        "import sys,platform,numpy,scipy,pytest,importlib.metadata,json; print(json.dumps(dict(python=sys.version,platform=platform.platform(),numpy=numpy.__version__,scipy=scipy.__version__,pytest=pytest.__version__,ruff=importlib.metadata.version('ruff'))))"
+      ],
+      "cwd": "D:/gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 2.094,
+      "local_log": "tmp/phase9-9c/runtime.log",
+      "log_sha256": "3e293bd5b314ef1383e409d5032d21ef0c8816243bb3ce879941044fb78983c3",
+      "fixture_mode": "Pure ML; temporary project-authored fixture only; no database or live build"
+    },
+    {
+      "label": "inventory-final",
+      "argv": ["python", "tmp/check_9c.py"],
+      "cwd": "D:/gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 1.25,
+      "local_log": "tmp/phase9-9c/inventory-final.log",
+      "log_sha256": "e11927162a644991e049048ac0b7e309797538d10bfbe88bd797407f15bc8477",
+      "fixture_mode": "Static docs/inventory and staged diff check"
+    },
+    {
+      "label": "diff-check",
+      "argv": ["git", "diff", "--cached", "--check"],
+      "cwd": "D:/gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.031,
+      "local_log": "tmp/phase9-9c/diff-check.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fixture_mode": "Static docs/inventory and staged diff check"
+    },
+    {
+      "label": "prettier",
+      "argv": [
+        "node",
+        "node_modules/prettier/bin/prettier.cjs",
+        "--check",
+        "../../docs/stage-5-acceptance-inventory.md",
+        "../../docs/evidence/stage-5-acceptance-inventory.json"
+      ],
+      "cwd": "D:/gamelens-ai/apps/web",
+      "fixture_mode": "Static document formatting",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.422,
+      "local_log": "tmp/phase9-9c/prettier.log",
+      "log_sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+    }
+  ],
+  "runtime": {
+    "python": "3.12.13 (main, Jul 14 2026, 02:09:00) [GCC 14.2.0]",
+    "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.41",
+    "numpy": "2.5.1",
+    "scipy": "1.18.0",
+    "pytest": "9.1.1",
+    "ruff": "0.16.0"
+  },
+  "host": "Windows-11-10.0.26200-SP0",
+  "image_id": "sha256:ce0520e1cd88a2139658a346d094bc0af9d305c662a9c28ded2ea818dad7ac4e",
+  "input_sha256_git_normalized": {
+    "ml/requirements.lock": "6a02ec1a83b6074825778c1e233210f3877c9a86ac8ff32cc34a50002b96e4e4",
+    "apps/api/requirements.lock": "0b6bd7153d2c01165b3bee981eb8537fe2b192cf3415a5632dae3272dc85e3e3",
+    "data/catalog/games.json": "5530439d44eb861fe0d55dba6fdd24dbf26570ee6ac3bdec56ebc0f4dc9f8781",
+    "data/fixtures/interactions/collaborative-interactions.json": "fd4a7c339803acc412ccde035e6b3875ed6887916a0ddc871e36d1a69566d396",
+    "ml/src/gamelens_recommender/collaborative.py": "e915c96c00f8fa522848bd693d41890325747da13ccecd3222ed3dce9b2f2430",
+    "ml/src/gamelens_recommender/collaborative_training.py": "754087153ecdeecc1ad9911a56e7dd39633e42d16b4ecbee9f7efa8cc4a9546f",
+    "ml/src/gamelens_recommender/collaborative_artifacts.py": "eee0a31f0a6a672512e4c06d5697fb74953585866c5f5037fea0f5dfb8489956",
+    "ml/src/gamelens_recommender/interaction_snapshot.py": "f1a2d018d20fe5bcaaf08cdcbe6b0d84738d3ed52a44fa00edac2ad4e2ddde84"
+  },
+  "findings": {
+    "numeric": "Independent literal CSR/support/cosine/decimal expectations. Threshold-order fixture: supports [3,2,10,9], retained pair supports [2,8,8], cosine units [365148,843274,843274]. Equal-cosine fixture: 2/sqrt(12) = 4/sqrt(48), 577350 units; support 4 wins over support 2 before slug.",
+    "resource_guards": "Exact/one-over injected profile, raw-positive, item and pair-contribution caps; np.empty/np.ones forbidden on rejected builds. Distinct-pair and invalid-config rejection forbid csc_matrix.__matmul__. Total retained-neighbor cap rejects before immutable output arrays. Actual 100-neighbor cap tested on 101 and 102 items with dense conversion forbidden; existing 1000 visited-edge limit and new actual 100000 raw-state boundaries pass.",
+    "unsupported": "Empty, single-user, single-item, duplicate, malformed, nonfinite and out-of-range inputs covered. Existing source/dislike exclusion and absent pair mean reused. Mixed unsupported plus zero-degree query sources do not dilute scores or create edges.",
+    "purity_review": "Reviewed collaborative.py input/output contracts, canonicalization, bounded immutable row lookup and score path. No user identifier, database session, clock read, training, network, filesystem call or global mutable scoring state in those paths. Loaded artifact is consumed only in memory. Repeated scoring around an empty call forbids builtins.open and Path.open, preserves input context and array bytes. Existing contracts/handoff prove identity-free payload and exact source exclusions. This limited 9C review does not close release-wide M02/9J.",
+    "repeatability": "Temporary fixture builds from original input, reversed rows/reversed items and repeated original input have equal exact member bytes. Canonical profile fingerprints, loaded manifests, item axis and all five semantic arrays compare equal; no persistent build is selected. Rechecked by focused and full ML commands.",
+    "added_cases": 49,
+    "production_defects": []
+  },
+  "review": {
+    "outcome": "PASS within 9C scope",
+    "fixes": [
+      "Final review added total retained-neighbor cap and raw source-state exact/over-limit assertions.",
+      "Ruff formatted changed tests; inventory route lines refreshed after pipeline imports moved a referenced definition.",
+      "Kept later-owner routes and release-wide M02 evidence pending despite successful full ML regression."
+    ],
+    "privacy": "Only synthetic test code, aggregate results, argv, versions and SHA256 metadata committed. Raw logs remain ignored; no credentials, internal user rows, artifacts or coverage output staged.",
+    "deviations": "No scope deviation. Large matrix resource caps are injected small for bounded fast tests, not production-capacity benchmarks. Actual neighborhood, visited-edge and raw-source-state limits are exercised. Docker quality used as documented; PostgreSQL/live/web builds explicitly not required.",
+    "limitations": [
+      "Linux containers on Windows/WSL2 only; no claim about native Windows/macOS artifact filesystem behavior.",
+      "Synthetic functional evidence only; no real cohort authority or Stage 6 ranking-quality conclusion.",
+      "Later hybrid/API/browser/lifecycle/coverage/release gates remain separate and unstarted."
+    ],
+    "teardown": "All quality runs used --rm --no-deps; final docker ps -a filtered by com.docker.compose.service=quality returned no containers. No database project created or development service removed."
+  },
+  "preliminary_runs": [
+    {
+      "label": "format",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "ruff",
+        "format",
+        "/workspace/ml/tests/test_collaborative_training.py",
+        "/workspace/ml/tests/test_collaborative_contracts.py",
+        "/workspace/ml/tests/test_collaborative_pipeline.py",
+        "/workspace/ml/tests/test_collaborative_scorer.py"
+      ],
+      "cwd": "D:/gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 8.563,
+      "local_log": "tmp/phase9-9c/format.log",
+      "log_sha256": "d718340de698fa634bc44846965a8a203363956547727a5bea47188da4b794ec"
+    },
+    {
+      "label": "focused",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "pytest",
+        "/workspace/ml/tests/test_collaborative_contracts.py",
+        "/workspace/ml/tests/test_collaborative_training.py",
+        "/workspace/ml/tests/test_collaborative_sources.py",
+        "/workspace/ml/tests/test_collaborative_lookup.py",
+        "/workspace/ml/tests/test_collaborative_scorer.py",
+        "/workspace/ml/tests/test_collaborative_pipeline.py",
+        "/workspace/ml/tests/test_phase3_handoff.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "cwd": "D:/gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 10.14,
+      "local_log": "tmp/phase9-9c/focused.log",
+      "log_sha256": "e952e523ad4de8b068eaa69c53768d0e08be7c5c5b252e370276b0ef8211026a"
+    },
+    {
+      "label": "format-final",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "ruff",
+        "format",
+        "/workspace/ml/tests/test_collaborative_training.py",
+        "/workspace/ml/tests/test_collaborative_contracts.py"
+      ],
+      "cwd": "D:/gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 1.344,
+      "local_log": "tmp/phase9-9c/format-final.log",
+      "log_sha256": "3c79fb14e2ec2c4171d436cdf736ff3957ca55ee5ae81c0d6a8261f84c79d641"
+    }
+  ],
+  "inventory_validation": {
+    "acceptance_bullets": 47,
+    "suite_bullets": 22,
+    "inherited_bullets": 171,
+    "fallback_reasons": 15,
+    "python_node_references": 151,
+    "web_literal_titles": 15,
+    "resolved_markdown_links": 613,
+    "elapsed_seconds": 1.176,
+    "result": "PASS"
+  },
+  "candidate": {
+    "diff_sha256": "70b5ba05715593d86e52135e76d9c31f6074290e0122230a1bd5d5399a362cf2",
+    "files_sha256_git_normalized": {
+      "docs/evidence/stage-5-acceptance-inventory.json": "13fd3b5575861655d4ebc368608132615a2038e6bddd48d7b1f5c8d84b3683b8",
+      "docs/stage-5-acceptance-inventory.md": "cc30093e2ca1c8159836a844be2a293b437afaa8de8dd79400d2285d0354cc3f",
+      "docs/stage-5-collaborative-hybrid-ranking-plan.md": "4410b299d68d3ed04db3c19615f6b2f6d6b9ee6dac774d4eb36c1b61d5adcd62",
+      "ml/tests/test_collaborative_contracts.py": "2beb06d16d518340dc5e0f04f3cc26df3216b6d61473876cad01f0793366fbb4",
+      "ml/tests/test_collaborative_pipeline.py": "b90830e047bce0e6f03a70a1aff9bdf8a5433a4a1f0014e1fe6b78faba03ee0c",
+      "ml/tests/test_collaborative_scorer.py": "fcb368fb85b7582985a81806e6af37ef50bf85d4496ac3937132e17e3175bdb3",
+      "ml/tests/test_collaborative_training.py": "1ad2a41657469003de05c6278fce9acf4f4dea8bb863b8fcdc0cfb6b8305df00"
+    },
+    "hash_scope": "Exact staged binary diff for four ML test files plus plan/readable/canonical inventory after verification. This output evidence file is excluded to avoid self-reference; final commit reported after creation."
+  },
+  "validator": {
+    "path": "tmp/check_9c.py",
+    "sha256": "1d7681d7d6642521bcdc1a17e02bdcb94afdcd6021f6d44275ff82668e490484",
+    "retention": "Ignored local validator adapted from 9A to accept verified routes and this exact slice file set. Checks unchanged criteria, test AST/line/command mappings, Markdown links and ownership."
+  }
+}
