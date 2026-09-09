@@ -344,7 +344,7 @@ versioned hybrid policy, protected lineage/invalidation, bounded readiness,
 additive model status, saved-request orchestration, synchronized personalized
 response/event mapping, generated contract, and conditional browser evidence are
 implemented through Stage 5 Phase 8. The
-[Phase 8 record](stage-5-phase-8-docker-fixtures-plan.md) verifies real fixture
+[Phase 8 record](stage-5-collaborative-hybrid-ranking-plan.md#phase-8-completed-slice-record) verifies real fixture
 hybrid/fallback and synthetic live-source lifecycle browser paths using the
 unchanged Stage 4 oracle and synchronized `stage-5-v1` events. It changes no
 weights, source/edge caps, ranking, response, or event contracts. Product

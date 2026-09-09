@@ -423,7 +423,7 @@ browser evidence, guarded live build/recovery, lifecycle mutation, valid-only
 rollback checks, and confirmed cleanup. Product contribution consent and an
 approved production live cohort remain open. Phase 8 full-stack fixture and
 synthetic PostgreSQL lifecycle workflows are verified; see the
-[Phase 8 record](stage-5-phase-8-docker-fixtures-plan.md).
+[Phase 8 record](stage-5-collaborative-hybrid-ranking-plan.md#phase-8-completed-slice-record).
 
 The Phase 6 handoff passes 365 API unit tests, 109 disposable-PostgreSQL tests,
 331 ML tests with one Windows symbolic-link capability skip, and 86 web tests.

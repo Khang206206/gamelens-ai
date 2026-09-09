@@ -4,7 +4,7 @@
 external-source preflight and implementation Phases 0–7 verified through
 2026-09-03; Phase 8 Docker, configuration, and full-stack fixtures are verified
 through 2026-09-09. Phases 9–10 and the final Stage 6 handoff remain pending.
-See the [Phase 8 ledger](../docs/stage-5-phase-8-docker-fixtures-plan.md) for
+See the [Phase 8 ledger](../docs/stage-5-collaborative-hybrid-ranking-plan.md#phase-8-completed-slice-record) for
 333 ML passes and measured fixture/live-source replay identities.
 Run the complete gate from the repository root with `python infra/run-phase8.py`;
 it requires Python 3.12+, POSIX `sh`, and Docker Desktop Linux containers.

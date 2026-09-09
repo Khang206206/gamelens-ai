@@ -24,7 +24,7 @@ implementation branch. The Phase 7 handoff passes 782 combined API-unit/ML
 tests and 143 disposable-PostgreSQL tests. Ruff lint/format passes across 194
 Python files, generated OpenAPI has no drift, and disposable lifecycle resources
 are removed after the runs. These are historical Phase 7 results. The
-[Phase 8 ledger](../../docs/stage-5-phase-8-docker-fixtures-plan.md) now records
+[Phase 8 ledger](../../docs/stage-5-collaborative-hybrid-ranking-plan.md#phase-8-completed-slice-record) now records
 502 API unit, 333 ML, 151 PostgreSQL integration and 86 web unit passes, plus
 real fixture/fallback and live lifecycle browser replays. The endpoint and
 command tables below describe the current worktree.

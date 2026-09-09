@@ -45,7 +45,7 @@ restart, rollback, retirement, and confirmed cleanup. Each lifecycle scenario
 uses a fresh disposable PostgreSQL project and synthetic test authority; this is
 functional safety evidence, not production-data approval or ranking-quality
 evidence. The combined isolation gate and documentation comparison are recorded
-in the [Phase 8 ledger](docs/stage-5-phase-8-docker-fixtures-plan.md) and
+in the [Phase 8 ledger](docs/stage-5-collaborative-hybrid-ranking-plan.md#phase-8-completed-slice-record) and
 [retained 8H evidence](docs/evidence/stage-5-phase-8h.json).
 
 The repository now provides:

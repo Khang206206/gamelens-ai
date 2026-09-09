@@ -384,7 +384,7 @@ Build the remaining implementation phases one reviewable slice at a time:
 1. Keep product contribution consent and any production live-cohort audit
    blocked unless a separate product policy, copy, and public route contract is
    explicitly approved; saved personalization remains a separate purpose.
-2. Phase 8 is complete: the [slice ledger](stage-5-phase-8-docker-fixtures-plan.md)
+2. Phase 8 is complete: the [slice ledger](stage-5-collaborative-hybrid-ranking-plan.md#phase-8-completed-slice-record)
    records fixture/live builds, browser lifecycle, isolation, two clean replays
    and documentation reconciliation. The combined gate is owned by `35082f2`;
    it includes resumed commands after host interruptions, explicitly documented

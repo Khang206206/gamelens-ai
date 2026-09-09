@@ -82,5 +82,5 @@ project-local teardown removes test state; no development users or artifacts
 are mounted. This is functional lifecycle evidence, not permission to train on
 production users or evidence of recommendation quality.
 
-See the [Phase 8 record](../docs/stage-5-phase-8-docker-fixtures-plan.md) and
+See the [Phase 8 record](../docs/stage-5-collaborative-hybrid-ranking-plan.md#phase-8-completed-slice-record) and
 [infra commands](../infra/README.md) for fixture versus live-source execution.

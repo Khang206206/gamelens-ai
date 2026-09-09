@@ -340,7 +340,7 @@ application or operator actions rather than migration side effects.
 Phase 8 adds no migration: the current head remains
 `0011_stage_5_lifecycle_guard`. Its 151-test PostgreSQL gate and real registered
 synthetic-cohort lifecycle replays are recorded in the
-[Phase 8 ledger](stage-5-phase-8-docker-fixtures-plan.md). Test-only cohort rows
+[Phase 8 ledger](stage-5-collaborative-hybrid-ranking-plan.md#phase-8-completed-slice-record). Test-only cohort rows
 come from the guarded helper, never catalog seed or migration. JSON fixtures
 have no live contributor registry; database-derived test builds retain actual
 lineage and transactional invalidation. The schema, scoring, saved response and

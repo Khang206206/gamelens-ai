@@ -217,7 +217,8 @@ presentation. The current web suite passes 86 tests together with strict TypeScr
 ESLint, focused Prettier, production build, and OpenAPI drift. A focused no-retry Docker
 browser run passes five cases: axe on Chromium, Firefox, and WebKit plus request-only and
 saved-personalization responsive checks on Chromium. This focused run verifies the Phase 6
-surface. The [Phase 8 record](../../docs/stage-5-phase-8-docker-fixtures-plan.md)
+surface. The
+[Phase 8 record](../../docs/stage-5-collaborative-hybrid-ranking-plan.md#phase-8-completed-slice-record)
 supersedes it with 38 inherited browser passes, 18 fixture/fallback browser passes, and 26
 live lifecycle phases per replay on two fresh runs. The 86 web unit tests, typecheck,
 lint, format, production build, and live OpenAPI drift checks passed. These functional

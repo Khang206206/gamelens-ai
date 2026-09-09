@@ -248,7 +248,7 @@ workflow. Abrupt engine/host termination cannot execute shell traps; ownership
 records identify the exact project for recovery after Docker returns.
 
 The accepted run is owned by `35082f2`; see the
-[Phase 8 ledger](../docs/stage-5-phase-8-docker-fixtures-plan.md) and
+[Phase 8 ledger](../docs/stage-5-collaborative-hybrid-ranking-plan.md#phase-8-completed-slice-record) and
 [machine-readable evidence](../docs/evidence/stage-5-phase-8h.json). It combines
 a successful combined-run prefix with resumed live/lifecycle suffixes after host
 interruptions, not one uninterrupted invocation. Both suffixes completed twice;
