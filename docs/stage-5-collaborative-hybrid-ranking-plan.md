@@ -2026,6 +2026,11 @@ execution and historical limitations are recorded in Section 21.
 
 ## 16. Implementation Phase 9: Test Matrix and Quality Gate
 
+**Status: PLANNED — NOT IMPLEMENTED (2026-09-09).** The survey and slice plan
+below are documentation only. No Phase 9 code, test, migration, configuration,
+dependency change, test execution, or live build is included in this planning
+commit. Phase 8 is complete; Phase 9 gates and Phase 10 remain pending.
+
 ### Objective
 
 Prove Stage 5 functional correctness, determinism, privacy, failure semantics,
@@ -2131,6 +2136,422 @@ and regression safety without performing Stage 6 quality evaluation.
 - Stage 5 and all Stage 1–4 gates pass from documented clean commands.
 - Remaining failures, platform gaps, or lifecycle uncertainty block completion
   rather than becoming undocumented exceptions.
+
+### Phase 9 Survey Baseline and Boundaries
+
+Surveyed clean commit `47d132b` on
+`feat/stage-5-collaborative-and-hybrid-ranking`. Phase 8 implementation evidence
+belongs to `35082f2`, documentation reconciliation to `d0e86f9`, and the subsequent
+plan consolidation to `47d132b`. The [8H record](evidence/stage-5-phase-8h.json)
+is historical evidence, not a new Phase 9 run or a coverage/security certificate.
+No `AGENTS.md` was found in the repository during this survey.
+
+| Existing implementation and tests inspected | Consequence for Phase 9 |
+| --- | --- |
+| [Snapshot repository](../apps/api/app/repositories/collaborative_snapshot.py), `test_stage_5_collaborative_snapshot.py`, `test_interaction_snapshot.py` | PostgreSQL cutoff, repeatable-read extraction, authority, label precedence and revision-race tests already exist. Map exact assertions before adding missing boundaries; SQLite or mocks cannot prove database isolation. |
+| [Collaborative training](../ml/src/gamelens_recommender/collaborative_training.py), `test_collaborative_training.py`, `test_collaborative_artifacts.py` | Hand-calculated cosine, sparse caps, stable pruning, reordered-input determinism, malformed bundle and promotion-race coverage already exist. Extend gaps instead of rebuilding the pipeline. |
+| [Hybrid policy](../ml/src/gamelens_recommender/hybrid.py), `test_hybrid_ranker.py`, `test_phase4_handoff.py` | The contract has 11 unavailable plus 4 no-support reasons. Exact Stage 4 fallback and functional golden traces exist; the seven fixture-browser fallback reasons are a different, narrower matrix. Reconcile all 15 reasons across layers. |
+| [Build service](../apps/api/app/services/collaborative_build.py), registry/lifecycle services and `test_stage_5_live_build_promotion.py`, `test_stage_5_lifecycle_handoff.py` | Real PostgreSQL-derived build, retained lineage, revision races, orphan recovery, concurrent promotions and ordinary-operation nonmutation already have integration tests. Live fixtures are needed to prove this boundary. |
+| [Decision projection](../apps/api/app/services/recommendation/projection.py), response/event unit suites and `test_stage_5_recommendation_events.py` | Shared response/event projection and populated migration checks exist. Prove commit acknowledgement, exact units, bounded payloads and inherited event retention without changing contracts. |
+| [Web test scripts](../apps/web/package.json), [Playwright projects](../apps/web/playwright.config.ts), hybrid/fallback/lifecycle specs | Unit/V8 coverage, Chromium and Firefox/WebKit smoke routing, keyboard/focus/axe/responsive checks already exist. Audit mode-specific skips and actual scenario selection, not just a green process exit. |
+| [Makefile](../Makefile), [Phase 8 runner](../infra/run-phase8.py), E2E wrappers and ownership helper | Reuse the current explicit build/isolation/replay workflows. `test-phase8` exists; no Phase 9 runner or `test-phase9` target exists at this baseline. The runner does not collect Phase 9 diagnostic coverage or current dependency/license/vulnerability evidence. |
+| [API coverage settings](../apps/api/pyproject.toml), [ML coverage settings](../ml/pyproject.toml), [V8 settings](../apps/web/vitest.config.ts), Dockerfiles and locks | Diagnostic tooling and package checks exist. Old percentages, audits and image findings must not be reused as current results. Measure scope explicitly; generated web types are excluded from V8 instrumentation and checked separately. |
+
+This is a static survey, not a claim that an unexecuted test passes or that a
+named suite exhausts a contract. The first slice creates the assertion-level
+inventory; later slices add only demonstrated gaps or a regression for a
+reproduced defect. Preserve the current schema head
+`0011_stage_5_lifecycle_guard`, model/policy identities and default-off gates.
+Any necessary implementation correction belongs to its owning future slice,
+with a failing reproducer and focused verification, never this planning commit.
+A schema, consent-product, ranking-policy or broad dependency redesign requires
+an explicit plan revision before implementation; it is not incidental gate work.
+
+Public contribution grant/re-consent/withdrawal routes and approval of an actual
+user cohort remain unresolved in Section 21. Private synthetic lifecycle helpers
+do not implement those product routes. The matrix must distinguish verification
+of default-off/decline behavior, a documented fixture-only scope decision, and
+blocked production authority. No applicable acceptance item may disappear under
+an unexplained `N/A`; Phase 9 cannot silently authorize real-user training or
+finalize Stage 5 while required release decisions remain unresolved.
+
+### Phase 9 Slice Ledger and Dependency Order
+
+Every row below is **PLANNED — NOT IMPLEMENTED**; implementation commit and
+execution evidence are pending. Each slice ends with **one commit** containing
+its bounded work, focused checks and truthful ledger update. The current
+planning docs commit is separate and does not count as completion of 9A or 9L.
+The suggested subjects are future commit messages, not existing commits.
+
+| Slice | Depends on | Deliverable / suggested commit subject |
+| --- | --- | --- |
+| 9A | Completed 8I and this plan | Acceptance-to-test inventory — `docs(test): map stage 5 acceptance gates` |
+| 9B | 9A | Snapshot/provenance boundary gaps — `test(api): close snapshot and provenance gaps` |
+| 9C | 9A | Sparse math and pure scorer gaps — `test(ml): close collaborative numeric gaps` |
+| 9D | 9C | Hybrid/fallback matrix and five-baseline diagnostic — `test(ml): verify hybrid and baseline diagnostics` |
+| 9E | 9A | Bundle rejection and operator safety gaps — `test: harden collaborative artifact safety gates` |
+| 9F | 9B, 9E | PostgreSQL lineage, promotion and lifecycle gates — `test(api): verify registered lifecycle boundaries` |
+| 9G | 9D, 9F | API/OpenAPI/event transaction agreement — `test(api): verify stage 5 response and event truth` |
+| 9H | 9G | Web and browser acceptance matrix — `test(web): complete stage 5 browser matrix` |
+| 9I | 9B–9H | Diagnostic coverage and gap disposition — `test: record stage 5 diagnostic coverage` |
+| 9J | 9A; final lock/image/diff after 9I | Dependency, security, privacy and license review — `chore(quality): verify stage 5 release inputs` |
+| 9K | 9I, 9J and all earlier gates passing | Combined clean regression and repeatability evidence — `test: record stage 5 phase 9 quality gate` |
+| 9L | Passing 9K | Final phase docs comparison — `docs: reconcile phase 9 verification and handoff` |
+
+Recommended commit order is 9A through 9L. Dependency independence means 9B,
+9C and 9E can each be implemented and debugged with their own fixture and focused
+command after 9A; it does not require parallel execution. 9J inventory can start
+after 9A, but its final scan must use the resulting locks, images and code.
+9K is the first mandatory combined rerun, rather than a prerequisite for every
+small slice. On failure, reproduce the smallest test/scenario, fix the owning
+boundary, rerun that gate and impacted dependents before continuing. Do not
+bundle unrelated failures into a slice or relax an assertion to obtain green.
+If a completed slice needs a later repair commit, add and name that repair slice
+in the ledger instead of hiding it or rewriting the meaning of its old evidence.
+
+### 9A — Acceptance Inventory and Evidence Contract
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on completed 8I and this plan.
+
+- Scope: docs/test inventory only. Give every Section 19 bullet a stable ID and
+  retain its wording; map all Section 16 suite requirements and inherited Stage
+  1–4 gates to those IDs. Record owner slice, implementation path, exact test
+  node or named manual review, fixture mode, command, expected assertion,
+  evidence location and current gap/status. Distinguish existing-but-not-rerun,
+  missing, blocked and subsequently verified evidence.
+- Specifically enumerate all 15 `HYBRID_FALLBACK_REASONS`, their producing layer
+  and applicable ML/API/browser checks. Browser selection need not duplicate
+  every pure policy case, but each omitted browser case needs an explicit lower
+  layer test and rationale. Record absent public contribution routes as absent.
+- Acceptance: every acceptance bullet has an owner and evidence route; no
+  orphan, blanket pass, unexplained skip or implied Phase 8 carryover. Freeze
+  the command/evidence convention below and the functional comparison scope.
+- Verify: compare inventory against Section 19 and source/test assertions,
+  resolve all linked paths/test names, check Markdown and `git diff --check`.
+  No test implementation or live build is needed for this slice.
+
+### 9B — Snapshot, Authority and Label Provenance
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9A.
+
+- Scope: `ml/tests/test_interaction_snapshot.py`, API snapshot repository/command
+  unit tests and `tests/integration/test_stage_5_collaborative_snapshot.py`.
+  Reuse the guarded disposable PostgreSQL cohort; add only missing cases.
+- Acceptance: one database-time repeatable-read cutoff; exact as-of temporal
+  boundary, rating threshold, dislike precedence, positive saved-game preference
+  and duplicate-source collapse. Consent version/grant/withdrawal/revocation,
+  expiry/horizon, deletion, post-cutoff changes and revision races fail closed.
+  Events, views, played-only, wishlist-only, unknown and nonpositive rows never
+  create an edge. Audit remains read-only, bounded, aggregate-only and truthful
+  on insufficiency/catalog mismatch; compare database state before and after.
+- Verify: focused snapshot ML/API unit files, then the named PostgreSQL file
+  through the integration command below. Use synchronization/transaction
+  boundaries for race tests, not timing sleeps. A real database is required;
+  a collaborative live build is not required for extraction-only assertions.
+
+### 9C — Collaborative Sparse Math and Pure Scoring
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9A.
+
+- Scope: `ml/tests/test_collaborative_{contracts,training,sources,lookup,scorer,pipeline}.py`
+  and `test_phase3_handoff.py`; reuse small project-authored inputs and the pure
+  training/scoring APIs. Brace notation here denotes a file family, not a
+  literal PowerShell command argument.
+- Acceptance: hand-derived binary CSR, item/pair support, cosine, quantization,
+  diagonal removal, threshold/pruning order and stable tie-breaks match exact
+  values. Exercise empty/single-user/single-item, duplicate/invalid/non-finite,
+  maximum/over-limit inputs and sparse resource guards before allocation.
+  The scorer is pure and identity-free, excludes sources/dislikes and reports
+  unsupported sources/items/pairs without fabricating scores.
+- Verify: selected ML files, then the full ML suite; compare two canonical-input
+  permutations and repeated small fixture builds by semantic arrays/identities.
+  Expected arithmetic must be independently derived, not copied from the
+  production function under test. Temporary fixture builds only; no PostgreSQL
+  or live build.
+
+### 9D — Hybrid Matrix and Functional Baseline Comparison
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9C.
+
+- Scope: existing `test_hybrid_*.py`, `test_phase4_handoff.py` and a small
+  reviewable synthetic diagnostic table/output. Extend existing Stage 4/hybrid
+  golden traces to explicitly cover popularity, content, feedback,
+  collaborative and hybrid candidates/components/ranks. Define each diagnostic
+  variant's candidate universe, exclusions and tie-breaks; reuse current policy
+  functions without adding product endpoints or new learned baselines.
+- Acceptance: all 15 fallback reasons preserve the exact Stage 4 result, order,
+  scores and evidence while the Stage 5 envelope truthfully identifies fallback.
+  Check collaborative-only union/materialization, exclusions before top-K,
+  cold/mixed/empty/tied cases, request-wide missing-edge behavior, active weights,
+  fixed-point reconstruction, one played factor, neutral wishlist and no double
+  counting. Invalid input/context remains an error rather than silent fallback.
+  The five-variant comparison explains differences using exact components and
+  makes no Precision/Recall/NDCG, tuning or superiority claim.
+- Verify: focused hybrid/handoff tests, full ML suite and two deterministic
+  diagnostic runs. Retain only synthetic aggregate/game-level evidence. No
+  live build; fixture artifacts are sufficient.
+
+### 9E — Artifact Validation and Operator Failure Safety
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9A.
+
+- Scope: `ml/tests/test_collaborative_artifacts.py` and API unit suites for
+  artifact command/entrypoint, build, recovery, rollback, retirement, readiness
+  and lifecycle handoff safety. Keep filesystem/CLI fault tests independent
+  from the registered PostgreSQL scenarios owned by 9F.
+- Acceptance: exact members/checksums/dtypes/shapes, canonical sparse semantics,
+  metadata identities/fingerprints/limits, immutable arrays and safe paths.
+  Missing/corrupt/extra/incompatible/stale/expired/retired/privacy-invalid
+  bundles cannot become ready. Verify symlink/traversal refusal, no overwrite,
+  promotion failure cleanup, read-only validate/inspect/preview/rollback-check,
+  matching destructive confirmations and bounded errors. No identity-bearing
+  snapshot or executable pickle may survive success or failure.
+- Verify: focused loader and operator unit tests with temporary roots and
+  injected faults, followed by the affected ML/API unit suites. A mocked
+  registration is unit evidence only; actual rollback/recovery and lineage
+  acceptance wait for 9F. No live build needed here.
+
+### 9F — PostgreSQL Migrations and Registered Lifecycle
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9B and 9E.
+
+- Scope: existing Stage 4 migration and Stage 5 registry, authority/label
+  invalidation, lifecycle guard/handoff, live-build promotion, operator,
+  rollback-check and retirement integration suites. Use the reusable
+  `tests/fixtures/collaborative_lifecycle.py` helper and disposable database.
+- Acceptance: populated upgrade/downgrade/re-upgrade preserves data expected
+  at each revision, constraints/cascades/catalog and current head; event-column
+  migration payload detail remains owned by 9G. Prove retained contributor count,
+  lineage/revision/authority/horizon checks, concurrent mutation/promotion,
+  registration failure/orphan recovery, valid-only rollback, preview/retire/cleanup
+  boundaries and no resurrection after deletion, withdrawal or expiry. Ordinary
+  startup, migration, seed and non-lifecycle tests preserve registered state and
+  artifact bytes. Re-consent never reactivates an invalidated old build.
+- Verify: focused PostgreSQL files first, then the complete integration suite
+  and `sh infra/run-e2e-live-source.sh`. A real live-source build/register/validate
+  cycle is **required**, exclusively from synthetic rows in the guarded
+  disposable database. Capture aggregate lineage and mutation/recovery evidence;
+  fixture JSON or hand-inserted registry rows alone cannot satisfy this gate.
+
+### 9G — API, OpenAPI and Committed Event Truth
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9D and 9F.
+
+- Scope: API `test_stage_5_{decision_projection,response_contract,recommendation_event_contract}.py`,
+  personalized/hybrid/model-status unit suites, Stage 4 OpenAPI tests, and
+  Stage 5 recommendation-event/model-status/orchestration integration files.
+- Acceptance: additive model status and unchanged cookie-agnostic, read-only
+  stateless route; truthful hybrid/fallback identity and readiness. Every
+  acknowledged saved HTTP 200 has exactly one matching event; pre-commit failure
+  has none, and ambiguous commit acknowledgement is never success. Response and
+  event share exact model/data/policy identities, units and ordering; bounded
+  strict JSON, old event compatibility, populated event migrations, retention
+  and deletion cascades pass. Required-content failure returns 503 with no event;
+  optional failure preserves content and exact Stage 4 ranking behavior.
+- Verify: named unit/integration suites and read-only `npm run api:types:check`
+  against the disposable running API. Real registered hybrid/invalidation
+  scenarios must build live synthetic artifacts; projection/schema/typed-error
+  unit cases need no live build. Do not hand-edit generated browser types or
+  refresh them merely to suppress drift; investigate the contract first.
+
+### 9H — Web, Browser and Accessibility Matrix
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9G.
+
+- Scope: generated/client and recommendation-flow/result unit tests, existing
+  catalog/persistence/recommendation browser specs, hybrid/fallback fixture specs
+  and `lifecycle.live.smoke.spec.ts`. Extend only demonstrated browser gaps.
+- Acceptance: server order and evidence are preserved without client ranking;
+  positive applied contribution controls explanation. Neutral fallback, no social
+  proof, safe errors, loading/empty state, stale-response cancellation,
+  request-only opt-out, saved rehydration, re-consent, expiry, invalidation and
+  clear-data boundaries work. Product consent and private contribution helper
+  evidence stay distinct. Verify keyboard, focus, live announcements, no
+  serious/critical axe violations and responsive layouts. Record actual
+  Chromium and critical Firefox/WebKit scenarios, plus justified mode skips;
+  a skipped required scenario is not a pass.
+- Verify: web unit/type/lint/format/build checks, followed by
+  `sh infra/run-e2e-content.sh`, `sh infra/run-e2e-fixture.sh` and
+  `sh infra/run-e2e-lifecycle.sh`. Debug a single spec/project/phase first, then
+  rerun the owning wrapper. Fixture UI checks do not need live builds;
+  registered lifecycle browser transitions **do**. Keep failure media private
+  until scanned; screenshots alone cannot prove response/event agreement.
+
+### 9I — Diagnostic Coverage and Uncovered Branch Review
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9B–9H.
+
+- Scope: existing pytest-cov and V8 tooling; record measured API/ML/web scope,
+  branch/line/statement denominators as applicable, excluded/generated code and
+  meaningful uncovered failure paths. Distinguish unit, PostgreSQL and browser
+  evidence; do not label unit-only coverage as full application coverage.
+- Acceptance: each important uncovered boundary maps to an existing integration/
+  browser assertion, a focused new regression, or an explicit blocker. No new
+  arbitrary percentage threshold or tests that mirror implementation. Coverage
+  output must identify the actual executed modules: container ML installation
+  versus mounted source matters. Keep raw reports/caches out of Git and scan
+  sanitized summaries for local paths, identities and credentials.
+- Verify: API `--cov=app --cov-branch`, ML
+  `--cov=gamelens_recommender --cov-branch` with `--cov-report=term-missing`, and
+  web `npm run test:coverage`. Use separate output files/runs to prevent accidental
+  overwrites; verify collection and exclusions before interpreting numbers.
+  If PostgreSQL coverage is collected, explicitly opt into its disposable suite;
+  selected live-build tests still require real synthetic builds. No live build
+  merely to generate unit/V8 reports. Rerun affected gates after any gap fix.
+
+### 9J — Dependency, Security, Privacy and Release Input Review
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9A for inventory and the final
+9I code/lock/image state for closure.
+
+- Scope: API/ML pyprojects and locks, web package/lock/overrides, Docker base and
+  built images, ignore/build-context rules, configuration descriptions and the
+  Stage 5 release diff. Separate direct/transitive Python/Node packages, OS image
+  packages, tooling licenses and dataset provenance; UCSD remains read-only
+  preflight, not approved training input.
+- Acceptance: clean locked installs, Python package integrity/runtime imports,
+  full and production npm audits, current Python and image vulnerability scans,
+  and license/attribution review have explicit scope, versions, timestamps and
+  dispositions. Freeze scanner commands/versions before execution; unavailable
+  scanners/advisory feeds or unknown licenses remain incomplete, not clean.
+  No unresolved actionable security, privacy, identity, isolation or data-loss
+  failure may be waived by an old Phase 4/8 result. Record non-actionable findings
+  with evidence and residual limitations, never an unqualified zero-risk claim.
+- Verify: `python -m pip check`, imports in the actual API/ML runtime, clean
+  `npm ci`, `npm audit` and `npm audit --omit=dev` in a disposable web environment;
+  named Python/image scanners selected and recorded in this slice. Inspect
+  final source/lock/generated-file diff and runtime outputs, snapshots, artifact
+  members, logs, browser state/media, coverage, caches and environment files for
+  credentials/internal user identities/raw interaction payloads. Retain safe
+  metadata only. No collaborative live build is needed for scanning; Docker/web
+  production builds are separate checks. Any dependency remediation must be
+  bounded and rerun affected gates before 9K; broader upgrades need a named slice.
+
+### 9K — Combined Clean Quality Gate and Replay
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on passing 9I and 9J, with all
+earlier slices closed against the candidate implementation.
+
+- Scope: compose existing commands into an explicit Phase 9 runbook. Reuse
+  `python infra/run-phase8.py` for its implemented combined isolation checks,
+  including two clean live/lifecycle replays; add the 9A inventory, five-baseline
+  diagnostic, coverage and current security/license gates it does not own. Do
+  not rename historical Phase 8 evidence or claim a nonexistent Phase 9 target.
+  A new wrapper is optional only if command gaps justify it and is implemented
+  and tested explicitly in this future slice, never hidden inside ordinary tests.
+- Acceptance: all Stage 5 and complete Stage 1–4 suites pass, plus Ruff,
+  strict TypeScript, ESLint, Prettier, production build, live OpenAPI drift,
+  dependency/runtime and every Compose mode check. Verify non-root services,
+  read-only artifact mounts, project ownership/isolation, ordinary-operation
+  nonmutation and teardown on success/setup/validation/browser/signal failure.
+  Two fresh synthetic replays must match semantic artifact/order evidence;
+  database-time cutoffs/build IDs may differ and must not be falsely compared
+  as identical full live bundle bytes. Recheck exact response/event agreement.
+- Verify: run the frozen complete manifest on a clean candidate tree with
+  explicit disposable project IDs. Retain actual counts/skips/durations, runtime
+  and image identities, hashes/sizes, aggregate lineage/event diagnostics and
+  teardown results. Current security scans must identify these same locks/images.
+  Resume interruptions with exact provenance and preserved failures; do not
+  describe a resumed run as uninterrupted. Required platform/coverage/matrix
+  gaps block completion; additional untested platforms remain explicit limits.
+  Real synthetic live builds are **mandatory** at this final integration gate.
+
+### 9L — Final Documentation Comparison and Phase Handoff
+
+**Status: PLANNED — NOT IMPLEMENTED.** Depends on passing 9K.
+
+- Scope: one docs-only commit comparing the final implementation and retained
+  Phase 9 evidence against the inventory below. Record each row as corrected or
+  reviewed/no-change with exact source/evidence reference; do not simply copy
+  planned outcomes into an as-built section.
+
+  | Required documentation | Compare against |
+  | --- | --- |
+  | Root, API, ML, web, infra and scripts READMEs | Actual Make/package scripts, CLI parsers, runners, shell/working directory, fixture modes, build/validate order, expected exits, teardown and measured gates |
+  | Data, fixture and external-source READMEs | Synthetic versus PostgreSQL-derived source, consent/authority, thresholds, lineage, privacy and unchanged external-source restrictions |
+  | Architecture, data model and recommendation design | Actual loading/readiness, registry/invalidation, migration head, fallback, model/policy and response/event semantics |
+  | Roadmap; Stage 5 Sections 15–19 and this slice ledger | Phase 8 historical evidence, Phase 9 actual completion/commits, per-criterion outcomes, direct commands and remaining Phase 10 work |
+  | Stage 5 Sections 21–23 | Measured decisions, deviations, known blockers and evidence provenance; Stage 6 handoff and Stage 5 completion remain pending until Phase 10 and all applicable acceptance gates close |
+  | Configuration and dependency descriptions across these docs | Actual `.env.example`, Settings, Compose/Dockerfiles, pyprojects/locks, package scripts and frozen constants; no fictional toggle, stale version or expanded product consent claim |
+
+- Acceptance: all numerical claims trace to the exact tested revision/logs;
+  historical results retain their labels; no planned command/field is described
+  as implemented. All 9A rows have final dispositions, with unresolved required
+  work blocking closure. Record what Phase 10 must still finalize rather than
+  converting Sections 22–23 into a premature release certificate.
+- Verify: local links/anchors, Markdown formatting, command/parser/runner
+  equality, evidence totals/provenance, `git diff --check` and staged docs-only
+  review. No new live build for prose reconciliation. If a corrected command
+  is not covered by 9K evidence, replay its smallest real workflow; a discovered
+  implementation/configuration defect returns to an owning repair slice and
+  affected gates before this docs commit can close.
+
+### Execution Modes, Commands and Live-Build Checkpoints
+
+The commands below are existing entry points for **future implementation**,
+not commands executed by this planning change. Run from the repository root
+unless noted. Use `sh` for shell wrappers (Git Bash/POSIX shell on this Windows
+host); Make recipes with POSIX environment assignments are not native
+PowerShell syntax. Avoid using the development database or artifact directory.
+
+| Gate | Existing command / execution rule |
+| --- | --- |
+| Focused API unit | `docker compose run --build --rm --no-deps quality python -m pytest tests/unit/<actual-test-file>.py -q -p no:cacheprovider`; substitute a real inventory file/node |
+| Focused ML | `docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/<actual-test-file>.py -q -p no:cacheprovider`; rebuild the image after ML source changes |
+| Full fast suites | `make test`, `make test-ml`, `make lint`; direct Docker equivalents are in the Makefile and READMEs |
+| Focused PostgreSQL | Use `docker compose --project-name <unique-test-project> -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/<actual-test-file>.py -q -p no:cacheprovider`; service dependency starts guarded test-db. Always remove this exact owned project in a finally/trap path and verify no leftovers. No fallback to `DATABASE_URL` from development |
+| Full PostgreSQL | Same owned-project command using `tests/integration`, or the combined runner's integration gate; preserve `--run-integration -m integration` and the existing reset guards |
+| Web | From `apps/web`, existing `typecheck`, `lint`, `format:check`, `test`, `test:coverage`, `build`, `api:types:check` npm scripts; use the documented test API URL/consent environment. Drift check requires a reachable disposable API and remains read-only |
+| Browser / fixture / live / lifecycle | `sh infra/run-e2e-content.sh`, `sh infra/run-e2e-fixture.sh`, `sh infra/run-e2e-live-source.sh`, `sh infra/run-e2e-lifecycle.sh`; use each wrapper's ownership/teardown and mode guards |
+| Combined infrastructure base | `python infra/run-phase8.py` (`make test-phase8` equivalent); Phase 9 adds the inventory, diagnostics and current release-input reviews, not implicit training in `make test` |
+
+Here **live build** means the explicit database extractor -> sparse builder ->
+immutable artifact -> PostgreSQL registry/lineage -> validation/readiness path
+with `source_kind=live`. It is still project-authored synthetic test data, not
+an approved real/local user cohort. A JSON fixture build, Docker image build,
+Next.js production build or running API is not evidence of that path.
+
+- **Not required:** this planning commit, 9A, 9B extraction-only checks, 9C,
+  9D, 9E, unit/V8-only 9I, 9J scans and evidence-backed 9L prose edits.
+- **Required:** 9F registered lifecycle gate, 9G real registered
+  hybrid/invalidation integration scenarios, 9H lifecycle browser scenarios,
+  and 9K clean live-source/lifecycle replay. 9I needs it only if collecting
+  coverage from tests which themselves exercise live building.
+- Audit the guarded disposable cohort first, build to a new immutable path,
+  register and validate before selecting the artifact for API startup. Rebuild
+  when testing a new post-mutation cohort/lineage; restarting, re-consenting or
+  toggling readiness is not a rebuild. Deliberate corrupt/invalidated cases must
+  remain unavailable instead of being repaired automatically by test setup.
+- Ordinary unit/web commands, request handling, startup, migrations, catalog
+  seed and teardown never acquire an implicit train/promote capability. An
+  explicitly selected lifecycle test may build its isolated test artifacts;
+  teardown removes only proven-owned disposable resources.
+
+### Per-Slice Commit and Evidence Rules
+
+For each future slice, record its dependency revisions, files changed, exact
+commands/working directory and fixture mode, expected/actual exits, observed
+test counts/skips and duration, evidence path/hash, findings/fixes and remaining
+limitations. A slice with no demonstrated missing tests can close with a
+documentation/evidence commit after its focused gates pass; do not add empty
+tests just to satisfy a suggested `test:` subject. Never commit a failing gate
+as verified or fill future result cells with expected counts.
+
+9K should retain a sanitized machine-readable record under `docs/evidence/`
+following the 8H provenance convention, with exact runtime/lock/image identities,
+test/coverage scope, semantic artifact and ordering comparisons, privacy and
+teardown checks. Keep raw logs/media/coverage in ignored local output, review
+them before publishing summaries and never retain raw user rows or credentials.
+Record tested clean parent SHA and, if changes were tested before committing,
+the exact candidate diff identity; do not invent the commit's own future hash.
+After each commit, verify its hash, docs/test ownership and clean working tree.
+
+Any substantive correction after 9K invalidates the relevant final evidence:
+rerun its focused gate and affected dependent gates, then reconcile docs against
+the repaired candidate. Docs-only corrections with established command/evidence
+provenance do not require another live build. Phase 9 closes only after 9L's
+comparison is recorded; Phase 10 owns final release documentation and the
+verified Stage 6 handoff.
 
 ## 17. Implementation Phase 10: Documentation and Release Preparation
 
