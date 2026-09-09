@@ -2026,8 +2026,8 @@ execution and historical limitations are recorded in Section 21.
 
 ## 16. Implementation Phase 9: Test Matrix and Quality Gate
 
-**Status: IN PROGRESS (2026-09-09).** Slice 9A acceptance inventory is complete;
-9B–9L and Phase 10 remain planned and unstarted. The original survey below is
+**Status: IN PROGRESS (2026-09-09).** Slices 9A (inventory) and 9B (synthetic snapshot/provenance checks) are complete;
+9C–9L and Phase 10 remain planned and unstarted. The original survey below is
 historical planning evidence. 9A changes only documentation and inventory data;
 no runtime test, migration, configuration, dependency or live-build change is
 included. Phase 8 is complete; the Phase 9 runtime/release gates remain pending.
@@ -2178,8 +2178,9 @@ finalize Stage 5 while required release decisions remain unresolved.
 
 ### Phase 9 Slice Ledger and Dependency Order
 
-Slice **9A is COMPLETE** as an inventory-only gate; **9B–9L remain PLANNED —
-NOT IMPLEMENTED** with runtime execution evidence pending. Each slice ends with
+Slices **9A and 9B are COMPLETE** within their inventory and synthetic extraction
+scopes; **9C–9L remain PLANNED — NOT IMPLEMENTED**. Production authority and
+final release evidence remain blocked/pending. Each slice ends with
 **one commit** containing its bounded work, focused checks and truthful ledger
 update. The original planning commit `f4d9be7` is separate from 9A completion.
 The remaining suggested subjects are future commit messages, not existing commits.
@@ -2187,7 +2188,7 @@ The remaining suggested subjects are future commit messages, not existing commit
 | Slice | Depends on | Deliverable / suggested commit subject |
 | --- | --- | --- |
 | 9A (COMPLETE) | Completed 8I and this plan | Acceptance-to-test inventory — `docs(test): map stage 5 acceptance gates` |
-| 9B | 9A | Snapshot/provenance boundary gaps — `test(api): close snapshot and provenance gaps` |
+| 9B (COMPLETE) | 9A | Snapshot/provenance boundary gaps — `test(api): close snapshot and provenance gaps` |
 | 9C | 9A | Sparse math and pure scorer gaps — `test(ml): close collaborative numeric gaps` |
 | 9D | 9C | Hybrid/fallback matrix and five-baseline diagnostic — `test(ml): verify hybrid and baseline diagnostics` |
 | 9E | 9A | Bundle rejection and operator safety gaps — `test: harden collaborative artifact safety gates` |
@@ -2245,7 +2246,25 @@ creation, not invented here; 9B and subsequent slices are unstarted.
 
 ### 9B — Snapshot, Authority and Label Provenance
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9A.
+**Status: COMPLETE — SYNTHETIC EXTRACTION VERIFIED (2026-09-09).** Depends on
+9A `9478e27`. [9B evidence](evidence/stage-5-phase-9b.json) records exact commands,
+results, candidate hashes and M01 source review. Added only missing snapshot,
+authority, label, aggregate audit and error-contract assertions. No production
+code, schema, policy or dependency changes were needed. Public contribution
+routes remain absent and actual cohort approval remains blocked; completion of
+this bounded slice does not close those Stage 5 release decisions.
+
+Focused ML/API/config: **35 passed**; PostgreSQL snapshot file: **59 passed**;
+existing public-consent separation gate: **1 passed**. No skips. Ruff lint and
+format checks pass across 207 files; owned Docker projects are removed with no
+container/network leftovers. Exact cutoff tests use database-derived recovery
+time and microsecond offsets; race tests use committed independent transactions.
+Audit state comparisons include all application columns and revision/registry
+rows for empty, positive and catalog-mismatch cases. Review removed a redundant
+invalid-settings test (configuration already rejects it), reused its existing
+assertion and corrected test-file line endings. No application defect found.
+No live build, web build or next-slice work was required or started. The single
+owning commit hash is reported after creation, not embedded self-referentially.
 
 - Scope: `ml/tests/test_interaction_snapshot.py`, API snapshot repository/command
   unit tests and `tests/integration/test_stage_5_collaborative_snapshot.py`.

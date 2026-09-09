@@ -1,0 +1,452 @@
+{
+  "schema_version": 1,
+  "slice": "9B",
+  "date": "2026-09-09",
+  "status": "VERIFIED_SYNTHETIC_EXTRACTION_ONLY",
+  "baseline": "9478e27ed144f41ce39e8457ea90c917caf29236",
+  "branch": "feat/stage-5-collaborative-and-hybrid-ranking",
+  "dependencies": {
+    "9A": "9478e27",
+    "phase9_plan": "f4d9be7"
+  },
+  "scope": "Snapshot, authority and label provenance tests only. Production source/schema/config/policy/dependencies unchanged. 9C–9L and Phase 10 unstarted.",
+  "candidate": {
+    "files_sha256_git_normalized": {
+      "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py": "cf3caeed20cf1b7718025dc20f404ee9ef9e1912d029cd74fb57612f8d04b433",
+      "apps/api/tests/unit/test_collaborative_snapshot_command.py": "17d443985eadf7bf3afcb417e3e31216f94c0fa138683f07538e8099ec22e2ca",
+      "ml/tests/test_interaction_snapshot.py": "a75715f4e3e33c2df942eda198181dd72db0b5d08c007fd6bc7dc3660574a0a4"
+    },
+    "hash_scope": "Final LF-normalized test files; evidence/docs excluded from these hashes. Owning atomic commit reported after creation."
+  },
+  "checks": [
+    {
+      "label": "focused",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "pytest",
+        "tests/unit/test_config.py::test_collaborative_live_data_is_default_off_and_requires_contribution_version",
+        "tests/unit/test_collaborative_snapshot_repository.py",
+        "tests/unit/test_collaborative_snapshot_command.py",
+        "/workspace/ml/tests/test_interaction_snapshot.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 12.67,
+      "local_log": "tmp/phase9-9b/focused.log",
+      "log_sha256": "51395c5d59543c1259f4f465fd588b3dab9fedc52778c9b4f98fb6d8dc26998a",
+      "fixture_mode": "Docker quality/static or owned-project cleanup",
+      "passed": 35,
+      "skipped": 0,
+      "pytest_seconds": 0.92
+    },
+    {
+      "label": "postgres",
+      "argv": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-9b-1788965030",
+        "-f",
+        "infra/docker-compose.test.yml",
+        "run",
+        "--build",
+        "--rm",
+        "test-api",
+        "python",
+        "-m",
+        "pytest",
+        "--run-integration",
+        "-m",
+        "integration",
+        "tests/integration/test_stage_5_collaborative_snapshot.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 18.34,
+      "local_log": "tmp/phase9-9b/postgres.log",
+      "log_sha256": "f3b1e4f67b93f4cfdf151dcd119c0de42a92bd6e1dabb9eaf84f12a5ba39f470",
+      "fixture_mode": "synthetic PostgreSQL",
+      "passed": 59,
+      "skipped": 0,
+      "pytest_seconds": 7.66
+    },
+    {
+      "label": "teardown",
+      "argv": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-9b-1788965030",
+        "-f",
+        "infra/docker-compose.test.yml",
+        "down",
+        "--remove-orphans"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 1.27,
+      "local_log": "tmp/phase9-9b/teardown.log",
+      "log_sha256": "34295334627d9a006802c05fcfc58fdcca20879cb15c037837d0b2a5065fcc93",
+      "fixture_mode": "Docker quality/static or owned-project cleanup"
+    },
+    {
+      "label": "leftovers-containers",
+      "argv": [
+        "docker",
+        "ps",
+        "-aq",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-9b-1788965030"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.16,
+      "local_log": "tmp/phase9-9b/leftovers-containers.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fixture_mode": "Docker quality/static or owned-project cleanup"
+    },
+    {
+      "label": "leftovers-networks",
+      "argv": [
+        "docker",
+        "network",
+        "ls",
+        "-q",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-9b-1788965030"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.16,
+      "local_log": "tmp/phase9-9b/leftovers-networks.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fixture_mode": "Docker quality/static or owned-project cleanup"
+    },
+    {
+      "label": "ruff-check",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "ruff",
+        "check",
+        "--no-cache",
+        "app",
+        "tests",
+        "alembic",
+        "/workspace/ml/src",
+        "/workspace/ml/tests"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 1.51,
+      "local_log": "tmp/phase9-9b/ruff-check.log",
+      "log_sha256": "b4a0018e0c2a3ea7b7cda30cdc51197a8ec247b03e6a94d4933d2ffdee4c42dc",
+      "fixture_mode": "Docker quality/static or owned-project cleanup"
+    },
+    {
+      "label": "ruff-format",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "ruff",
+        "format",
+        "--no-cache",
+        "--check",
+        "app",
+        "tests",
+        "alembic",
+        "/workspace/ml/src",
+        "/workspace/ml/tests"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 1.41,
+      "local_log": "tmp/phase9-9b/ruff-format.log",
+      "log_sha256": "05b5e6f27502aa9468e9dbbbf50cc5cf6f39121e4773414bdac4b042ab536603",
+      "fixture_mode": "Docker quality/static or owned-project cleanup"
+    },
+    {
+      "label": "public-authority",
+      "argv": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-9b-authority-1788965092",
+        "-f",
+        "infra/docker-compose.test.yml",
+        "run",
+        "--build",
+        "--rm",
+        "test-api",
+        "python",
+        "-m",
+        "pytest",
+        "--run-integration",
+        "-m",
+        "integration",
+        "tests/integration/test_stage_5_disposable_lifecycle_fixture.py::test_public_consent_does_not_grant_contribution_and_private_controls_are_repeatable",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 19.17,
+      "local_log": "tmp/phase9-9b/public-authority.log",
+      "log_sha256": "11c9f95a8f585286406497a3c6cc0d4211718157bde79efa4caf256138c14014",
+      "fixture_mode": "synthetic PostgreSQL",
+      "passed": 1,
+      "skipped": 0,
+      "pytest_seconds": 6.55
+    },
+    {
+      "label": "authority-teardown",
+      "argv": [
+        "docker",
+        "compose",
+        "--project-name",
+        "gamelens-9b-authority-1788965092",
+        "-f",
+        "infra/docker-compose.test.yml",
+        "down",
+        "--remove-orphans"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 1.2,
+      "local_log": "tmp/phase9-9b/authority-teardown.log",
+      "log_sha256": "d1d55d70e0270a9dd8b9d5bccc39c6fdf1ad4162ddd46396805f2bfb40ad1220",
+      "fixture_mode": "Docker quality/static or owned-project cleanup"
+    },
+    {
+      "label": "authority-leftovers-containers",
+      "argv": [
+        "docker",
+        "ps",
+        "-aq",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-9b-authority-1788965092"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.14,
+      "local_log": "tmp/phase9-9b/authority-leftovers-containers.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fixture_mode": "Docker quality/static or owned-project cleanup"
+    },
+    {
+      "label": "authority-leftovers-networks",
+      "argv": [
+        "docker",
+        "network",
+        "ls",
+        "-q",
+        "--filter",
+        "label=com.docker.compose.project=gamelens-9b-authority-1788965092"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.14,
+      "local_log": "tmp/phase9-9b/authority-leftovers-networks.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "fixture_mode": "Docker quality/static or owned-project cleanup"
+    },
+    {
+      "label": "inventory-and-evidence",
+      "argv": [
+        "python",
+        "tmp/phase9-9b/verify.py"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "fixture_mode": "static final review",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.16,
+      "local_log": "tmp/phase9-9b/inventory-and-evidence.log",
+      "log_sha256": "ce57429545e553f4b980e94b57575e586385b2e7fd486e015318492063c4b490"
+    },
+    {
+      "label": "prettier",
+      "argv": [
+        "node",
+        "apps/web/node_modules/prettier/bin/prettier.cjs",
+        "--check",
+        "docs/evidence/stage-5-acceptance-inventory.json",
+        "docs/evidence/stage-5-phase-9b.json",
+        "docs/stage-5-acceptance-inventory.md"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "fixture_mode": "static final review",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.41,
+      "local_log": "tmp/phase9-9b/prettier.log",
+      "log_sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+    },
+    {
+      "label": "diff-check",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "fixture_mode": "static final review",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "duration_seconds": 0.03,
+      "local_log": "tmp/phase9-9b/diff-check.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "initial_runs": {
+    "focused": "31 passed in 0.89s",
+    "postgres": "55 passed in 7.38s",
+    "postgres_log_sha256": "d8fc41be8b72e2ac13fcfb5b03b7a6cd17e62d6c1db89b3737ef82a7d63c07f0",
+    "owned_project_cleanup": "No container/network leftovers"
+  },
+  "failed_attempts": [
+    {
+      "label": "focused",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--build",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "pytest",
+        "tests/unit/test_collaborative_snapshot_repository.py",
+        "tests/unit/test_collaborative_snapshot_command.py",
+        "/workspace/ml/tests/test_interaction_snapshot.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 1,
+      "duration_seconds": 12.69,
+      "local_log": "tmp/phase9-9b/failed-focused.log",
+      "log_sha256": "f077aaa128ab7a92eb7538faf6f8a93068c565763449d90ce6ff0ea0f4490b93"
+    },
+    {
+      "label": "ruff-format",
+      "argv": [
+        "docker",
+        "compose",
+        "run",
+        "--rm",
+        "--no-deps",
+        "quality",
+        "python",
+        "-m",
+        "ruff",
+        "format",
+        "--no-cache",
+        "--check",
+        "app",
+        "tests",
+        "alembic",
+        "/workspace/ml/src",
+        "/workspace/ml/tests"
+      ],
+      "cwd": "D:\\gamelens-ai",
+      "expected_exit": 0,
+      "actual_exit": 1,
+      "duration_seconds": 1.42,
+      "local_log": "tmp/phase9-9b/initial-ruff-format.log",
+      "log_sha256": "6cc0ecfc05d716d467243ba991fc7c28cf64d5acd740c96080afeca246b6996e",
+      "fixture_mode": "Docker quality/static or owned-project cleanup"
+    }
+  ],
+  "findings_and_fixes": [
+    "No production defect found; existing cutoff, authority, label and audit contracts passed the new boundary assertions.",
+    "An added test tried to construct live-enabled Settings without a contribution version. Settings correctly rejects this before audit; removed the redundant test and ran the existing config assertion instead. The failing command returned 1 with 36 passed and 1 failed.",
+    "Initial Ruff check found import/line-length formatting; formatter corrected these. A later format check caught CRLF introduced by a local file rewrite; normalized the changed test to LF and reran Ruff successfully.",
+    "Review retained precise positive-edge counts, independent expected horizons and all-table before/after audit comparison; no relaxed assertions or production changes."
+  ],
+  "routes": {
+    "R02": "VERIFIED: exact temporal/authority cutoffs, recovery cutoff validation, database read-only enforcement and six synchronized mutation races.",
+    "R03": "VERIFIED: bounded extraction, aggregate/private-field exclusions, all-row database equality for empty/positive/catalog-mismatch audits, stable CLI errors and fixture provenance.",
+    "R04": "VERIFIED: existing config default-off gate and real PostgreSQL public personalization grant/reconsent do not grant contribution; private synthetic controls remain separate.",
+    "R05": "VERIFIED: exact rating threshold, positive/nonpositive preferences, dislike priority, duplicate-source collapse, unknown/event/view/played/wishlist exclusions."
+  },
+  "acceptance_dispositions": {
+    "S5-AC-03": "Synthetic source documentation reviewed; actual cohort authority remains BLOCKED.",
+    "S5-AC-04": "VERIFIED default-off/separate authority.",
+    "S5-AC-05": "No contribution edge without authority verified; public decline product route remains ABSENT/BLOCKED; W02 awaits 9H.",
+    "S5-AC-06": "VERIFIED synthetic audit contract.",
+    "S5-AC-07": "VERIFIED PostgreSQL transaction/cutoff.",
+    "S5-AC-08": "VERIFIED frozen label boundaries.",
+    "S5-AC-09": "VERIFIED non-label exclusion.",
+    "S5-AC-10": "Extraction exclusion and docs verified; R24 event transaction scope remains with 9G.",
+    "S5-AC-16": "Fixture provenance/aggregate output reviewed and tested; R10 artifact fixture-mode route remains with 9E."
+  },
+  "M01": {
+    "status": "REVIEW_COMPLETE_PRODUCTION_AUTHORITY_BLOCKED",
+    "inputs_sha256_git_normalized": {
+      "docs/data-model.md": "95a3cfb70cf3b0fb5465e002f08cc655f44e560f9b48d634e0d083124fdca07f",
+      "data/fixtures/README.md": "14ffb299256b33915040c3bed6b6d396d237aae63e18816bae1c26e17386f703",
+      "apps/api/app/api/v1/router.py": "f619d84e0511d61bf6e4f5b4ac7e4c60ed1fd2c56a443ce9b6693b055945d736",
+      "apps/api/tests/fixtures/collaborative_lifecycle.py": "a9bbd972c86a2695ada3b2d5abfc9b6449d38cf2a1e26715b4e8bdbf93436f21"
+    },
+    "findings": [
+      "Sources are the project-authored JSON fixture and synthetic users in the existing guarded disposable PostgreSQL test fixture. No real-user source or external dataset is accessed.",
+      "Purpose is functional boundary verification, not recommendation quality, representativeness or production cohort approval.",
+      "Live extraction pins PostgreSQL MVCC and database time; exact-boundary tests use a database-derived past recovery cutoff with +/-1 microsecond offsets. Catalog joins use exact stable slugs and catalog fingerprints; unknown saved slugs cannot create edges.",
+      "Base personalization consent and contribution authority remain distinct. Public router exposes no contribution grant/re-consent/withdrawal route. Private lifecycle test controls do not constitute a product consent flow.",
+      "Audit writes no row snapshot, bundle or cohort mapping; all database application rows including revisions and registry are compared before/after. Synthetic database lives in owned tmpfs-backed Compose projects and is removed in finally blocks; only sanitized test logs/hashes are retained.",
+      "Deletion cascades user source/consent data and advances revision; withdrawal/revocation/deletion races fail verification. Retained artifact lineage/promotion lifecycle belongs to 9F and is not certified by extraction-only checks."
+    ]
+  },
+  "deviations": [
+    "No scope deviation. Ran the existing R04 public-consent PostgreSQL node in addition to the named snapshot file to close its inventory route; it does not build a collaborative artifact."
+  ],
+  "not_run": {
+    "live_build": "Not required by 9B extraction-only plan.",
+    "web_or_browser_build": "No frontend changes; owned by later slices.",
+    "full_release_regression": "9K gate remains pending."
+  },
+  "review": "Reviewed changed tests, production queries/service/command, scope, assertion routes, authority blockers and owned cleanup. No remaining issue identified within 9B."
+}

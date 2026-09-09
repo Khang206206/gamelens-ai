@@ -278,3 +278,24 @@ def test_fixture_unknown_game_exclusion_must_be_outside_catalog(tmp_path: Path) 
         load_fixture(path, catalog_slugs=_catalog_slugs())
 
     assert error.value.code == "fixture_invalid"
+
+
+def test_duplicate_edges_collapse_without_collapsing_distinct_contributors() -> None:
+    profiles = canonicalize_profiles(
+        (("alpha", "alpha", "beta"), ("beta", "alpha")),
+        catalog_slugs=frozenset({"alpha", "beta"}),
+    )
+    assert profiles == (("alpha", "beta"), ("alpha", "beta"))
+    report = audit_profiles(profiles, source_kind="live", catalog_fingerprint=CATALOG_FINGERPRINT)
+    assert report["candidate_profiles"]["contributors"] == 2
+    assert report["candidate_profiles"]["positive_edges"] == 4
+    assert report["approved_live_training_eligibility"] is False
+
+
+@pytest.mark.parametrize("profiles", [(("unknown",),), ((" alpha",),), (("",),)])
+def test_snapshot_rejects_unknown_or_malformed_labels(profiles) -> None:
+    with pytest.raises(SnapshotAuditError) as error:
+        canonicalize_profiles(profiles, catalog_slugs=frozenset({"alpha"}))
+    assert error.value.code == (
+        "catalog_mismatch" if profiles[0][0] == "unknown" else "snapshot_invalid"
+    )

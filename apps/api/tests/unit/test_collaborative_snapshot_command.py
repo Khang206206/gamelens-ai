@@ -151,3 +151,24 @@ def test_audit_command_failure_uses_stable_json_and_exit_code(
         "status": "error",
         "error": {"code": "fixture_invalid", "message": "fixture is invalid"},
     }
+
+
+@pytest.mark.parametrize("code", ["catalog_mismatch", "revision_race", "snapshot_limit_exceeded"])
+def test_live_audit_command_preserves_extraction_failure_code(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], code: str
+) -> None:
+    from app.repositories.collaborative_snapshot import CollaborativeSnapshotError
+
+    def fail_audit(_settings: Settings) -> None:
+        raise CollaborativeSnapshotError(code, "Synthetic extraction failure")
+
+    monkeypatch.setattr(collaborative_snapshot, "get_settings", _settings)
+    monkeypatch.setattr(collaborative_snapshot, "audit_live_source", fail_audit)
+    monkeypatch.setattr(sys, "argv", ["collaborative-snapshot", "audit", "--source", "live"])
+    with pytest.raises(SystemExit) as error:
+        collaborative_snapshot.main()
+    assert error.value.code == 2
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "error",
+        "error": {"code": code, "message": "Synthetic extraction failure"},
+    }

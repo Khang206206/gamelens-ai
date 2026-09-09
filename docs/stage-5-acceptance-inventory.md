@@ -1,6 +1,6 @@
 # Stage 5 acceptance inventory — slice 9A
 
-**Mapping verified on 2026-09-09; runtime gates not rerun.** Surveyed clean parent `f4d9be7` after completed 8I (`d0e86f9`), plan consolidation (`47d132b`) and Phase 9 planning (`f4d9be7`). No repository `AGENTS.md` was found. Only 9A is completed; 9B–9L and Phase 10 remain unstarted. Schema head remains `0011_stage_5_lifecycle_guard`.
+**9A mapping and 9B focused runtime checks verified on 2026-09-09.** Surveyed clean parent `f4d9be7` after completed 8I (`d0e86f9`), plan consolidation (`47d132b`) and Phase 9 planning (`f4d9be7`). No repository `AGENTS.md` was found. 9A and the synthetic extraction scope of 9B are complete; 9C–9L and Phase 10 remain unstarted. See the [9B evidence](evidence/stage-5-phase-9b.json) for current checks; the 9A mapping below remains historical unless explicitly updated. Schema head remains `0011_stage_5_lifecycle_guard`.
 
 The [machine-readable inventory](evidence/stage-5-acceptance-inventory.json) is the canonical route/command contract. This readable view gives every unchanged Section 19 bullet a stable `S5-AC-01`–`S5-AC-47` ID. Route references compose the implementation path, exact assertion node or named review, fixture mode, command, expected result and evidence destination; a route is not a passing gate. The [9A record](evidence/stage-5-phase-9a.json) records only static verification.
 
@@ -11,7 +11,7 @@ The [machine-readable inventory](evidence/stage-5-acceptance-inventory.json) is 
 - **BLOCKED:** Explicit authority/product/release decision required; synthetic checks do not remove block.
 - **VERIFIED:** Only after recorded successful command/review on identified candidate; none of the runtime gates is verified in 9A.
 
-All automated routes below are **EXISTING_NOT_RERUN**. A row can additionally have MISSING evidence or a BLOCKED decision. No runtime result is VERIFIED in 9A. Final owners must disposition the whole criterion, including unasserted subclauses, rather than treating the listed representative assertions as exhaustive coverage.
+The original 9A automated routes were **EXISTING_NOT_RERUN**. Routes R02–R05 are now **VERIFIED** by 9B; other routes retain their recorded status. A row can additionally have MISSING evidence or a BLOCKED decision. No runtime result is VERIFIED in 9A. Final owners must disposition the whole criterion, including unasserted subclauses, rather than treating the listed representative assertions as exhaustive coverage.
 
 Future evidence is `docs/evidence/stage-5-phase-9<slice>.json`, keyed by route and acceptance IDs; 9K cross-references the focused records. These are reserved destinations, not links to existing evidence. Keep raw output under ignored `tmp/phase9-<run-id>/`; retain only privacy-reviewed aggregate summaries and hashes. The historical [8H record](evidence/stage-5-phase-8h.json) is context only.
 
@@ -177,7 +177,7 @@ Existing Stage 4 consent is not silently reused for aggregate training.
 
 Owner: **9B**. Routes: [R04](#r04), [M01](#m01).
 
-Current disposition: Public contribution routes ABSENT; default-off separation exists.
+Current disposition: VERIFIED in the synthetic extraction/default-off scope of 9B; production authority and final release gates remain separate.
 
 ### S5-AC-05
 
@@ -193,7 +193,7 @@ The audit is read-only, aggregate-only, deterministic, bounded, and returns type
 
 Owner: **9B**. Routes: [R03](#r03).
 
-Current disposition: Existing aggregate checks; audit boundary audit pending.
+Current disposition: VERIFIED in the synthetic extraction/default-off scope of 9B; production authority and final release gates remain separate.
 
 ### S5-AC-07
 
@@ -201,7 +201,7 @@ Snapshot cutoff comes from PostgreSQL and one repeatable-read, read-only transac
 
 Owner: **9B**. Routes: [R02](#r02).
 
-Current disposition: Existing PostgreSQL assertions; not inferred from mocks.
+Current disposition: VERIFIED in the synthetic extraction/default-off scope of 9B; production authority and final release gates remain separate.
 
 ### S5-AC-08
 
@@ -209,7 +209,7 @@ Temporal state, reaction precedence, rating threshold, saved positive game prefe
 
 Owner: **9B**. Routes: [R02](#r02), [R05](#r05).
 
-Current disposition: Existing precedence assertions; exact boundary/gap disposition pending 9B.
+Current disposition: VERIFIED in the synthetic extraction/default-off scope of 9B; production authority and final release gates remain separate.
 
 ### S5-AC-09
 
@@ -217,7 +217,7 @@ Unknown, viewed, played-only, wishlist-only, low-rating, disliked, and recommend
 
 Owner: **9B**. Routes: [R05](#r05).
 
-Current disposition: Existing non-label exclusions; exhaustive boundary review pending.
+Current disposition: VERIFIED in the synthetic extraction/default-off scope of 9B; production authority and final release gates remain separate.
 
 ### S5-AC-10
 
@@ -542,7 +542,7 @@ Evidence: future `docs/evidence/stage-5-phase-9g.json`, route `R01`.
 
 ### R02
 
-Owner: **9B**; mode: **PG**; status: **EXISTING_NOT_RERUN**.
+Owner: **9B**; mode: **PG**; status: **VERIFIED**.
 
 Implementation: [apps/api/app/repositories/collaborative_snapshot.py](../apps/api/app/repositories/collaborative_snapshot.py).
 
@@ -550,13 +550,15 @@ Implementation: [apps/api/app/repositories/collaborative_snapshot.py](../apps/ap
 - [apps/api/tests/integration/test_stage_5_collaborative_snapshot.py](../apps/api/tests/integration/test_stage_5_collaborative_snapshot.py) `::test_repeatable_read_snapshot_and_revision_race_are_detected`
 - [apps/api/tests/integration/test_stage_5_collaborative_snapshot.py](../apps/api/tests/integration/test_stage_5_collaborative_snapshot.py) `::test_mutation_after_snapshot_setup_before_extraction_is_a_revision_race`
 
-Expected: Exact eligible slugs and exclusion counts; database cutoff/read-only repeatable-read snapshot; concurrent mutations detected. Boundary completeness remains for 9B.
+Expected: Exact eligible slugs and exclusion counts; database cutoff/read-only repeatable-read snapshot; concurrent mutations detected. Exact cutoff, authority and label boundaries are verified in 9B.
 
-Evidence: future `docs/evidence/stage-5-phase-9b.json`, route `R02`.
+Evidence: `docs/evidence/stage-5-phase-9b.json`, route `R02`.
+
+9B verification: [recorded commands and results](evidence/stage-5-phase-9b.json). The canonical route data includes the new exact-boundary, read-only, resource-limit, aggregate/privacy and source-collapse assertions.
 
 ### R03
 
-Owner: **9B**; mode: **API+ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9B**; mode: **API+ML+PG**; status: **VERIFIED**.
 
 Implementation: [apps/api/app/commands/collaborative_snapshot.py](../apps/api/app/commands/collaborative_snapshot.py).
 
@@ -568,11 +570,13 @@ Implementation: [apps/api/app/commands/collaborative_snapshot.py](../apps/api/ap
 
 Expected: Default-off audit never accesses DB; exact aggregate fixture report; typed insufficiency and bounded eligibility query without per-user bind expansion.
 
-Evidence: future `docs/evidence/stage-5-phase-9b.json`, route `R03`.
+Evidence: `docs/evidence/stage-5-phase-9b.json`, route `R03`.
+
+9B verification: [recorded commands and results](evidence/stage-5-phase-9b.json). The canonical route data includes the new exact-boundary, read-only, resource-limit, aggregate/privacy and source-collapse assertions.
 
 ### R04
 
-Owner: **9B**; mode: **API+PG**; status: **EXISTING_NOT_RERUN**.
+Owner: **9B**; mode: **API+PG**; status: **VERIFIED**.
 
 Implementation: [apps/api/app/core/config.py](../apps/api/app/core/config.py).
 
@@ -581,11 +585,13 @@ Implementation: [apps/api/app/core/config.py](../apps/api/app/core/config.py).
 
 Expected: Public saved-personalization consent does not grant contribution; private synthetic controls remain separate.
 
-Evidence: future `docs/evidence/stage-5-phase-9b.json`, route `R04`.
+Evidence: `docs/evidence/stage-5-phase-9b.json`, route `R04`.
+
+9B verification: [recorded commands and results](evidence/stage-5-phase-9b.json). The canonical route data includes the new exact-boundary, read-only, resource-limit, aggregate/privacy and source-collapse assertions.
 
 ### R05
 
-Owner: **9B**; mode: **PG**; status: **EXISTING_NOT_RERUN**.
+Owner: **9B**; mode: **PG+ML**; status: **VERIFIED**.
 
 Implementation: [apps/api/app/repositories/collaborative_snapshot.py](../apps/api/app/repositories/collaborative_snapshot.py).
 
@@ -594,7 +600,9 @@ Implementation: [apps/api/app/repositories/collaborative_snapshot.py](../apps/ap
 
 Expected: Events neither advance label revision nor enter extracted positives; low rating, views, played, wishlist, dislike and temporal exclusions have explicit assertions.
 
-Evidence: future `docs/evidence/stage-5-phase-9b.json`, route `R05`.
+Evidence: `docs/evidence/stage-5-phase-9b.json`, route `R05`.
+
+9B verification: [recorded commands and results](evidence/stage-5-phase-9b.json). The canonical route data includes the new exact-boundary, read-only, resource-limit, aggregate/privacy and source-collapse assertions.
 
 ### R06
 
@@ -1112,13 +1120,13 @@ These are pending reviews with concrete inputs and expected findings; mapping th
 
 ### M01
 
-**Authority and source review** — owner **9B**, mode **MANUAL**, current final evidence **MISSING** (M01 also has a **BLOCKED** authority decision).
+**Authority and source review** — owner **9B**, mode **MANUAL**. Synthetic source review is complete in [9B evidence](evidence/stage-5-phase-9b.json); public contribution routes remain ABSENT and actual cohort authority remains **BLOCKED**.
 
 Inputs: [docs/data-model.md](../docs/data-model.md), [data/fixtures/README.md](../data/fixtures/README.md), [apps/api/app/api/v1/router.py](../apps/api/app/api/v1/router.py), [apps/api/tests/fixtures/collaborative_lifecycle.py](../apps/api/tests/fixtures/collaborative_lifecycle.py).
 
 Document source/purpose/cutoff/catalog/retention/limitations; inspect public router and separate contribution defaults. Public grant/re-consent/withdrawal routes and actual cohort approval are ABSENT/BLOCKED. Private synthetic helper is not product consent. Preserve block until an explicit scoped decision is recorded.
 
-Evidence: future `docs/evidence/stage-5-phase-9b.json`, review `M01`; retain findings and input hashes.
+Evidence: `docs/evidence/stage-5-phase-9b.json`, review `M01`; retain findings and input hashes.
 
 ### M02
 
@@ -1422,4 +1430,4 @@ Owner **9D**, mapped to S5-AC-31 and M03. Current R27 has Stage 4/hybrid/fallbac
 
 Public contribution grant/re-consent/withdrawal routes and UI are absent, and no actual user cohort has approved authority. This blocks the applicable production acceptance clauses (S5-AC-03/05/14/42); synthetic private lifecycle checks cannot discharge them. Default-off and request-only checks can be verified independently. A future explicit fixture-only release-scope decision must identify exactly which clauses remain blocked; no unexplained N/A or implicit release approval is allowed.
 
-Current final dependency/license/security/privacy evidence (9J), diagnostic coverage/gap disposition (9I), the five-baseline table (9D), clean combined replay (9K) and final docs reconciliation (9L) are missing by design at 9A. Existing tests are assertion routes, not exhaustive-coverage or current-pass claims. The next slices own demonstrated boundary gaps and any implementation fixes; none is started here.
+Current final dependency/license/security/privacy evidence (9J), diagnostic coverage/gap disposition (9I), the five-baseline table (9D), clean combined replay (9K) and final docs reconciliation (9L) are missing by design at 9A. Existing tests are assertion routes, not exhaustive-coverage or current-pass claims. 9B has closed snapshot/provenance gaps with focused runtime evidence. 9C–9L own their remaining work and are unstarted.

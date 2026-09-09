@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Stage 5 Phase 9 slice 9A only",
+  "scope": "Stage 5 Phase 9: 9A inventory with 9B snapshot/provenance verification; 9C–9L unstarted",
   "baseline": "f4d9be7",
   "statuses": {
     "EXISTING_NOT_RERUN": "Source assertion inspected; no Phase 9 execution evidence.",
@@ -50,8 +50,8 @@
       "wording": "Existing Stage 4 consent is not silently reused for aggregate training.",
       "owner": "9B",
       "routes": ["R04", "M01"],
-      "gap": "Public contribution routes ABSENT; default-off separation exists.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified for the synthetic extraction/default-off scope in 9B; production authority and later release gates remain separate.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-05",
@@ -66,32 +66,32 @@
       "wording": "The audit is read-only, aggregate-only, deterministic, bounded, and returns typed suitability reasons without fitting.",
       "owner": "9B",
       "routes": ["R03"],
-      "gap": "Existing aggregate checks; audit boundary audit pending.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified for the synthetic extraction/default-off scope in 9B; production authority and later release gates remain separate.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-07",
       "wording": "Snapshot cutoff comes from PostgreSQL and one repeatable-read, read-only transaction.",
       "owner": "9B",
       "routes": ["R02"],
-      "gap": "Existing PostgreSQL assertions; not inferred from mocks.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified for the synthetic extraction/default-off scope in 9B; production authority and later release gates remain separate.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-08",
       "wording": "Temporal state, reaction precedence, rating threshold, saved positive game preference, and duplicate-source collapse match the frozen label policy.",
       "owner": "9B",
       "routes": ["R02", "R05"],
-      "gap": "Existing precedence assertions; exact boundary/gap disposition pending 9B.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified for the synthetic extraction/default-off scope in 9B; production authority and later release gates remain separate.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-09",
       "wording": "Unknown, viewed, played-only, wishlist-only, low-rating, disliked, and recommendation-event rows never become positive cosine edges.",
       "owner": "9B",
       "routes": ["R05"],
-      "gap": "Existing non-label exclusions; exhaustive boundary review pending.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified for the synthetic extraction/default-off scope in 9B; production authority and later release gates remain separate.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-10",
@@ -428,26 +428,50 @@
         {
           "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
           "node": "test_extractor_applies_consent_temporal_and_label_precedence",
-          "line": 126,
+          "line": 128,
           "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_extractor_applies_consent_temporal_and_label_precedence -q -p no:cacheprovider"
         },
         {
           "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
           "node": "test_repeatable_read_snapshot_and_revision_race_are_detected",
-          "line": 298,
+          "line": 303,
           "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_repeatable_read_snapshot_and_revision_race_are_detected -q -p no:cacheprovider"
         },
         {
           "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
           "node": "test_mutation_after_snapshot_setup_before_extraction_is_a_revision_race",
-          "line": 391,
+          "line": 420,
           "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_mutation_after_snapshot_setup_before_extraction_is_a_revision_race -q -p no:cacheprovider"
+        },
+        {
+          "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
+          "node": "test_authority_exact_as_of_boundaries",
+          "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_authority_exact_as_of_boundaries -q -p no:cacheprovider",
+          "line": 498
+        },
+        {
+          "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
+          "node": "test_label_exact_as_of_boundaries",
+          "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_label_exact_as_of_boundaries -q -p no:cacheprovider",
+          "line": 550
+        },
+        {
+          "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
+          "node": "test_database_time_cutoff_is_pinned_and_transaction_rejects_writes",
+          "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_database_time_cutoff_is_pinned_and_transaction_rejects_writes -q -p no:cacheprovider",
+          "line": 775
+        },
+        {
+          "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
+          "node": "test_invalid_recovery_cutoff_fails_closed",
+          "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_invalid_recovery_cutoff_fails_closed -q -p no:cacheprovider",
+          "line": 795
         }
       ],
-      "expect": "Exact eligible slugs and exclusion counts; database cutoff/read-only repeatable-read snapshot; concurrent mutations detected. Boundary completeness remains for 9B.",
+      "expect": "Exact as-of boundaries and authority horizons; database cutoff/read-only repeatable-read snapshot; synchronized source mutations detected.",
       "mode": "PG",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9b.json route R02; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9b.json route R02; focused synthetic checks only, not final 9K release evidence."
     },
     "R03": {
       "owner": "9B",
@@ -482,12 +506,30 @@
           "node": "test_source_queries_join_eligibility_without_per_user_bind_expansion",
           "line": 11,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest tests/unit/test_collaborative_snapshot_repository.py::test_source_queries_join_eligibility_without_per_user_bind_expansion -q -p no:cacheprovider"
+        },
+        {
+          "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
+          "node": "test_audit_is_aggregate_only_and_preserves_all_database_rows",
+          "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_audit_is_aggregate_only_and_preserves_all_database_rows -q -p no:cacheprovider",
+          "line": 675
+        },
+        {
+          "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
+          "node": "test_extraction_limits_fail_closed_without_mutation",
+          "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_extraction_limits_fail_closed_without_mutation -q -p no:cacheprovider",
+          "line": 736
+        },
+        {
+          "path": "apps/api/tests/unit/test_collaborative_snapshot_command.py",
+          "node": "test_live_audit_command_preserves_extraction_failure_code",
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest tests/unit/test_collaborative_snapshot_command.py::test_live_audit_command_preserves_extraction_failure_code -q -p no:cacheprovider",
+          "line": 157
         }
       ],
       "expect": "Default-off audit never accesses DB; exact aggregate fixture report; typed insufficiency and bounded eligibility query without per-user bind expansion.",
-      "mode": "API+ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9b.json route R03; final 9K record cross-references this route. No file/result implied today."
+      "mode": "API+ML+PG",
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9b.json route R03; focused synthetic checks only, not final 9K release evidence."
     },
     "R04": {
       "owner": "9B",
@@ -508,8 +550,8 @@
       ],
       "expect": "Public saved-personalization consent does not grant contribution; private synthetic controls remain separate.",
       "mode": "API+PG",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9b.json route R04; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9b.json route R04; focused synthetic checks only, not final 9K release evidence."
     },
     "R05": {
       "owner": "9B",
@@ -518,20 +560,38 @@
         {
           "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
           "node": "test_revision_tracks_source_tables_but_not_recommendation_events",
-          "line": 85,
+          "line": 87,
           "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_revision_tracks_source_tables_but_not_recommendation_events -q -p no:cacheprovider"
         },
         {
           "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
           "node": "test_extractor_applies_consent_temporal_and_label_precedence",
-          "line": 126,
+          "line": 128,
           "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_extractor_applies_consent_temporal_and_label_precedence -q -p no:cacheprovider"
+        },
+        {
+          "path": "apps/api/tests/integration/test_stage_5_collaborative_snapshot.py",
+          "node": "test_rating_preference_and_duplicate_source_matrix",
+          "command": "docker compose --project-name {owned-project} -f infra/docker-compose.test.yml run --build --rm test-api python -m pytest --run-integration -m integration tests/integration/test_stage_5_collaborative_snapshot.py::test_rating_preference_and_duplicate_source_matrix -q -p no:cacheprovider",
+          "line": 601
+        },
+        {
+          "path": "ml/tests/test_interaction_snapshot.py",
+          "node": "test_duplicate_edges_collapse_without_collapsing_distinct_contributors",
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_interaction_snapshot.py::test_duplicate_edges_collapse_without_collapsing_distinct_contributors -q -p no:cacheprovider",
+          "line": 283
+        },
+        {
+          "path": "ml/tests/test_interaction_snapshot.py",
+          "node": "test_snapshot_rejects_unknown_or_malformed_labels",
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_interaction_snapshot.py::test_snapshot_rejects_unknown_or_malformed_labels -q -p no:cacheprovider",
+          "line": 296
         }
       ],
       "expect": "Events neither advance label revision nor enter extracted positives; low rating, views, played, wishlist, dislike and temporal exclusions have explicit assertions.",
-      "mode": "PG",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9b.json route R05; final 9K record cross-references this route. No file/result implied today."
+      "mode": "PG+ML",
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9b.json route R05; focused synthetic checks only, not final 9K release evidence."
     },
     "R06": {
       "owner": "9F",
@@ -1555,7 +1615,7 @@
       "9B",
       "docs/data-model.md; data/fixtures/README.md; apps/api/app/api/v1/router.py; apps/api/tests/fixtures/collaborative_lifecycle.py",
       "Authority and source review",
-      "Document source/purpose/cutoff/catalog/retention/limitations; inspect public router and separate contribution defaults. Public grant/re-consent/withdrawal routes and actual cohort approval are ABSENT/BLOCKED. Private synthetic helper is not product consent. Preserve block until an explicit scoped decision is recorded."
+      "Document source/purpose/cutoff/catalog/retention/limitations; inspect public router and separate contribution defaults. Public grant/re-consent/withdrawal routes and actual cohort approval are ABSENT/BLOCKED. Private synthetic helper is not product consent. Preserve block until an explicit scoped decision is recorded. Review completed in docs/evidence/stage-5-phase-9b.json; ABSENT/BLOCKED production decisions retained."
     ],
     "M02": [
       "9J",
@@ -3943,5 +4003,16 @@
       "scope_note": "Preserve applicable inherited contract; existing suites not rerun in 9A.",
       "evidence": "Future docs/evidence/stage-5-phase-9k.json, inherited criterion ID; use family command and assertion/manual routes."
     }
-  ]
+  ],
+  "slice_updates": {
+    "9B": {
+      "evidence": "docs/evidence/stage-5-phase-9b.json",
+      "scope": "Extraction/authority/label provenance only; no live build or production authority approval.",
+      "verified_routes": ["R02", "R03", "R04", "R05"],
+      "blocked_decisions": [
+        "Public contribution grant/re-consent/withdrawal product routes",
+        "Actual user cohort approval"
+      ]
+    }
+  }
 }
