@@ -1,6 +1,6 @@
 # Stage 5 acceptance inventory — slice 9A
 
-**9A mapping and 9B/9C focused runtime checks verified on 2026-09-09.** Surveyed clean parent `f4d9be7` after completed 8I (`d0e86f9`), plan consolidation (`47d132b`) and Phase 9 planning (`f4d9be7`). No repository `AGENTS.md` was found. 9A, synthetic extraction 9B and pure ML 9C are complete; 9D–9L and Phase 10 remain unstarted. See the [9B evidence](evidence/stage-5-phase-9b.json) and [9C evidence](evidence/stage-5-phase-9c.json) for current checks; the 9A mapping below remains historical unless explicitly updated. Schema head remains `0011_stage_5_lifecycle_guard`.
+**9A mapping and 9B/9C/9D focused runtime checks verified through 2026-09-10.** Surveyed clean parent `f4d9be7` after completed 8I (`d0e86f9`), plan consolidation (`47d132b`) and Phase 9 planning (`f4d9be7`). No repository `AGENTS.md` was found. 9A, synthetic extraction 9B, pure ML 9C and hybrid/baseline 9D are complete; 9E–9L and Phase 10 remain unstarted. See the [9B evidence](evidence/stage-5-phase-9b.json), [9C evidence](evidence/stage-5-phase-9c.json) and [9D evidence](evidence/stage-5-phase-9d.json) for current checks; the 9A mapping below remains historical unless explicitly updated. Schema head remains `0011_stage_5_lifecycle_guard`.
 
 The [machine-readable inventory](evidence/stage-5-acceptance-inventory.json) is the canonical route/command contract. This readable view gives every unchanged Section 19 bullet a stable `S5-AC-01`–`S5-AC-47` ID. Route references compose the implementation path, exact assertion node or named review, fixture mode, command, expected result and evidence destination; a route is not a passing gate. The [9A record](evidence/stage-5-phase-9a.json) records only static verification.
 
@@ -11,7 +11,7 @@ The [machine-readable inventory](evidence/stage-5-acceptance-inventory.json) is 
 - **BLOCKED:** Explicit authority/product/release decision required; synthetic checks do not remove block.
 - **VERIFIED:** Only after recorded successful command/review on identified candidate; none of the runtime gates is verified in 9A.
 
-The original 9A automated routes were **EXISTING_NOT_RERUN**. Routes R02–R05 are now **VERIFIED** by 9B and R11/R12/R16 by 9C; other routes retain their recorded status. A row can additionally have MISSING evidence or a BLOCKED decision. No runtime result is VERIFIED in 9A. Final owners must disposition the whole criterion, including unasserted subclauses, rather than treating the listed representative assertions as exhaustive coverage.
+The original 9A automated routes were **EXISTING_NOT_RERUN**. Routes R02–R05 are now **VERIFIED** by 9B, R11/R12/R16 by 9C and R17–R20/R27/R29 by 9D; other routes retain their recorded status. A row can additionally have MISSING evidence or a BLOCKED decision. No runtime result is VERIFIED in 9A. Final owners must disposition the whole criterion, including unasserted subclauses, rather than treating the listed representative assertions as exhaustive coverage.
 
 Future evidence is `docs/evidence/stage-5-phase-9<slice>.json`, keyed by route and acceptance IDs; 9K cross-references the focused records. These are reserved destinations, not links to existing evidence. Keep raw output under ignored `tmp/phase9-<run-id>/`; retain only privacy-reviewed aggregate summaries and hashes. The historical [8H record](evidence/stage-5-phase-8h.json) is context only.
 
@@ -361,7 +361,7 @@ Candidate union allows a valid collaborative-only candidate before exclusions an
 
 Owner: **9D**. Routes: [R17](#r17).
 
-Current disposition: Exact union/exclusions before top-K assertions exist.
+Current disposition: Verified R17 union/materialization before exclusion and top-K in 9D; loaded five-variant diagnostic also admits d-collaborative with zero content.
 
 ### S5-AC-28
 
@@ -369,7 +369,7 @@ A collaborative-only candidate receives explicitly materialized content/platform
 
 Owner: **9D**. Routes: [R17](#r17), [R19](#r19).
 
-Current disposition: Existing exact materialization and evidence assertions.
+Current disposition: Verified R17/R19 exact zero-content base/platform/popularity/affinity and empty content evidence in 9D; native content/feedback universes remain unchanged.
 
 ### S5-AC-29
 
@@ -377,7 +377,7 @@ Hybrid weights are request-wide, versioned engineering defaults rather than lear
 
 Owner: **9D**. Routes: [R18](#r18), [M03](#m03).
 
-Current disposition: Existing fixed defaults; manual no-learning/no-quality review pending.
+Current disposition: Verified request-wide 80/10/10 and 90/0/10 defaults in R18 and the 9D M03 comparison review. No weights or product policy changed or learned.
 
 ### S5-AC-30
 
@@ -385,7 +385,7 @@ Under an active collaborative request, a candidate with no retained edge has uns
 
 Owner: **9D**. Routes: [R18](#r18).
 
-Current disposition: Golden explicitly retains 100000 weight with zero contribution for missing edge.
+Current disposition: Verified missing-edge and artifact-absent cold-content candidates retain 100000 collaborative weight, absent support/score and zero contribution; no per-candidate reallocation. Evaluation remains deferred to Stage 6.
 
 ### S5-AC-31
 
@@ -393,7 +393,7 @@ A reproducible fixture comparison records baseline candidates, components, and r
 
 Owner: **9D**. Routes: [R27](#r27), [M03](#m03).
 
-Current disposition: MISSING complete five-baseline comparison; existing trace covers Stage 4/hybrid/fallback only.
+Current disposition: Verified complete popularity/content/feedback/collaborative/hybrid diagnostic for eight small synthetic scenarios, hand-derived arithmetic, repeated canonical semantics and ordered output; see 9D evidence and table.
 
 ### S5-AC-32
 
@@ -401,7 +401,7 @@ Base, platform, popularity, feedback affinity, collaborative, played, and final 
 
 Owner: **9D**. Routes: [R17](#r17), [R18](#r18), [R19](#r19), [R22](#r22).
 
-Current disposition: Existing component/unit assertions; final cross-layer gate pending.
+Current disposition: Verified full ML component observability and independent decimal reconstruction in 9D. Response/event cross-layer R22 remains pending 9G.
 
 ### S5-AC-33
 
@@ -409,7 +409,7 @@ Each named signal is weighted once; component contributions sum exactly in fixed
 
 Owner: **9D**. Routes: [R18](#r18), [R22](#r22).
 
-Current disposition: Existing fixed-point reconstruction assertions.
+Current disposition: Verified one weighted contribution per named signal, source collapse and one post-blend played factor with exact fixed-point arithmetic in 9D. Response/event R22 remains pending 9G.
 
 ### S5-AC-34
 
@@ -417,7 +417,7 @@ Played adjustment occurs once after the pre-played hybrid score, dislikes remain
 
 Owner: **9D**. Routes: [R17](#r17), [R18](#r18), [R29](#r29).
 
-Current disposition: Played/exclusion assertions exist; active-hybrid wishlist gap audit pending.
+Current disposition: Verified hard exclusions, played after blending and full-result wishlist neutrality under both active hybrid weight configurations in 9D.
 
 ### S5-AC-35
 
@@ -425,7 +425,7 @@ Every collaborative-unavailable or unsupported path matches Stage 4 scores, orde
 
 Owner: **9D**. Routes: [R20](#r20), [R21](#r21), [R22](#r22), [R23](#r23), [B02](#b02), [B03](#b03).
 
-Current disposition: All 15 lower-layer parameterizations exist; browser omissions explicitly dispositioned below.
+Current disposition: Verified all 15 ML fallback reasons preserve Stage 4 object/results/order/score/reason/evidence with truthful mode in R20. Producer/API/browser R21–R23/B02/B03 remain pending their owners; no cross-layer pass implied.
 
 ### S5-AC-36
 
@@ -795,7 +795,7 @@ Evidence: [9C verification](evidence/stage-5-phase-9c.json), route `R16`; focuse
 
 ### R17
 
-Owner: **9D**; mode: **ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9D**; mode: **ML**; status: **VERIFIED**.
 
 Implementation: [ml/src/gamelens_recommender/hybrid.py](../ml/src/gamelens_recommender/hybrid.py).
 
@@ -805,11 +805,11 @@ Implementation: [ml/src/gamelens_recommender/hybrid.py](../ml/src/gamelens_recom
 
 Expected: Union before exclusions/top-K; collaborative-only zero-content materialization preserves base/platform/popularity/affinity evidence and Stage 3 row bound.
 
-Evidence: future `docs/evidence/stage-5-phase-9d.json`, route `R17`.
+Evidence: [9D verification](evidence/stage-5-phase-9d.json), route `R17`; focused and full ML suites. Later-layer evidence remains separate.
 
 ### R18
 
-Owner: **9D**; mode: **ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9D**; mode: **ML**; status: **VERIFIED**.
 
 Implementation: [ml/src/gamelens_recommender/hybrid.py](../ml/src/gamelens_recommender/hybrid.py).
 
@@ -818,14 +818,16 @@ Implementation: [ml/src/gamelens_recommender/hybrid.py](../ml/src/gamelens_recom
 - [ml/tests/test_hybrid_scoring.py](../ml/tests/test_hybrid_scoring.py) `::test_hybrid_scoring_orders_after_played_adjustment_then_applies_top_k`
 - [ml/tests/test_hybrid_scoring.py](../ml/tests/test_hybrid_scoring.py) `::test_full_hybrid_tie_break_ends_with_stable_slug`
 - [ml/tests/test_hybrid_scoring.py](../ml/tests/test_hybrid_scoring.py) `::test_hybrid_candidate_ranking_is_frozen_reconstructible_and_internal`
+- [ml/tests/test_phase4_handoff.py](../ml/tests/test_phase4_handoff.py) `::test_five_variant_components_reconstruct_without_invented_support`
+- [ml/tests/test_phase4_handoff.py](../ml/tests/test_phase4_handoff.py) `::test_loaded_hybrid_top_k_is_prefix_after_union_exclusions_and_played`
 
 Expected: 80/10/10 or 90/0/10 request weights; missing-edge candidate retains 10% weight and zero contribution; exact unit sum, one played factor, top-K after scoring, stable ties.
 
-Evidence: future `docs/evidence/stage-5-phase-9d.json`, route `R18`.
+Evidence: [9D verification](evidence/stage-5-phase-9d.json), route `R18`; focused and full ML suites. Later-layer evidence remains separate.
 
 ### R19
 
-Owner: **9D**; mode: **ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9D**; mode: **ML**; status: **VERIFIED**.
 
 Implementation: [ml/src/gamelens_recommender/hybrid.py](../ml/src/gamelens_recommender/hybrid.py).
 
@@ -835,21 +837,22 @@ Implementation: [ml/src/gamelens_recommender/hybrid.py](../ml/src/gamelens_recom
 
 Expected: All components retained; deterministic cautious prose only with positive applied contribution.
 
-Evidence: future `docs/evidence/stage-5-phase-9d.json`, route `R19`.
+Evidence: [9D verification](evidence/stage-5-phase-9d.json), route `R19`; focused and full ML suites. Later-layer evidence remains separate.
 
 ### R20
 
-Owner: **9D**; mode: **ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9D**; mode: **ML**; status: **VERIFIED**.
 
 Implementation: [ml/src/gamelens_recommender/hybrid.py](../ml/src/gamelens_recommender/hybrid.py).
 
 - [ml/tests/test_hybrid_ranker.py](../ml/tests/test_hybrid_ranker.py) `::test_every_unavailable_reason_returns_the_exact_stage4_payload`
 - [ml/tests/test_hybrid_ranker.py](../ml/tests/test_hybrid_ranker.py) `::test_every_ready_no_support_reason_returns_the_exact_stage4_payload`
 - [ml/tests/test_hybrid_ranker.py](../ml/tests/test_hybrid_ranker.py) `::test_ready_context_or_exclusion_mismatch_fails_without_silent_fallback`
+- [ml/tests/test_hybrid_ranker.py](../ml/tests/test_hybrid_ranker.py) `::test_invalid_context_or_feedback_is_an_error_even_when_component_cannot_score`
 
-Expected: 11 unavailable + 4 unsupported reasons return the exact Stage 4 object and equal result; invalid context is an error, not fallback.
+Expected: All 11 unavailable + 4 unsupported reasons preserve the exact Stage 4 object, full equality, reason and fallback mode with played/disliked/wishlisted state; invalid context/feedback remains the Stage 4 error, never a successful fallback.
 
-Evidence: future `docs/evidence/stage-5-phase-9d.json`, route `R20`.
+Evidence: [9D verification](evidence/stage-5-phase-9d.json), route `R20`; focused and full ML suites. Later-layer evidence remains separate.
 
 ### R21
 
@@ -944,16 +947,19 @@ Evidence: future `docs/evidence/stage-5-phase-9j.json`, route `R26`.
 
 ### R27
 
-Owner: **9D**; mode: **ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9D**; mode: **ML**; status: **VERIFIED**.
 
 Implementation: [ml/src/gamelens_recommender/hybrid.py](../ml/src/gamelens_recommender/hybrid.py).
 
 - [ml/tests/test_hybrid_ranker.py](../ml/tests/test_hybrid_ranker.py) `::test_fixture_comparison_freezes_stage4_and_hybrid_candidate_diagnostics`
 - [ml/tests/test_phase4_handoff.py](../ml/tests/test_phase4_handoff.py) `::test_phase4_fixture_trace_is_a_frozen_functional_diagnostic`
+- [ml/tests/test_phase4_handoff.py](../ml/tests/test_phase4_handoff.py) `::test_five_variant_diagnostic_has_hand_derived_order_and_units`
+- [ml/tests/test_phase4_handoff.py](../ml/tests/test_phase4_handoff.py) `::test_five_variant_components_reconstruct_without_invented_support`
+- [ml/tests/test_phase4_handoff.py](../ml/tests/test_phase4_handoff.py) `::test_five_variant_diagnostic_repeats_equivalent_canonical_inputs`
 
-Expected: Existing Stage 4/hybrid functional traces only. Complete five-variant comparison is MISSING and belongs to 9D.
+Expected: Five native-policy variants across eight synthetic scenarios with independent literal/math goldens, candidate universes/exclusions/tie-breaks/top-K, exact components/support and no quality claims. Two canonical-input permutations produce equal semantic arrays, identities and ordered tables.
 
-Evidence: future `docs/evidence/stage-5-phase-9d.json`, route `R27`.
+Evidence: [9D verification](evidence/stage-5-phase-9d.json), route `R27`; focused and full ML suites. Later-layer evidence remains separate.
 
 ### R28
 
@@ -970,15 +976,16 @@ Evidence: future `docs/evidence/stage-5-phase-9f.json`, route `R28`.
 
 ### R29
 
-Owner: **9D**; mode: **ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9D**; mode: **ML**; status: **VERIFIED**.
 
 Implementation: [ml/src/gamelens_recommender/feedback.py](../ml/src/gamelens_recommender/feedback.py).
 
 - [ml/tests/test_feedback.py](../ml/tests/test_feedback.py) `::test_wishlist_is_persistable_but_ranking_neutral`
+- [ml/tests/test_hybrid_ranker.py](../ml/tests/test_hybrid_ranker.py) `::test_wishlist_is_neutral_through_the_active_hybrid_pipeline`
 
-Expected: Inherited Stage 4 wishlist leaves full result equal; active-hybrid neutrality audit remains with 9D.
+Expected: Wishlist preserves the complete active-hybrid result and prepared context for positive/saved source, played, collaborative and content candidates under both 80/10/10 and 90/0/10 weights; inherited Stage 4 neutrality also passes in full ML.
 
-Evidence: future `docs/evidence/stage-5-phase-9d.json`, route `R29`.
+Evidence: [9D verification](evidence/stage-5-phase-9d.json), route `R29`; focused and full ML suites. Later-layer evidence remains separate.
 
 ### R30
 
@@ -1157,13 +1164,13 @@ Evidence: future `docs/evidence/stage-5-phase-9j.json`, review `M02`; retain fin
 
 ### M03
 
-**Five-baseline functional comparison review** — owner **9D**, mode **MANUAL**, current final evidence **MISSING** (M01 also has a **BLOCKED** authority decision).
+**Five-baseline functional comparison review** — owner **9D**, mode **MANUAL**, status **VERIFIED within 9D**.
 
-Inputs: [ml/src/gamelens_recommender/baseline.py](../ml/src/gamelens_recommender/baseline.py), [ml/src/gamelens_recommender/hybrid.py](../ml/src/gamelens_recommender/hybrid.py), [ml/tests/test_phase4_handoff.py](../ml/tests/test_phase4_handoff.py).
+Inputs: [baseline](../ml/src/gamelens_recommender/baseline.py), [hybrid policy](../ml/src/gamelens_recommender/hybrid.py), [diagnostic generator](../ml/tests/hybrid_diagnostic.py) and [handoff goldens](../ml/tests/test_phase4_handoff.py).
 
-MISSING five-variant table; freeze scope below, independently derive expectations, run twice, compare semantic arrays and ordered game-level results. No quality metrics, tuning, superiority or real-user conclusion.
+The [eight-scenario table](evidence/stage-5-phase-9d-diagnostic.md) preserves native popularity/content/feedback/collaborative/hybrid candidate semantics, source/dislike exclusions, tie keys and top-K. Independent arithmetic explains support, absent edges, exact contributions and one played factor. Canonical and reversed equivalent inputs produce identical semantic arrays, identities and ordered tables. Retained evidence is synthetic and game-level only; no quality metrics, tuning, superiority or real-user conclusion.
 
-Evidence: future `docs/evidence/stage-5-phase-9d.json`, review `M03`; retain findings and input hashes.
+Evidence: [9D verification](evidence/stage-5-phase-9d.json), review `M03`; commands and input/output hashes retained. Public cohort authority remains blocked separately in M01.
 
 ### M04
 
@@ -1411,7 +1418,7 @@ Entry path: [Makefile](../Makefile). Mode: **CROSS**. Assertion/review routes: [
 
 The source of truth is [HYBRID_FALLBACK_REASONS](../ml/src/gamelens_recommender/hybrid.py): 11 unavailable reasons and 4 no-support reasons. For **each row**, R20 selects the corresponding ML parametrization; R21 selects unavailable/no-support API orchestration; R22 and R23 select the same `reason` at projection and HTTP/event boundaries. These injected boundary checks prove exact Stage 4 payload/order/units/reason and truthful Stage 5 envelope, not real production of every state; producer routes supply that separate evidence.
 
-The [fixture wrapper](../infra/run-e2e-fixture.sh) calls `fallback_probe` for seven reasons, but browser services only for missing, corrupt and unsupported-source cases. Its `none` service selections are **API-only**, not skipped browser passes. `privacy_invalid` is selected by the [lifecycle wrapper](../infra/run-e2e-lifecycle.sh). All selections remain EXISTING_NOT_RERUN in Phase 9. Owners: 9D ML, 9F lifecycle producers, 9G API, 9H browser disposition.
+The [fixture wrapper](../infra/run-e2e-fixture.sh) calls `fallback_probe` for seven reasons, but browser services only for missing, corrupt and unsupported-source cases. Its `none` service selections are **API-only**, not skipped browser passes. `privacy_invalid` is selected by the [lifecycle wrapper](../infra/run-e2e-lifecycle.sh). All 15 ML reasons are VERIFIED by [9D](evidence/stage-5-phase-9d.json); producer/API/browser selections remain EXISTING_NOT_RERUN in Phase 9. The canonical JSON records `ml_status` separately from the aggregate row status. Owners: 9D ML, 9F lifecycle producers, 9G API, 9H browser disposition.
 
 | Reason                   | Producing layer                                                                           | Producer checks                                    | Browser / real-stack selection                                        | Omission rationale or selected assertion                                                                                                                                             |
 | ------------------------ | ----------------------------------------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -1435,7 +1442,7 @@ Browser companion nodes: [fallback smoke](../apps/web/e2e/fallback.fixture.smoke
 
 ## Frozen five-baseline comparison scope
 
-Owner **9D**, mapped to S5-AC-31 and M03. Current R27 has Stage 4/hybrid/fallback traces; a complete five-variant output is **MISSING**. 9A freezes requirements only and does not implement the diagnostic.
+Owner **9D**, mapped to S5-AC-31 and M03. **VERIFIED** in the [five-variant table](evidence/stage-5-phase-9d-diagnostic.md) and [9D record](evidence/stage-5-phase-9d.json). The original 9A frozen requirements below are preserved; eight synthetic scenarios now exercise them.
 
 - Use one small project-authored scenario set with hand-derived expected values; record catalog/fixture fingerprints, model/policy identity and query context without user identities.
 - Compare **popularity, content, feedback, collaborative and hybrid**. For each variant explicitly state its candidate universe, source/dislike exclusions, unsupported behavior, tie-break key and top-K. Reuse current policy functions and retain variant-specific semantics; do not silently force identical universes.
@@ -1447,4 +1454,4 @@ Owner **9D**, mapped to S5-AC-31 and M03. Current R27 has Stage 4/hybrid/fallbac
 
 Public contribution grant/re-consent/withdrawal routes and UI are absent, and no actual user cohort has approved authority. This blocks the applicable production acceptance clauses (S5-AC-03/05/14/42); synthetic private lifecycle checks cannot discharge them. Default-off and request-only checks can be verified independently. A future explicit fixture-only release-scope decision must identify exactly which clauses remain blocked; no unexplained N/A or implicit release approval is allowed.
 
-Current final dependency/license/security/privacy evidence (9J), diagnostic coverage/gap disposition (9I), the five-baseline table (9D), clean combined replay (9K) and final docs reconciliation (9L) are missing by design at 9A. Existing tests are assertion routes, not exhaustive-coverage or current-pass claims. 9B has closed snapshot/provenance gaps with focused runtime evidence. 9C has closed its pure ML gaps; 9D–9L own their remaining work and are unstarted.
+Current final dependency/license/security/privacy evidence (9J), diagnostic coverage/gap disposition (9I), clean combined replay (9K) and final docs reconciliation (9L) remain missing. The five-baseline table (9D) is now verified. Existing tests are assertion routes, not exhaustive-coverage or current-pass claims. 9B has closed snapshot/provenance gaps with focused runtime evidence. 9C has closed its pure ML gaps and 9D its hybrid/functional comparison scope; 9E–9L own their remaining work and are unstarted.

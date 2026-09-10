@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Stage 5 Phase 9: 9A inventory, 9B synthetic snapshot/provenance and 9C pure ML verification; 9D–9L unstarted",
+  "scope": "Stage 5 Phase 9: 9A inventory, 9B synthetic extraction, 9C pure ML and 9D hybrid/baseline verification complete; 9E–9L unstarted",
   "baseline": "f4d9be7",
   "statuses": {
     "EXISTING_NOT_RERUN": "Source assertion inspected; no Phase 9 execution evidence.",
@@ -234,72 +234,72 @@
       "wording": "Candidate union allows a valid collaborative-only candidate before exclusions and top-K.",
       "owner": "9D",
       "routes": ["R17"],
-      "gap": "Exact union/exclusions before top-K assertions exist.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified R17 union/materialization before exclusion and top-K in 9D; loaded five-variant diagnostic also admits d-collaborative with zero content.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-28",
       "wording": "A collaborative-only candidate receives explicitly materialized content/platform/popularity/base/affinity evidence without weakening the existing Stage 3 zero-content eligibility contract.",
       "owner": "9D",
       "routes": ["R17", "R19"],
-      "gap": "Existing exact materialization and evidence assertions.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified R17/R19 exact zero-content base/platform/popularity/affinity and empty content evidence in 9D; native content/feedback universes remain unchanged.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-29",
       "wording": "Hybrid weights are request-wide, versioned engineering defaults rather than learned or quality-optimized values.",
       "owner": "9D",
       "routes": ["R18", "M03"],
-      "gap": "Existing fixed defaults; manual no-learning/no-quality review pending.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified request-wide 80/10/10 and 90/0/10 defaults in R18 and the 9D M03 comparison review. No weights or product policy changed or learned.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-30",
       "wording": "Under an active collaborative request, a candidate with no retained edge has unsupported/zero collaborative evidence and no candidate-level weight reallocation; this behavior is golden-tested and deferred to Stage 6 for evaluation.",
       "owner": "9D",
       "routes": ["R18"],
-      "gap": "Golden explicitly retains 100000 weight with zero contribution for missing edge.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified missing-edge and artifact-absent cold-content candidates retain 100000 collaborative weight, absent support/score and zero contribution; no per-candidate reallocation. Evaluation remains deferred to Stage 6.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-31",
       "wording": "A reproducible fixture comparison records baseline candidates, components, and ranks while making no recommendation-quality claim.",
       "owner": "9D",
       "routes": ["R27", "M03"],
-      "gap": "MISSING complete five-baseline comparison; existing trace covers Stage 4/hybrid/fallback only.",
-      "status": "MISSING"
+      "gap": "Verified complete popularity/content/feedback/collaborative/hybrid diagnostic for eight small synthetic scenarios, hand-derived arithmetic, repeated canonical semantics and ordered output; see 9D evidence and table.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-32",
       "wording": "Base, platform, popularity, feedback affinity, collaborative, played, and final values remain independently observable and reconstructible.",
       "owner": "9D",
       "routes": ["R17", "R18", "R19", "R22"],
-      "gap": "Existing component/unit assertions; final cross-layer gate pending.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified full ML component observability and independent decimal reconstruction in 9D. Response/event cross-layer R22 remains pending 9G.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-33",
       "wording": "Each named signal is weighted once; component contributions sum exactly in fixed-point units.",
       "owner": "9D",
       "routes": ["R18", "R22"],
-      "gap": "Existing fixed-point reconstruction assertions.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified one weighted contribution per named signal, source collapse and one post-blend played factor with exact fixed-point arithmetic in 9D. Response/event R22 remains pending 9G.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-34",
       "wording": "Played adjustment occurs once after the pre-played hybrid score, dislikes remain hard exclusions, and wishlist remains neutral.",
       "owner": "9D",
       "routes": ["R17", "R18", "R29"],
-      "gap": "Played/exclusion assertions exist; active-hybrid wishlist gap audit pending.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified hard exclusions, played after blending and full-result wishlist neutrality under both active hybrid weight configurations in 9D.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-35",
       "wording": "Every collaborative-unavailable or unsupported path matches Stage 4 scores, order, response reason, and evidence exactly.",
       "owner": "9D",
       "routes": ["R20", "R21", "R22", "R23", "B02", "B03"],
-      "gap": "All 15 lower-layer parameterizations exist; browser omissions explicitly dispositioned below.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified all 15 ML fallback reasons preserve Stage 4 object/results/order/score/reason/evidence with truthful mode in R20. Producer/API/browser R21–R23/B02/B03 remain pending their owners; no cross-layer pass implied.",
+      "status": "VERIFIED"
     },
     {
       "id": "S5-AC-36",
@@ -1136,8 +1136,8 @@
       ],
       "expect": "Union before exclusions/top-K; collaborative-only zero-content materialization preserves base/platform/popularity/affinity evidence and Stage 3 row bound.",
       "mode": "ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9d.json route R17; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9d.json route R17; focused-final and full-ml, fixture-only ML. API/browser/producer gates remain with later owners."
     },
     "R18": {
       "owner": "9D",
@@ -1172,12 +1172,24 @@
           "node": "test_hybrid_candidate_ranking_is_frozen_reconstructible_and_internal",
           "line": 461,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_hybrid_scoring.py::test_hybrid_candidate_ranking_is_frozen_reconstructible_and_internal -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_phase4_handoff.py",
+          "node": "test_five_variant_components_reconstruct_without_invented_support",
+          "line": 609,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_phase4_handoff.py::test_five_variant_components_reconstruct_without_invented_support -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_phase4_handoff.py",
+          "node": "test_loaded_hybrid_top_k_is_prefix_after_union_exclusions_and_played",
+          "line": 688,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_phase4_handoff.py::test_loaded_hybrid_top_k_is_prefix_after_union_exclusions_and_played -q -p no:cacheprovider"
         }
       ],
       "expect": "80/10/10 or 90/0/10 request weights; missing-edge candidate retains 10% weight and zero contribution; exact unit sum, one played factor, top-K after scoring, stable ties.",
       "mode": "ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9d.json route R18; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9d.json route R18; focused-final and full-ml, fixture-only ML. API/browser/producer gates remain with later owners."
     },
     "R19": {
       "owner": "9D",
@@ -1204,8 +1216,8 @@
       ],
       "expect": "All components retained; deterministic cautious prose only with positive applied contribution.",
       "mode": "ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9d.json route R19; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9d.json route R19; focused-final and full-ml, fixture-only ML. API/browser/producer gates remain with later owners."
     },
     "R20": {
       "owner": "9D",
@@ -1220,20 +1232,26 @@
         {
           "path": "ml/tests/test_hybrid_ranker.py",
           "node": "test_every_ready_no_support_reason_returns_the_exact_stage4_payload",
-          "line": 222,
+          "line": 227,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_hybrid_ranker.py::test_every_ready_no_support_reason_returns_the_exact_stage4_payload -q -p no:cacheprovider"
         },
         {
           "path": "ml/tests/test_hybrid_ranker.py",
           "node": "test_ready_context_or_exclusion_mismatch_fails_without_silent_fallback",
-          "line": 480,
+          "line": 490,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_hybrid_ranker.py::test_ready_context_or_exclusion_mismatch_fails_without_silent_fallback -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_hybrid_ranker.py",
+          "node": "test_invalid_context_or_feedback_is_an_error_even_when_component_cannot_score",
+          "line": 595,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_hybrid_ranker.py::test_invalid_context_or_feedback_is_an_error_even_when_component_cannot_score -q -p no:cacheprovider"
         }
       ],
-      "expect": "11 unavailable + 4 unsupported reasons return the exact Stage 4 object and equal result; invalid context is an error, not fallback.",
+      "expect": "All 11 unavailable + 4 unsupported reasons preserve the exact Stage 4 object, full equality, reason and fallback mode with played/disliked/wishlisted state; invalid context/feedback remains the Stage 4 error, never a successful fallback.",
       "mode": "ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9d.json route R20; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9d.json route R20; focused-final and full-ml, fixture-only ML. API/browser/producer gates remain with later owners."
     },
     "R21": {
       "owner": "9G",
@@ -1452,20 +1470,38 @@
         {
           "path": "ml/tests/test_hybrid_ranker.py",
           "node": "test_fixture_comparison_freezes_stage4_and_hybrid_candidate_diagnostics",
-          "line": 360,
+          "line": 370,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_hybrid_ranker.py::test_fixture_comparison_freezes_stage4_and_hybrid_candidate_diagnostics -q -p no:cacheprovider"
         },
         {
           "path": "ml/tests/test_phase4_handoff.py",
           "node": "test_phase4_fixture_trace_is_a_frozen_functional_diagnostic",
-          "line": 270,
+          "line": 283,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_phase4_handoff.py::test_phase4_fixture_trace_is_a_frozen_functional_diagnostic -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_phase4_handoff.py",
+          "node": "test_five_variant_diagnostic_has_hand_derived_order_and_units",
+          "line": 493,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_phase4_handoff.py::test_five_variant_diagnostic_has_hand_derived_order_and_units -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_phase4_handoff.py",
+          "node": "test_five_variant_components_reconstruct_without_invented_support",
+          "line": 609,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_phase4_handoff.py::test_five_variant_components_reconstruct_without_invented_support -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_phase4_handoff.py",
+          "node": "test_five_variant_diagnostic_repeats_equivalent_canonical_inputs",
+          "line": 677,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_phase4_handoff.py::test_five_variant_diagnostic_repeats_equivalent_canonical_inputs -q -p no:cacheprovider"
         }
       ],
-      "expect": "Existing Stage 4/hybrid functional traces only. Complete five-variant comparison is MISSING and belongs to 9D.",
+      "expect": "Five native-policy variants across eight synthetic scenarios with independent literal/math goldens, candidate universes/exclusions/tie-breaks/top-K, exact components/support and no quality claims. Two canonical-input permutations produce equal semantic arrays, identities and ordered tables.",
       "mode": "ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9d.json route R27; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9d.json route R27; focused-final and full-ml, fixture-only ML. API/browser/producer gates remain with later owners."
     },
     "R28": {
       "owner": "9F",
@@ -1498,12 +1534,18 @@
           "node": "test_wishlist_is_persistable_but_ranking_neutral",
           "line": 193,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_feedback.py::test_wishlist_is_persistable_but_ranking_neutral -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_hybrid_ranker.py",
+          "node": "test_wishlist_is_neutral_through_the_active_hybrid_pipeline",
+          "line": 553,
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_hybrid_ranker.py::test_wishlist_is_neutral_through_the_active_hybrid_pipeline -q -p no:cacheprovider"
         }
       ],
-      "expect": "Inherited Stage 4 wishlist leaves full result equal; active-hybrid neutrality audit remains with 9D.",
+      "expect": "Wishlist preserves the complete active-hybrid result and prepared context for positive/saved source, played, collaborative and content candidates under both 80/10/10 and 90/0/10 weights; inherited Stage 4 neutrality also passes in full ML.",
       "mode": "ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9d.json route R29; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9d.json route R29; focused-final and full-ml, fixture-only ML. API/browser/producer gates remain with later owners."
     },
     "R30": {
       "owner": "9G",
@@ -1729,7 +1771,7 @@
       "9D",
       "ml/src/gamelens_recommender/baseline.py; ml/src/gamelens_recommender/hybrid.py; ml/tests/test_phase4_handoff.py",
       "Five-baseline functional comparison review",
-      "MISSING five-variant table; freeze scope below, independently derive expectations, run twice, compare semantic arrays and ordered game-level results. No quality metrics, tuning, superiority or real-user conclusion."
+      "VERIFIED within 9D: eight-scenario five-variant table with hand-derived component arithmetic, explicit native variant semantics and two identical canonical-input runs. See docs/evidence/stage-5-phase-9d.json and stage-5-phase-9d-diagnostic.md. Synthetic game-level evidence only; no quality/tuning/superiority or real-user conclusion."
     ],
     "M04": [
       "9H",
@@ -1972,7 +2014,10 @@
       "browser_selection": "Fixture API probe only",
       "rationale": "No dedicated browser: same generic fallback presentation as missing artifact; R20/R21/R23 plus producer checks cover reason and exact payload.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "fixture_not_allowed",
@@ -1983,7 +2028,10 @@
       "browser_selection": "Fixture API probe plus development/production rejection",
       "rationale": "No dedicated browser: authority guard is a server configuration boundary; R20/R21/R23 and R10/R32 cover denial and exact fallback.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "insufficient_data",
@@ -1994,7 +2042,10 @@
       "browser_selection": "None",
       "rationale": "No dedicated browser: aggregate threshold arithmetic belongs to R28; R20/R21/R23 assert exact reason/envelope. 9F audits trivial live promotion.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "artifact_missing",
@@ -2005,7 +2056,10 @@
       "browser_selection": "Fixture API + Chromium fallback.fixture.spec.ts",
       "rationale": "Browser selected for absent artifact.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "artifact_corrupt",
@@ -2016,7 +2070,10 @@
       "browser_selection": "Fixture API + Chromium fallback.fixture.spec.ts",
       "rationale": "Browser selected for corrupt artifact.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "artifact_incompatible",
@@ -2027,7 +2084,10 @@
       "browser_selection": "None",
       "rationale": "No dedicated browser: same unavailable rendering; lower-layer incompatibility and injected scorer-failure checks plus R20/R21/R23 prove reason/payload.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "artifact_stale",
@@ -2038,7 +2098,10 @@
       "browser_selection": "None",
       "rationale": "No dedicated browser: revision mismatch is covered at readiness/registry and all-reason exact fallback; lifecycle browser invalidation produces privacy_invalid, not artifact_stale.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "privacy_invalid",
@@ -2049,7 +2112,10 @@
       "browser_selection": "Lifecycle API + serialized live lifecycle phase",
       "rationale": "Browser selected for actual registered synthetic invalidation; private contribution operations do not implement public consent.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "artifact_expired",
@@ -2060,7 +2126,10 @@
       "browser_selection": "Fixture API probe only",
       "rationale": "No dedicated browser: time boundary is server-owned; lower-layer expiry checks plus R20/R21/R23 cover exact fallback.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "catalog_stale",
@@ -2071,7 +2140,10 @@
       "browser_selection": "Fixture API probe only",
       "rationale": "No dedicated browser: optional catalog mismatch is distinct from required-content failure; R20/R21/R23 and required-content probe cover the boundary.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "artifact_retired",
@@ -2082,7 +2154,10 @@
       "browser_selection": "None",
       "rationale": "No dedicated browser: retirement terminality belongs to registry/readiness tests; R20/R21/R23 retain exact fallback and typed reason.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "no_query_sources",
@@ -2093,7 +2168,10 @@
       "browser_selection": "None",
       "rationale": "No dedicated browser: source-less prepared policy input tested below UI; R20/R21/R23 cover exact fallback, without inventing a UI input path.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "no_supported_sources",
@@ -2104,7 +2182,10 @@
       "browser_selection": "Fixture API + hybrid.fixture.spec.ts + fallback.fixture.smoke.spec.ts",
       "rationale": "Chromium hybrid cold source and Chromium/Firefox/WebKit fallback smoke selected.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "no_candidate_edges",
@@ -2115,7 +2196,10 @@
       "browser_selection": "None",
       "rationale": "No dedicated browser: supported zero-degree row is a hand-authored sparse case; R16 plus R20/R21/R23 prove no fabricated evidence.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     },
     {
       "reason": "no_eligible_candidates",
@@ -2126,7 +2210,10 @@
       "browser_selection": "None",
       "rationale": "No dedicated browser: R16 asserts all candidates excluded and exact diagnostics; R20/R21/R23 assert payload fallback, with R17 covering exclusion-before-top-K.",
       "status": "EXISTING_NOT_RERUN",
-      "owner": "9D/9G/9H"
+      "owner": "9D/9G/9H",
+      "ml_status": "VERIFIED",
+      "ml_evidence": "docs/evidence/stage-5-phase-9d.json R20; all 15 reasons in focused-final and full-ml",
+      "remaining": "Producer/API/browser evidence remains with 9E/9F/9G/9H; aggregate row status is unchanged."
     }
   ],
   "commands": {
@@ -4115,6 +4202,14 @@
         "Public contribution grant/re-consent/withdrawal product routes",
         "Actual user cohort approval"
       ]
+    },
+    "9D": {
+      "slice": "9D",
+      "status": "VERIFIED_HYBRID_FUNCTIONAL",
+      "date": "2026-09-10",
+      "routes": ["R17", "R18", "R19", "R20", "R27", "R29"],
+      "evidence": "docs/evidence/stage-5-phase-9d.json",
+      "remaining": "9E–9L and Phase 10 unstarted; API/event/browser/production-authority clauses remain with their owners."
     }
   }
 }

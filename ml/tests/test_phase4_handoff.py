@@ -1,6 +1,12 @@
 import json
+import math
+from dataclasses import replace
 from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
+
+import numpy as np
+import pytest
 
 import gamelens_recommender
 from gamelens_recommender import (
@@ -24,6 +30,13 @@ from gamelens_recommender import (
     profile_fingerprint,
 )
 from gamelens_recommender.interaction_snapshot import load_fixture
+from hybrid_diagnostic import (
+    build_diagnostic,
+    build_models,
+    compare_scenario,
+    render_diagnostic,
+    scenarios,
+)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = REPOSITORY_ROOT / "data" / "catalog" / "games.json"
@@ -466,3 +479,217 @@ def test_phase4_fixture_trace_is_a_frozen_functional_diagnostic(tmp_path: Path) 
             149_916,
         ),
     )
+
+
+def _decimal_units(raw, weight=1_000_000):
+    return int((Decimal(raw) * Decimal(weight) / 1_000_000).quantize(Decimal(1), ROUND_HALF_UP))
+
+
+@pytest.fixture
+def phase9_diagnostic(tmp_path):
+    return build_diagnostic(tmp_path)[0]
+
+
+def test_five_variant_diagnostic_has_hand_derived_order_and_units(phase9_diagnostic):
+    """Identical/orthogonal documents and explicit support make the goldens independent."""
+    report = phase9_diagnostic
+    # Four identical tactical documents. In each, unigram counts are 3/3,
+    # bigram counts 1/1/2/1; every token has the same IDF, which cancels.
+    cold_content = int(
+        (
+            Decimal(
+                str(
+                    (1 + math.log(3))
+                    / math.sqrt(2 * (1 + math.log(3)) ** 2 + (1 + math.log(2)) ** 2 + 3)
+                )
+            )
+            * 1_000_000
+        ).quantize(Decimal(1), ROUND_HALF_UP)
+    )
+    cold_base = _decimal_units(cold_content, 800_000) + 100_000
+    popular = [
+        ("d-collaborative", 650_000),
+        ("b-both", 500_000),
+        ("z-tie", 500_000),
+        ("c-content", 350_000),
+        ("e-cold", 350_000),
+    ]
+    content = [("b-both", 950_000), ("z-tie", 950_000), ("c-content", 935_000)]
+    # a/d support 8, b/z support 10: a->b/z = 8/sqrt(8*10) = 894427 units.
+    collab = [("d-collaborative", 1_000_000), ("b-both", 894_427), ("z-tie", 894_427)]
+    cold = [
+        ("a-source", cold_base + 65_000),
+        ("b-both", cold_base + 50_000),
+        ("z-tie", cold_base + 50_000),
+        ("c-content", cold_base + 35_000),
+    ]
+    expected = {
+        "supported_played": [
+            popular,
+            content,
+            [("z-tie", 955_000), ("c-content", 941_500), ("b-both", 477_500)],
+            collab,
+            [
+                ("z-tie", 949_443),
+                ("c-content", 848_000),
+                ("b-both", 474_722),
+                ("d-collaborative", 232_000),
+            ],
+        ],
+        "saved_only_tied": [
+            popular,
+            content,
+            content,
+            collab,
+            [
+                ("b-both", 944_443),
+                ("z-tie", 944_443),
+                ("c-content", 841_500),
+                ("d-collaborative", 248_500),
+            ],
+        ],
+        "cold_user": [[("a-source", 650_000), *popular], cold, cold, [], cold],
+        "cold_source_empty": [[("a-source", 650_000), *popular[:-1]], [], [], [], []],
+        "mixed_sources": [
+            popular,
+            content,
+            [("b-both", 855_000), ("z-tie", 855_000), ("c-content", 841_500)],
+            collab,
+            [
+                ("b-both", 849_443),
+                ("z-tie", 849_443),
+                ("c-content", 748_000),
+                ("d-collaborative", 232_000),
+            ],
+        ],
+        # The 65/35 orthogonal saved/taxonomy mixture has norm sqrt(.65^2+.35^2).
+        # Core cosine=.65/norm -> 880471; e cosine=.35*(cold unigram/norm) -> 259724.
+        "cold_content_item": [
+            popular,
+            [("b-both", 854_377), ("z-tie", 854_377), ("c-content", 839_377), ("e-cold", 342_779)],
+            [("b-both", 854_377), ("z-tie", 854_377), ("c-content", 839_377), ("e-cold", 342_779)],
+            collab,
+            [
+                ("b-both", 858_382),
+                ("z-tie", 858_382),
+                ("c-content", 755_439),
+                ("e-cold", 308_501),
+                ("d-collaborative", 248_500),
+            ],
+        ],
+        "all_eligible_excluded": [popular, content, [], [], []],
+        "exclusions_top_one": [
+            [("d-collaborative", 650_000)],
+            [("b-both", 950_000)],
+            [("c-content", 470_750)],
+            [("d-collaborative", 947_214)],
+            [("c-content", 446_361)],
+        ],
+    }
+    assert list(report["scenarios"]) == list(expected)
+    for name, variants in expected.items():
+        actual = report["scenarios"][name]["variants"]
+        assert list(actual) == ["popularity", "content", "feedback", "collaborative", "hybrid"]
+        for result, golden in zip(actual.values(), variants, strict=True):
+            assert [(row["slug"], row["final"]) for row in result["rows"]] == golden, name
+            assert [row["rank"] for row in result["rows"]] == list(range(1, len(golden) + 1))
+    for name, reason, stage4_reason in (
+        ("cold_user", "no_query_sources", "recommendations"),
+        ("cold_source_empty", "no_supported_sources", "no_content_support"),
+        ("all_eligible_excluded", "no_eligible_candidates", "no_eligible_candidates"),
+    ):
+        variants = report["scenarios"][name]["variants"]
+        assert variants["collaborative"]["reason"] == reason
+        assert variants["hybrid"]["mode"] == "stage_4_fallback"
+        assert variants["hybrid"]["fallback_reason"] == reason
+        assert variants["hybrid"]["reason"] == stage4_reason
+        assert variants["hybrid"]["rows"] == variants["feedback"]["rows"]
+
+
+def test_five_variant_components_reconstruct_without_invented_support(phase9_diagnostic):
+    report = phase9_diagnostic
+    for scenario in report["scenarios"].values():
+        for result in scenario["variants"].values():
+            for row in result["rows"]:
+                for component in row.get("base_components", []):
+                    assert component["contribution_units"] == _decimal_units(
+                        component["raw_units"], component["weight_units"]
+                    )
+                if "base" not in row:
+                    assert row["contributions"] == [row["final"]]
+                    continue
+                assert row["base"] == sum(c["contribution_units"] for c in row["base_components"])
+                assert row["contributions"] == [
+                    _decimal_units(raw or 0, weight)
+                    for raw, weight in zip(
+                        (row["base"], row["affinity"], row["collaborative"]),
+                        row["weights"],
+                        strict=True,
+                    )
+                ]
+                assert row["pre_played"] == sum(row["contributions"])
+                assert row["final"] == _decimal_units(row["pre_played"], row["played_factor"])
+                assert row["played_delta"] == row["final"] - row["pre_played"]
+    supported = report["scenarios"]["supported_played"]
+    rows = {row["slug"]: row for row in supported["variants"]["hybrid"]["rows"]}
+    assert supported["sources"] == [{"game_slug": "a-source", "kind": "liked"}]
+    assert rows["b-both"]["contributions"] == [760_000, 100_000, 89_443]
+    assert rows["b-both"]["played_factor"] == 500_000
+    assert rows["b-both"]["played_delta"] == -474_721
+    assert rows["c-content"]["collaborative"] is None
+    assert rows["c-content"]["support"] is None
+    assert rows["c-content"]["edges"] == []
+    assert rows["c-content"]["weights"] == [800_000, 100_000, 100_000]
+    assert rows["c-content"]["contributions"] == [748_000, 100_000, 0]
+    only = rows["d-collaborative"]
+    assert only["origin"] == "collaborative"
+    assert [c["raw_units"] for c in only["base_components"]] == [0, 1_000_000, 650_000]
+    assert only["base"] == 165_000 and only["affinity"] == 0
+    assert only["support"] == 8
+    assert only["edges"] == [
+        {
+            "source_slug": "a-source",
+            "source_kind": "liked",
+            "candidate_slug": "d-collaborative",
+            "similarity_units": 1_000_000,
+            "pair_support": 8,
+        }
+    ]
+    mixed = report["scenarios"]["mixed_sources"]
+    assert mixed["supported_sources"] == ["a-source"]
+    assert mixed["unsupported_sources"] == ["e-cold"]
+    assert [row["collaborative"] for row in mixed["variants"]["collaborative"]["rows"]] == [
+        1_000_000,
+        894_427,
+        894_427,
+    ]
+    cold_item = next(
+        row
+        for row in report["scenarios"]["cold_content_item"]["variants"]["hybrid"]["rows"]
+        if row["slug"] == "e-cold"
+    )
+    assert cold_item["origin"] == "content"
+    assert cold_item["collaborative"] is None and cold_item["support"] is None
+    assert cold_item["weights"] == [900_000, 0, 100_000]
+    assert cold_item["contributions"] == [308_501, 0, 0]
+
+
+def test_five_variant_diagnostic_repeats_equivalent_canonical_inputs(tmp_path):
+    first, first_arrays = build_diagnostic(tmp_path / "first")
+    second, second_arrays = build_diagnostic(tmp_path / "second", reverse=True)
+    assert first == second
+    assert render_diagnostic(first) == render_diagnostic(second)
+    assert first_arrays.keys() == second_arrays.keys()
+    for name in first_arrays:
+        np.testing.assert_array_equal(first_arrays[name], second_arrays[name], strict=True)
+
+
+@pytest.mark.parametrize("top_k", [1, 2, 3, 4, 20])
+def test_loaded_hybrid_top_k_is_prefix_after_union_exclusions_and_played(tmp_path, top_k):
+    content, collaborative = build_models(tmp_path)
+    _, context, feedback = scenarios()[0]
+    complete = compare_scenario(content, collaborative, context, feedback)
+    limited = compare_scenario(content, collaborative, replace(context, top_k=top_k), feedback)
+    for name, result in complete["variants"].items():
+        assert limited["variants"][name]["rows"] == result["rows"][:top_k]
+    assert len(limited["variants"]["hybrid"]["rows"]) == min(top_k, 4)

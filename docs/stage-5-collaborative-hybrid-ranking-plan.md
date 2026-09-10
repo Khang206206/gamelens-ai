@@ -2026,9 +2026,10 @@ execution and historical limitations are recorded in Section 21.
 
 ## 16. Implementation Phase 9: Test Matrix and Quality Gate
 
-**Status: IN PROGRESS (2026-09-09).** Slices 9A (inventory), 9B (synthetic
-snapshot/provenance checks) and 9C (pure ML checks) are complete; 9D–9L and Phase 10 remain planned and unstarted. The original survey below is
-historical planning evidence. 9A changes only documentation and inventory data;
+**Status: IN PROGRESS (2026-09-10).** Slices 9A (inventory), 9B (synthetic
+snapshot/provenance checks), 9C (pure ML checks) and 9D (hybrid/baseline checks)
+are complete; 9E–9L and Phase 10 remain planned and unstarted. The original survey
+below is historical planning evidence. 9A changes only documentation and inventory data;
 no runtime test, migration, configuration, dependency or live-build change is
 included. Phase 8 is complete; the Phase 9 runtime/release gates remain pending.
 
@@ -2178,9 +2179,9 @@ finalize Stage 5 while required release decisions remain unresolved.
 
 ### Phase 9 Slice Ledger and Dependency Order
 
-Slices **9A, 9B and 9C are COMPLETE** within their inventory, synthetic extraction
-and pure ML scopes; **9D–9L remain PLANNED — NOT IMPLEMENTED**. Production
-authority and final release evidence remain blocked/pending. Each slice ends with
+Slices **9A, 9B, 9C and 9D are COMPLETE** within their inventory, synthetic extraction,
+pure ML and hybrid/baseline scopes; **9E–9L remain PLANNED — NOT IMPLEMENTED**.
+Production authority and final release evidence remain blocked/pending. Each slice ends with
 **one commit** containing its bounded work, focused checks and truthful ledger
 update. The original planning commit `f4d9be7` is separate from 9A completion.
 The remaining suggested subjects are future commit messages, not existing commits.
@@ -2190,7 +2191,7 @@ The remaining suggested subjects are future commit messages, not existing commit
 | 9A (COMPLETE) | Completed 8I and this plan | Acceptance-to-test inventory — `docs(test): map stage 5 acceptance gates` |
 | 9B (COMPLETE) | 9A | Snapshot/provenance boundary gaps — `test(api): close snapshot and provenance gaps` |
 | 9C (COMPLETE) | 9A | Sparse math and pure scorer gaps — `test(ml): close collaborative numeric gaps` |
-| 9D | 9C | Hybrid/fallback matrix and five-baseline diagnostic — `test(ml): verify hybrid and baseline diagnostics` |
+| 9D (COMPLETE) | 9C | Hybrid/fallback matrix and five-baseline diagnostic — `test(ml): verify hybrid and baseline diagnostics` |
 | 9E | 9A | Bundle rejection and operator safety gaps — `test: harden collaborative artifact safety gates` |
 | 9F | 9B, 9E | PostgreSQL lineage, promotion and lifecycle gates — `test(api): verify registered lifecycle boundaries` |
 | 9G | 9D, 9F | API/OpenAPI/event transaction agreement — `test(api): verify stage 5 response and event truth` |
@@ -2328,7 +2329,36 @@ owning commit hash is reported after creation rather than embedded here.
 
 ### 9D — Hybrid Matrix and Functional Baseline Comparison
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9C.
+**Status: COMPLETE — HYBRID FUNCTIONAL CHECKS VERIFIED (2026-09-10).** Depends
+on 9C `f2e88c7`, also the clean tested parent. The [9D record](evidence/stage-5-phase-9d.json)
+and [five-variant table](evidence/stage-5-phase-9d-diagnostic.md) retain exact
+commands, candidate/input/output hashes and M03 findings. Two existing ML test
+files, one test-only diagnostic helper and this slice's docs/evidence changed;
+no production, schema, policy, endpoint, configuration or dependency changes.
+
+Focused hybrid/handoff: **98 passed in 4.77s**; full ML: **418 passed in 11.22s**,
+no skips. Ruff lint and format pass across 38 ML Python files. Added 32 cases:
+8 active-hybrid wishlist combinations, 16 invalid context/feedback cases,
+3 five-variant golden/reconstruction/repeatability checks and 5 top-K boundaries.
+Existing all-15 fallback tests now also carry played/disliked/wishlisted state
+and assert both fallback mode and exact Stage 4 object/result equality.
+
+Eight diagnostic scenarios cover supported, saved-only/tied, cold user, cold
+source/empty, mixed sources, cold content item, all-eligible excluded and top-one
+exclusions. The six-game, ten-profile fixture satisfies the existing bundle
+minimums. Identical/orthogonal content documents, explicit item/pair supports
+and decimal arithmetic independently establish the goldens. Canonical and
+reversed equivalent builds have equal semantic arrays, identities and ordered
+output. Missing edges retain request-wide weights and explicit absent support;
+no score or quality conclusion is invented.
+
+Review corrected test fixture IDs/minimums, invalid inactive feedback rows and
+read-only vocabulary serialization in the diagnostic; all affected gates were
+rerun. No production defect or scope deviation was found. Docker quality runs
+use `--rm --no-deps`; PostgreSQL/live/web builds are not required for 9D. Later
+API/event/browser/producer checks and production-authority decisions remain
+pending with their owners. 9E–9L and Phase 10 are unstarted. The single owning
+commit hash is reported after creation rather than embedded self-referentially.
 
 - Scope: existing `test_hybrid_*.py`, `test_phase4_handoff.py` and a small
   reviewable synthetic diagnostic table/output. Extend existing Stage 4/hybrid

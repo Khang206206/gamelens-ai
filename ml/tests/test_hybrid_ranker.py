@@ -192,7 +192,12 @@ def test_every_unavailable_reason_returns_the_exact_stage4_payload(
 ) -> None:
     feedback_ranker = _feedback_ranker(snapshot, tmp_path)
     context = UserContext(preferred_genres=("strategy",), top_k=3)
-    feedback = (_liked("gamma-drift"),)
+    feedback = (
+        _liked("gamma-drift"),
+        _disliked("alpha-tactics"),
+        ActiveGameFeedback("beta-kingdom", played=True),
+        ActiveGameFeedback("delta-command", wishlisted=True),
+    )
     original_rank = feedback_ranker.rank
     expected = original_rank(context, feedback)
     returned = []
@@ -227,7 +232,11 @@ def test_every_ready_no_support_reason_returns_the_exact_stage4_payload(
 ) -> None:
     feedback_ranker = _feedback_ranker(snapshot, tmp_path)
     context = UserContext(preferred_genres=("strategy",), top_k=3)
-    feedback = () if reason == "no_query_sources" else (_liked("alpha-tactics"),)
+    feedback = (() if reason == "no_query_sources" else (_liked("alpha-tactics"),)) + (
+        _disliked("gamma-drift"),
+        ActiveGameFeedback("beta-kingdom", played=True),
+        ActiveGameFeedback("delta-command", wishlisted=True),
+    )
     prepared = feedback_ranker.prepare_ranking_context(context, feedback)
     scoring_result = _no_support_result(prepared, reason)
     original_rank = feedback_ranker.rank
@@ -249,6 +258,7 @@ def test_every_ready_no_support_reason_returns_the_exact_stage4_payload(
 
     assert type(result) is Stage4FallbackResult
     assert result.fallback_reason == reason
+    assert result.mode == "stage_4_fallback"
     assert len(returned) == 1
     assert result.stage_4_result is returned[0]
     assert result.stage_4_result == expected
@@ -534,3 +544,79 @@ def test_invalid_component_outcome_fails_before_any_ranking(
         )
 
     assert captured.value.code == "hybrid_input_invalid"
+
+
+@pytest.mark.parametrize("affinity_active", [False, True])
+@pytest.mark.parametrize(
+    "wishlist_slug", ["alpha-tactics", "beta-kingdom", "gamma-drift", "delta-command"]
+)
+def test_wishlist_is_neutral_through_the_active_hybrid_pipeline(
+    snapshot, tmp_path, affinity_active, wishlist_slug
+):
+    ranker = _feedback_ranker(snapshot, tmp_path)
+    context = UserContext(selected_game_slugs=("alpha-tactics",), top_k=20)
+    feedback = ((_liked("alpha-tactics"),) if affinity_active else ()) + (
+        ActiveGameFeedback("beta-kingdom", played=True),
+    )
+    with_wishlist = tuple(
+        replace(value, wishlisted=value.game_slug == wishlist_slug) for value in feedback
+    )
+    if wishlist_slug not in {value.game_slug for value in feedback}:
+        with_wishlist += (ActiveGameFeedback(wishlist_slug, wishlisted=True),)
+    prepared = ranker.prepare_ranking_context(context, feedback)
+    assert prepared == ranker.prepare_ranking_context(context, with_wishlist)
+    collaborative = CollaborativeComponentReady(
+        _collaborative_recommendations(prepared, (("gamma-drift", 400_000),))
+    )
+    hybrid_ranker = HybridRanker(ranker)
+    expected = hybrid_ranker.rank(context, feedback, collaborative)
+    actual = hybrid_ranker.rank(context, with_wishlist, collaborative)
+    assert type(actual) is HybridRecommendationsResult
+    assert actual == expected
+    assert all(
+        item.base_weight_units == (800_000 if affinity_active else 900_000) for item in actual.items
+    )
+
+
+@pytest.mark.parametrize("ready", [False, True])
+@pytest.mark.parametrize(
+    "case",
+    [
+        "empty",
+        "unknown",
+        "duplicate",
+        "low_k",
+        "high_k",
+        "unknown_feedback",
+        "duplicate_feedback",
+        "disliked_only_signal",
+    ],
+)
+def test_invalid_context_or_feedback_is_an_error_even_when_component_cannot_score(
+    snapshot, tmp_path, ready, case
+):
+    ranker = _feedback_ranker(snapshot, tmp_path)
+    valid = UserContext(preferred_genres=("strategy",))
+    prepared = ranker.prepare_ranking_context(valid, ())
+    outcome = (
+        CollaborativeComponentReady(_no_support_result(prepared, "no_query_sources"))
+        if ready
+        else CollaborativeComponentUnavailable("artifact_missing")
+    )
+    context, feedback = {
+        "empty": (UserContext(), ()),
+        "unknown": (UserContext(selected_game_slugs=("unknown-game",)), ()),
+        "duplicate": (UserContext(selected_game_slugs=("alpha-tactics", "alpha-tactics")), ()),
+        "low_k": (replace(valid, top_k=0), ()),
+        "high_k": (replace(valid, top_k=21), ()),
+        "unknown_feedback": (valid, (_liked("unknown-game"),)),
+        "duplicate_feedback": (valid, (_liked("alpha-tactics"), _liked("alpha-tactics"))),
+        "disliked_only_signal": (
+            UserContext(selected_game_slugs=("alpha-tactics",)),
+            (_disliked("alpha-tactics"),),
+        ),
+    }[case]
+    with pytest.raises(ValueError) as stage4_error:
+        ranker.rank(context, feedback)
+    with pytest.raises(type(stage4_error.value), match=str(stage4_error.value)):
+        HybridRanker(ranker).rank(context, feedback, outcome)
