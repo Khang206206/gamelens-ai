@@ -196,6 +196,11 @@ def _exact_keys(value: object, expected: frozenset[str], *, label: str) -> dict[
     return value
 
 
+def _exact_json_value(value: object, expected: object) -> bool:
+    # Python equality equates bool/int/float values; the manifest contract does not.
+    return _canonical_json_bytes(value) == _canonical_json_bytes(expected)
+
+
 def _is_sha256(value: object) -> bool:
     return isinstance(value, str) and _LOWER_SHA256.fullmatch(value) is not None
 
@@ -235,7 +240,7 @@ def _validate_build_metadata(
 ) -> None:
     if not isinstance(metadata, CollaborativeBuildMetadata):
         raise CollaborativeArtifactError("manifest_invalid", "Build metadata is invalid")
-    if metadata.source_kind not in {"fixture", "live"}:
+    if not isinstance(metadata.source_kind, str) or metadata.source_kind not in {"fixture", "live"}:
         raise CollaborativeArtifactError("manifest_invalid", "Artifact source kind is invalid")
     if not _is_sha256(metadata.catalog_fingerprint):
         raise CollaborativeArtifactError("catalog_mismatch", "Catalog fingerprint is invalid")
@@ -316,7 +321,7 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
-            raise CollaborativeArtifactError("manifest_invalid", f"Duplicate JSON key: {key}")
+            raise CollaborativeArtifactError("manifest_invalid", "Duplicate JSON key is forbidden")
         result[key] = value
     return result
 
@@ -453,7 +458,9 @@ def _validate_manifest(
     allow_fixture: bool,
 ) -> tuple[dict[str, Any], CollaborativeBuildMetadata]:
     manifest = _exact_keys(value, _MANIFEST_KEYS, label="Manifest")
-    if manifest.get("artifact_schema_version") != COLLABORATIVE_ARTIFACT_SCHEMA_VERSION:
+    if not _exact_json_value(
+        manifest.get("artifact_schema_version"), COLLABORATIVE_ARTIFACT_SCHEMA_VERSION
+    ):
         raise CollaborativeArtifactError(
             "artifact_schema_incompatible", "Collaborative artifact schema is incompatible"
         )
@@ -478,7 +485,7 @@ def _validate_manifest(
         "contains_real_user_data": source.get("kind") == "live",
         "quality_evidence": False,
     }
-    if any(source.get(key) != expected for key, expected in expected_source_flags.items()):
+    if any(source.get(key) is not expected for key, expected in expected_source_flags.items()):
         raise CollaborativeArtifactError("manifest_invalid", "Source provenance flags are invalid")
     metadata = _metadata_from_manifest(manifest)
     _validate_build_metadata(metadata, allow_fixture=allow_fixture)
@@ -486,15 +493,15 @@ def _validate_manifest(
         raise CollaborativeArtifactError(
             "model_incompatible", "Collaborative label policy is incompatible"
         )
-    if manifest.get("thresholds") != _expected_thresholds():
+    if not _exact_json_value(manifest.get("thresholds"), _expected_thresholds()):
         raise CollaborativeArtifactError(
             "config_incompatible", "Collaborative thresholds are incompatible"
         )
-    if manifest.get("numeric") != _expected_numeric():
+    if not _exact_json_value(manifest.get("numeric"), _expected_numeric()):
         raise CollaborativeArtifactError(
             "config_incompatible", "Collaborative numeric policy is incompatible"
         )
-    if manifest.get("limits") != _expected_limits():
+    if not _exact_json_value(manifest.get("limits"), _expected_limits()):
         raise CollaborativeArtifactError(
             "config_incompatible", "Collaborative resource limits are incompatible"
         )
@@ -509,11 +516,11 @@ def _validate_manifest(
     if (
         type(retained_items) is not int
         or not MIN_ACTIVATION_ITEMS <= retained_items <= MAX_UNIQUE_ITEMS
-        or neighbors.get("shape") != [retained_items, retained_items]
+        or not _exact_json_value(neighbors.get("shape"), [retained_items, retained_items])
         or type(neighbor_nonzero) is not int
         or not 1 <= neighbor_nonzero <= MAX_NEIGHBOR_NONZERO
         or neighbors.get("format") != "csr-transparent-npy"
-        or neighbors.get("maximum_per_item") != MAX_NEIGHBORS_PER_ITEM
+        or not _exact_json_value(neighbors.get("maximum_per_item"), MAX_NEIGHBORS_PER_ITEM)
     ):
         raise CollaborativeArtifactError(
             "artifact_shape_invalid", "Collaborative neighbor metadata is invalid"
@@ -549,13 +556,21 @@ def _validate_manifest(
     return manifest, metadata
 
 
-def _resolved_artifact_root(path: str | Path) -> Path:
+def _unlinked_artifact_path(path: str | Path) -> Path:
     candidate = Path(path).expanduser()
+    if ".." in candidate.parts:
+        raise CollaborativeArtifactError("artifact_path_invalid", "Artifact traversal is forbidden")
+    candidate = candidate.absolute()
+    if any(part.is_symlink() or part.is_junction() for part in (candidate, *candidate.parents)):
+        raise CollaborativeArtifactError(
+            "artifact_path_invalid", "Artifact path cannot contain links"
+        )
+    return candidate
+
+
+def _resolved_artifact_root(path: str | Path) -> Path:
     try:
-        if candidate.is_symlink():
-            raise CollaborativeArtifactError(
-                "artifact_path_invalid", "Artifact root cannot be a symbolic link"
-            )
+        candidate = _unlinked_artifact_path(path)
         root = candidate.resolve(strict=True)
     except CollaborativeArtifactError:
         raise
@@ -1058,6 +1073,7 @@ def _artifact_target(output_path: str | Path) -> tuple[Path, Path]:
             "artifact_path_invalid", "Collaborative artifact target is unsafe"
         )
     try:
+        raw_target = _unlinked_artifact_path(raw_target)
         raw_target.parent.mkdir(parents=True, exist_ok=True)
         parent = raw_target.parent.resolve(strict=True)
     except OSError as error:

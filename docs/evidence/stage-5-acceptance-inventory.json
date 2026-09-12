@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Stage 5 Phase 9: 9A inventory, 9B synthetic extraction, 9C pure ML and 9D hybrid/baseline verification complete; 9E–9L unstarted",
+  "scope": "Stage 5 Phase 9: 9A inventory, 9B synthetic extraction, 9C pure ML, 9D hybrid/baseline and 9E artifact/operator unit verification complete; 9F–9L unstarted",
   "baseline": "f4d9be7",
   "statuses": {
     "EXISTING_NOT_RERUN": "Source assertion inspected; no Phase 9 execution evidence.",
@@ -154,8 +154,10 @@
       "wording": "A fixture artifact is serveable only in guarded disposable test/E2E mode and is rejected by ordinary development and production configuration.",
       "owner": "9E",
       "routes": ["R10", "B02"],
-      "gap": "Guarded fixture assertions and real config rejection probe exist.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified guarded test-only fixture configuration and loader/readiness in 9E (R10); real-stack/browser B02 replay remains with 9H/9K.",
+      "status": "EXISTING_NOT_RERUN",
+      "unit_status": "VERIFIED",
+      "unit_evidence": "docs/evidence/stage-5-phase-9e.json"
     },
     {
       "id": "S5-AC-18",
@@ -186,32 +188,40 @@
       "wording": "The artifact has exact model/schema/code identity, source kind, cutoff, catalog and interaction fingerprints, label policy, thresholds, build ID, revision, validity, aggregates, resource limits, and member checksums.",
       "owner": "9E",
       "routes": ["R13", "R14", "R06"],
-      "gap": "Metadata and lifecycle assertions exist; not newly verified.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified exact artifact metadata, strict JSON types, fingerprints, limits and checksums in 9E (R13/R14); registered PostgreSQL R06 remains with 9F.",
+      "status": "EXISTING_NOT_RERUN",
+      "unit_status": "VERIFIED",
+      "unit_evidence": "docs/evidence/stage-5-phase-9e.json"
     },
     {
       "id": "S5-AC-22",
       "wording": "Artifact files contain no executable pickle, user matrix, user row, user ID, stable pseudonym, credential, or raw interaction payload.",
       "owner": "9E",
       "routes": ["R13", "M02"],
-      "gap": "Member/privacy assertions exist; full release scan pending.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified exact identity-free member set, non-executable numeric loading and no identity-bearing build residue in 9E; release-wide M02 scan remains with 9J.",
+      "status": "EXISTING_NOT_RERUN",
+      "unit_status": "VERIFIED",
+      "unit_evidence": "docs/evidence/stage-5-phase-9e.json"
     },
     {
       "id": "S5-AC-23",
       "wording": "Missing, corrupt, incompatible, oversized, stale, expired, privacy-invalid, retired, or catalog-mismatched bundles never become collaborative-ready.",
       "owner": "9E",
       "routes": ["R09", "R10", "R13", "R14"],
-      "gap": "Loader/readiness rejection assertions exist; see all-reason matrix.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified loader rejection and unit readiness for stale/expired/privacy-invalid/retired states in 9E; actual PostgreSQL lineage producer R09 remains with 9F.",
+      "status": "EXISTING_NOT_RERUN",
+      "unit_status": "VERIFIED",
+      "unit_evidence": "docs/evidence/stage-5-phase-9e.json"
     },
     {
       "id": "S5-AC-24",
       "wording": "Build targets are immutable; validation is read-only; promotion is crash-safe; rollback accepts only a still-valid registered artifact.",
       "owner": "9E",
       "routes": ["R13", "R14", "R15"],
-      "gap": "Filesystem safety and PostgreSQL rollback assertions exist; rerun by 9E/9F.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified immutable promotion, failure cleanup and read-only validate/inspect/rollback service unit behavior in 9E; real registered rollback/recovery R15 remains with 9F.",
+      "status": "EXISTING_NOT_RERUN",
+      "unit_status": "VERIFIED",
+      "unit_evidence": "docs/evidence/stage-5-phase-9e.json"
     },
     {
       "id": "S5-AC-25",
@@ -362,8 +372,10 @@
       "wording": "Commands have direct equivalents, immutable paths, stable exit behavior, read-only defaults where appropriate, and guarded destructive confirmation.",
       "owner": "9E",
       "routes": ["R15", "R25", "M05"],
-      "gap": "Existing command guards; parser/exit/direct-equivalent review pending.",
-      "status": "EXISTING_NOT_RERUN"
+      "gap": "Verified CLI guards, bounded errors, read-only defaults and M05 command/source review in 9E; registered destructive/lifecycle execution R15/R25 remains with 9F/9G.",
+      "status": "EXISTING_NOT_RERUN",
+      "unit_status": "VERIFIED",
+      "unit_evidence": "docs/evidence/stage-5-phase-9e.json"
     },
     {
       "id": "S5-AC-44",
@@ -748,8 +760,8 @@
       ],
       "expect": "Fixture gate rejected outside test; live authority mutually exclusive; fixture readiness never claims live readiness.",
       "mode": "API",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9e.json route R10; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9e.json, route R10; focused loader/operator and affected full ML/API unit suites. PostgreSQL/browser and release-wide review remain with their owners."
     },
     "R11": {
       "owner": "9C",
@@ -954,12 +966,36 @@
           "node": "test_loader_rejects_missing_and_extra_directory_members",
           "line": 210,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_artifacts.py::test_loader_rejects_missing_and_extra_directory_members -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_artifacts.py",
+          "node": "test_loader_rejects_incompatible_and_mistyped_metadata",
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_artifacts.py::test_loader_rejects_incompatible_and_mistyped_metadata -q -p no:cacheprovider",
+          "line": 615
+        },
+        {
+          "path": "ml/tests/test_collaborative_artifacts.py",
+          "node": "test_loader_enforces_resource_caps_before_numeric_loading",
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_artifacts.py::test_loader_enforces_resource_caps_before_numeric_loading -q -p no:cacheprovider",
+          "line": 637
+        },
+        {
+          "path": "ml/tests/test_collaborative_artifacts.py",
+          "node": "test_loader_rejects_unsafe_headers_without_executing_pickle",
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_artifacts.py::test_loader_rejects_unsafe_headers_without_executing_pickle -q -p no:cacheprovider",
+          "line": 675
+        },
+        {
+          "path": "ml/tests/test_collaborative_artifacts.py",
+          "node": "test_duplicate_manifest_keys_do_not_echo_private_unbounded_input",
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_artifacts.py::test_duplicate_manifest_keys_do_not_echo_private_unbounded_input -q -p no:cacheprovider",
+          "line": 765
         }
       ],
       "expect": "Exact members and semantic identity, equal builds, immutable arrays, identity-marker exclusion; malformed checksums, formats, dtype/shape and semantic corruption rejected.",
       "mode": "ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9e.json route R13; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9e.json, route R13; focused loader/operator and affected full ML/API unit suites. PostgreSQL/browser and release-wide review remain with their owners."
     },
     "R14": {
       "owner": "9E",
@@ -994,12 +1030,24 @@
           "node": "test_promotion_never_overwrites_target_or_promotes_after_revision_race",
           "line": 508,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_artifacts.py::test_promotion_never_overwrites_target_or_promotes_after_revision_race -q -p no:cacheprovider"
+        },
+        {
+          "path": "ml/tests/test_collaborative_artifacts.py",
+          "node": "test_artifact_paths_refuse_linked_ancestors_and_traversal",
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_artifacts.py::test_artifact_paths_refuse_linked_ancestors_and_traversal -q -p no:cacheprovider",
+          "line": 707
+        },
+        {
+          "path": "ml/tests/test_collaborative_artifacts.py",
+          "node": "test_build_faults_leave_no_bundle_snapshot_or_owned_lock",
+          "command": "docker compose run --build --rm --no-deps quality python -m pytest /workspace/ml/tests/test_collaborative_artifacts.py::test_build_faults_leave_no_bundle_snapshot_or_owned_lock -q -p no:cacheprovider",
+          "line": 734
         }
       ],
       "expect": "Unsafe paths and invalid lifecycle rejected; target remains immutable during competing promotion; temporary bundle/lock cleaned on loader failure.",
       "mode": "ML",
-      "status": "EXISTING_NOT_RERUN",
-      "evidence": "Future docs/evidence/stage-5-phase-9e.json route R14; final 9K record cross-references this route. No file/result implied today."
+      "status": "VERIFIED",
+      "evidence": "docs/evidence/stage-5-phase-9e.json, route R14; focused loader/operator and affected full ML/API unit suites. PostgreSQL/browser and release-wide review remain with their owners."
     },
     "R15": {
       "owner": "9F",
@@ -1414,7 +1462,7 @@
         {
           "path": "apps/api/tests/unit/test_collaborative_build.py",
           "node": "test_live_build_service_rechecks_default_off_gates_before_database_access",
-          "line": 29,
+          "line": 40,
           "command": "docker compose run --build --rm --no-deps quality python -m pytest tests/unit/test_collaborative_build.py::test_live_build_service_rechecks_default_off_gates_before_database_access -q -p no:cacheprovider"
         },
         {
@@ -1783,7 +1831,7 @@
       "9E",
       "Makefile; infra/run-phase8.py; infra/run-e2e-fixture.sh; infra/run-e2e-lifecycle.sh; apps/api/app/commands/collaborative_artifact.py",
       "Operator and ordinary-operation review",
-      "Compare direct commands to parsers/Make/wrappers, exact target confirmation and stable failure exits. Trace startup/request/migration/seed/ordinary tests/teardown for no implicit fitting/promotion/retirement/deletion. Project-owned setup/cleanup is explicit, never development data."
+      "VERIFIED within 9E source/parser and operator-unit scope; see docs/evidence/stage-5-phase-9e.json M05 and input hashes. Compare direct commands to parsers/Make/wrappers, exact target confirmation and stable failure exits. Trace startup/request/migration/seed/ordinary tests/teardown for no implicit fitting/promotion/retirement/deletion. Project-owned setup/cleanup is explicit, never development data. Real-stack replay remains 9F/9H/9K."
     ],
     "M06": [
       "9J",
@@ -4210,6 +4258,15 @@
       "routes": ["R17", "R18", "R19", "R20", "R27", "R29"],
       "evidence": "docs/evidence/stage-5-phase-9d.json",
       "remaining": "9E–9L and Phase 10 unstarted; API/event/browser/production-authority clauses remain with their owners."
+    },
+    "9E": {
+      "slice": "9E",
+      "status": "VERIFIED_ARTIFACT_OPERATOR_UNIT",
+      "date": "2026-09-12",
+      "routes": ["R10", "R13", "R14"],
+      "manual_review": "M05",
+      "evidence": "docs/evidence/stage-5-phase-9e.json",
+      "remaining": "9F–9L and Phase 10 unstarted; PostgreSQL producer/registration, browser and release-wide privacy/authority criteria remain with their owners. Whole-criterion statuses are preserved; unit_status records this slice only."
     }
   }
 }

@@ -2026,10 +2026,10 @@ execution and historical limitations are recorded in Section 21.
 
 ## 16. Implementation Phase 9: Test Matrix and Quality Gate
 
-**Status: IN PROGRESS (2026-09-10).** Slices 9A (inventory), 9B (synthetic
-snapshot/provenance checks), 9C (pure ML checks) and 9D (hybrid/baseline checks)
-are complete; 9E–9L and Phase 10 remain planned and unstarted. The original survey
-below is historical planning evidence. 9A changes only documentation and inventory data;
+**Status: IN PROGRESS (2026-09-12).** Slices 9A (inventory), 9B (synthetic
+snapshot/provenance checks), 9C (pure ML checks), 9D (hybrid/baseline checks)
+and 9E (artifact/operator unit safety) are complete; 9F–9L and Phase 10 remain
+planned and unstarted. The original survey below is historical planning evidence. 9A changes only documentation and inventory data;
 no runtime test, migration, configuration, dependency or live-build change is
 included. Phase 8 is complete; the Phase 9 runtime/release gates remain pending.
 
@@ -2179,8 +2179,9 @@ finalize Stage 5 while required release decisions remain unresolved.
 
 ### Phase 9 Slice Ledger and Dependency Order
 
-Slices **9A, 9B, 9C and 9D are COMPLETE** within their inventory, synthetic extraction,
-pure ML and hybrid/baseline scopes; **9E–9L remain PLANNED — NOT IMPLEMENTED**.
+Slices **9A–9E are COMPLETE** within their inventory, synthetic extraction,
+pure ML, hybrid/baseline and artifact/operator unit scopes;
+**9F–9L remain PLANNED — NOT IMPLEMENTED**.
 Production authority and final release evidence remain blocked/pending. Each slice ends with
 **one commit** containing its bounded work, focused checks and truthful ledger
 update. The original planning commit `f4d9be7` is separate from 9A completion.
@@ -2380,7 +2381,44 @@ commit hash is reported after creation rather than embedded self-referentially.
 
 ### 9E — Artifact Validation and Operator Failure Safety
 
-**Status: PLANNED — NOT IMPLEMENTED.** Depends on 9A.
+**Status: COMPLETE — ARTIFACT/OPERATOR UNIT CHECKS VERIFIED (2026-09-12).**
+Depends on 9A `9478e27`; clean tested parent `19ff7a5`. The
+[9E record](evidence/stage-5-phase-9e.json) records commands, candidate/input/log
+hashes, rejection/fault tests and M05 source/command review.
+
+Focused loader/operator: **270 passed in 42.90s**; full ML: **462 passed in
+13.60s**; full API unit: **522 passed in 57.11s**. No skips. Ruff lint and
+format pass across 208 Python files. Added 44 ML and 17 API unit cases; updated
+the existing invalid-settings assertion to require a bounded generic message.
+
+Tests cover exact metadata types/identities, aggregate/member byte caps before
+numeric loading, unsafe NPY headers, ancestor links/traversal, private duplicate
+keys, injected lock/write/rename/revision faults, read-only corrupt-bundle
+inspection, rollback service decisions and registration/commit failure handoffs.
+Existing recovery/retirement/confirmation/readiness suites remain selected.
+Failed pre-promotion writes clean owned temporary bundles/locks. A registration
+failure after publication retains only the immutable identity-free orphan for
+explicit recovery; it does not report successful registration or overwrite it.
+
+Regression tests exposed permissive Python bool/int/float equality in manifest
+validation, linked/traversing ancestor paths and unbounded/private CLI errors.
+Review also found an untyped source-kind array failure. Two production files
+were repaired within artifact/operator safety: strict JSON contract comparison,
+safe path rejection and sanitized parser/configuration/filesystem/driver errors.
+This extends the listed test-file scope only as needed to satisfy 9E acceptance;
+model/schema/policy identity, thresholds, endpoints and dependencies are unchanged.
+Valid canonical bundles remain compatible; malformed bundles fail closed.
+
+M05 verifies parser/direct-command/Make/wrapper agreement and traces ordinary
+startup, request, migration, seed, fast-test and teardown call paths. Commands
+retain explicit destructive confirmations and read-only defaults. Temporary
+synthetic handoff tests use mocked database extraction/registration; they are
+not a PostgreSQL live-build gate. Linux Docker/WSL2 is the measured platform;
+native Windows filesystem behavior is not certified. R10/R13/R14 and the M05
+review are verified only in this scope. Registered lifecycle/rollback/recovery,
+browser replay and release-wide privacy/authority checks stay with their owners.
+9F–9L and Phase 10 remain unstarted. The single owning commit hash is reported
+after creation rather than embedded self-referentially.
 
 - Scope: `ml/tests/test_collaborative_artifacts.py` and API unit suites for
   artifact command/entrypoint, build, recovery, rollback, retirement, readiness

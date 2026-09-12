@@ -3,10 +3,12 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from app.commands import collaborative_artifact
 from app.core.config import PROJECT_ROOT
+from sqlalchemy.exc import SQLAlchemyError
 
 FIXTURE_PATH = (
     PROJECT_ROOT / "data" / "fixtures" / "interactions" / "collaborative-interactions.json"
@@ -996,6 +998,99 @@ def test_invalid_settings_use_the_stable_command_error_contract(
         "status": "error",
         "error": {
             "code": "collaborative_artifact_failed",
-            "message": "settings are invalid",
+            "message": "Collaborative artifact operation failed",
         },
     }
+
+
+@pytest.mark.parametrize("error_type", [ValueError, OSError, SQLAlchemyError])
+def test_untyped_operator_errors_are_bounded_and_do_not_echo_private_details(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    error_type: type[Exception],
+) -> None:
+    monkeypatch.setattr(
+        collaborative_artifact,
+        "get_settings",
+        Mock(side_effect=error_type("private-identity-marker" * 1000)),
+    )
+    monkeypatch.setattr(sys, "argv", ["artifact", "inspect", "--artifact", str(tmp_path)])
+    with pytest.raises(SystemExit) as caught:
+        collaborative_artifact.main()
+    assert caught.value.code == 2
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert json.loads(captured.out) == {
+        "status": "error",
+        "error": {
+            "code": "collaborative_artifact_failed",
+            "message": "Collaborative artifact operation failed",
+        },
+    }
+
+
+@pytest.mark.parametrize("command", ["validate", "inspect"])
+def test_invalid_bundle_inspection_never_repairs_or_builds(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    command: str,
+) -> None:
+    settings = _settings(tmp_path, allow_fixture=True)
+    root = tmp_path / "artifact"
+    collaborative_artifact.build_fixture_artifact(
+        settings, root, fixture_path=FIXTURE_PATH, catalog_path=CATALOG_PATH
+    )
+    (root / "pair-support.npy").write_bytes(b"corrupt")
+    before = _bundle_snapshot(root)
+    for name in ("build_fixture_artifact", "build_live_artifact", "create_database_engine"):
+        monkeypatch.setattr(collaborative_artifact, name, Mock(side_effect=AssertionError(name)))
+    monkeypatch.setattr(collaborative_artifact, "get_settings", lambda: settings)
+    monkeypatch.setattr(
+        sys, "argv", ["artifact", command, "--artifact", str(root), "--catalog", str(CATALOG_PATH)]
+    )
+    for _ in range(2):
+        with pytest.raises(SystemExit) as caught:
+            collaborative_artifact.main()
+        assert caught.value.code == 2
+        assert json.loads(capsys.readouterr().out)["error"]["code"] == "artifact_integrity_failed"
+        assert _bundle_snapshot(root) == before
+    assert list(tmp_path.iterdir()) == [root]
+
+
+def test_fixture_parser_failure_is_private_and_leaves_no_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fixture = tmp_path / "fixture.json"
+    marker = "private-identity-marker" * 1000
+    fixture.write_text(json.dumps({marker: 1})[:-1] + f',"{marker}":2}}')
+    settings = _settings(tmp_path, allow_fixture=True)
+    monkeypatch.setattr(collaborative_artifact, "get_settings", lambda: settings)
+    target = tmp_path / "artifact"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "artifact",
+            "build",
+            "--source",
+            "fixture",
+            "--output",
+            str(target),
+            "--fixture",
+            str(fixture),
+            "--catalog",
+            str(CATALOG_PATH),
+        ],
+    )
+    with pytest.raises(SystemExit) as caught:
+        collaborative_artifact.main()
+    assert caught.value.code == 2
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert json.loads(captured.out) == {
+        "status": "error",
+        "error": {"code": "fixture_invalid", "message": "Collaborative source validation failed"},
+    }
+    assert list(tmp_path.iterdir()) == [fixture]

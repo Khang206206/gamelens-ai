@@ -1,6 +1,6 @@
 # Stage 5 acceptance inventory — slice 9A
 
-**9A mapping and 9B/9C/9D focused runtime checks verified through 2026-09-10.** Surveyed clean parent `f4d9be7` after completed 8I (`d0e86f9`), plan consolidation (`47d132b`) and Phase 9 planning (`f4d9be7`). No repository `AGENTS.md` was found. 9A, synthetic extraction 9B, pure ML 9C and hybrid/baseline 9D are complete; 9E–9L and Phase 10 remain unstarted. See the [9B evidence](evidence/stage-5-phase-9b.json), [9C evidence](evidence/stage-5-phase-9c.json) and [9D evidence](evidence/stage-5-phase-9d.json) for current checks; the 9A mapping below remains historical unless explicitly updated. Schema head remains `0011_stage_5_lifecycle_guard`.
+**9A mapping and 9B–9E focused runtime checks verified through 2026-09-12.** Surveyed clean parent `f4d9be7` after completed 8I (`d0e86f9`), plan consolidation (`47d132b`) and Phase 9 planning (`f4d9be7`). No repository `AGENTS.md` was found. 9A, synthetic extraction 9B, pure ML 9C, hybrid/baseline 9D and artifact/operator unit 9E are complete; 9F–9L and Phase 10 remain unstarted. See the [9B evidence](evidence/stage-5-phase-9b.json), [9C evidence](evidence/stage-5-phase-9c.json), [9D evidence](evidence/stage-5-phase-9d.json) and [9E evidence](evidence/stage-5-phase-9e.json) for current checks; the 9A mapping below remains historical unless explicitly updated. Schema head remains `0011_stage_5_lifecycle_guard`.
 
 The [machine-readable inventory](evidence/stage-5-acceptance-inventory.json) is the canonical route/command contract. This readable view gives every unchanged Section 19 bullet a stable `S5-AC-01`–`S5-AC-47` ID. Route references compose the implementation path, exact assertion node or named review, fixture mode, command, expected result and evidence destination; a route is not a passing gate. The [9A record](evidence/stage-5-phase-9a.json) records only static verification.
 
@@ -11,7 +11,7 @@ The [machine-readable inventory](evidence/stage-5-acceptance-inventory.json) is 
 - **BLOCKED:** Explicit authority/product/release decision required; synthetic checks do not remove block.
 - **VERIFIED:** Only after recorded successful command/review on identified candidate; none of the runtime gates is verified in 9A.
 
-The original 9A automated routes were **EXISTING_NOT_RERUN**. Routes R02–R05 are now **VERIFIED** by 9B, R11/R12/R16 by 9C and R17–R20/R27/R29 by 9D; other routes retain their recorded status. A row can additionally have MISSING evidence or a BLOCKED decision. No runtime result is VERIFIED in 9A. Final owners must disposition the whole criterion, including unasserted subclauses, rather than treating the listed representative assertions as exhaustive coverage.
+The original 9A automated routes were **EXISTING_NOT_RERUN**. Routes R02–R05 are now **VERIFIED** by 9B, R11/R12/R16 by 9C, R17–R20/R27/R29 by 9D and R10/R13/R14 by 9E; other routes retain their recorded status. A row can additionally have MISSING evidence or a BLOCKED decision. No runtime result is VERIFIED in 9A. For 9E-owned acceptance rows, the canonical `unit_status` records verified unit scope while whole-criterion statuses retain pending PostgreSQL/browser/release-wide work. Final owners must disposition the whole criterion, including unasserted subclauses, rather than treating the listed representative assertions as exhaustive coverage.
 
 Future evidence is `docs/evidence/stage-5-phase-9<slice>.json`, keyed by route and acceptance IDs; 9K cross-references the focused records. These are reserved destinations, not links to existing evidence. Keep raw output under ignored `tmp/phase9-<run-id>/`; retain only privacy-reviewed aggregate summaries and hashes. The historical [8H record](evidence/stage-5-phase-8h.json) is context only.
 
@@ -281,7 +281,7 @@ A fixture artifact is serveable only in guarded disposable test/E2E mode and is 
 
 Owner: **9E**. Routes: [R10](#r10), [B02](#b02).
 
-Current disposition: Guarded fixture assertions and real config rejection probe exist.
+Current disposition: Verified guarded test-only fixture configuration and loader/readiness in 9E (R10); real-stack/browser B02 replay remains with 9H/9K.
 
 ### S5-AC-18
 
@@ -313,7 +313,7 @@ The artifact has exact model/schema/code identity, source kind, cutoff, catalog 
 
 Owner: **9E**. Routes: [R13](#r13), [R14](#r14), [R06](#r06).
 
-Current disposition: Metadata and lifecycle assertions exist; not newly verified.
+Current disposition: Verified exact artifact metadata, strict JSON types, fingerprints, limits and checksums in 9E (R13/R14); registered PostgreSQL R06 remains with 9F.
 
 ### S5-AC-22
 
@@ -321,7 +321,7 @@ Artifact files contain no executable pickle, user matrix, user row, user ID, sta
 
 Owner: **9E**. Routes: [R13](#r13), [M02](#m02).
 
-Current disposition: Member/privacy assertions exist; full release scan pending.
+Current disposition: Verified exact identity-free member set, non-executable numeric loading and no identity-bearing build residue in 9E; release-wide M02 scan remains with 9J.
 
 ### S5-AC-23
 
@@ -329,7 +329,7 @@ Missing, corrupt, incompatible, oversized, stale, expired, privacy-invalid, reti
 
 Owner: **9E**. Routes: [R09](#r09), [R10](#r10), [R13](#r13), [R14](#r14).
 
-Current disposition: Loader/readiness rejection assertions exist; see all-reason matrix.
+Current disposition: Verified loader rejection and unit readiness for stale/expired/privacy-invalid/retired states in 9E; actual PostgreSQL lineage producer R09 remains with 9F.
 
 ### S5-AC-24
 
@@ -337,7 +337,7 @@ Build targets are immutable; validation is read-only; promotion is crash-safe; r
 
 Owner: **9E**. Routes: [R13](#r13), [R14](#r14), [R15](#r15).
 
-Current disposition: Filesystem safety and PostgreSQL rollback assertions exist; rerun by 9E/9F.
+Current disposition: Verified immutable promotion, failure cleanup and read-only validate/inspect/rollback service unit behavior in 9E; real registered rollback/recovery R15 remains with 9F.
 
 ### S5-AC-25
 
@@ -489,7 +489,7 @@ Commands have direct equivalents, immutable paths, stable exit behavior, read-on
 
 Owner: **9E**. Routes: [R15](#r15), [R25](#r25), [M05](#m05).
 
-Current disposition: Existing command guards; parser/exit/direct-equivalent review pending.
+Current disposition: Verified CLI guards, bounded errors, read-only defaults and M05 command/source review in 9E; registered destructive/lifecycle execution R15/R25 remains with 9F/9G.
 
 ### S5-AC-44
 
@@ -665,7 +665,7 @@ Evidence: future `docs/evidence/stage-5-phase-9f.json`, route `R09`.
 
 ### R10
 
-Owner: **9E**; mode: **API**; status: **EXISTING_NOT_RERUN**.
+Owner: **9E**; mode: **API**; status: **VERIFIED**.
 
 Implementation: [apps/api/app/core/config.py](../apps/api/app/core/config.py).
 
@@ -675,7 +675,7 @@ Implementation: [apps/api/app/core/config.py](../apps/api/app/core/config.py).
 
 Expected: Fixture gate rejected outside test; live authority mutually exclusive; fixture readiness never claims live readiness.
 
-Evidence: future `docs/evidence/stage-5-phase-9e.json`, route `R10`.
+Evidence: [9E verification](evidence/stage-5-phase-9e.json), route `R10`; focused and full ML/API unit checks.
 
 ### R11
 
@@ -726,7 +726,7 @@ Evidence: [9C verification](evidence/stage-5-phase-9c.json), route `R12`; focuse
 
 ### R13
 
-Owner: **9E**; mode: **ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9E**; mode: **ML**; status: **VERIFIED**.
 
 Implementation: [ml/src/gamelens_recommender/collaborative_artifacts.py](../ml/src/gamelens_recommender/collaborative_artifacts.py).
 
@@ -735,14 +735,18 @@ Implementation: [ml/src/gamelens_recommender/collaborative_artifacts.py](../ml/s
 - [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_loader_rejects_unsafe_or_malformed_npy_members`
 - [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_loader_rejects_checksum_valid_semantic_corruption`
 - [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_loader_rejects_missing_and_extra_directory_members`
+- [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_loader_rejects_incompatible_and_mistyped_metadata`
+- [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_loader_enforces_resource_caps_before_numeric_loading`
+- [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_loader_rejects_unsafe_headers_without_executing_pickle`
+- [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_duplicate_manifest_keys_do_not_echo_private_unbounded_input`
 
 Expected: Exact members and semantic identity, equal builds, immutable arrays, identity-marker exclusion; malformed checksums, formats, dtype/shape and semantic corruption rejected.
 
-Evidence: future `docs/evidence/stage-5-phase-9e.json`, route `R13`.
+Evidence: [9E verification](evidence/stage-5-phase-9e.json), route `R13`; focused and full ML/API unit checks.
 
 ### R14
 
-Owner: **9E**; mode: **ML**; status: **EXISTING_NOT_RERUN**.
+Owner: **9E**; mode: **ML**; status: **VERIFIED**.
 
 Implementation: [ml/src/gamelens_recommender/collaborative_artifacts.py](../ml/src/gamelens_recommender/collaborative_artifacts.py).
 
@@ -751,10 +755,12 @@ Implementation: [ml/src/gamelens_recommender/collaborative_artifacts.py](../ml/s
 - [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_atomic_promotion_does_not_replace_target_created_after_precheck`
 - [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_production_loader_failure_cleans_temporary_bundle`
 - [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_promotion_never_overwrites_target_or_promotes_after_revision_race`
+- [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_artifact_paths_refuse_linked_ancestors_and_traversal`
+- [ml/tests/test_collaborative_artifacts.py](../ml/tests/test_collaborative_artifacts.py) `::test_build_faults_leave_no_bundle_snapshot_or_owned_lock`
 
 Expected: Unsafe paths and invalid lifecycle rejected; target remains immutable during competing promotion; temporary bundle/lock cleaned on loader failure.
 
-Evidence: future `docs/evidence/stage-5-phase-9e.json`, route `R14`.
+Evidence: [9E verification](evidence/stage-5-phase-9e.json), route `R14`; focused and full ML/API unit checks.
 
 ### R15
 
@@ -1184,13 +1190,13 @@ Evidence: future `docs/evidence/stage-5-phase-9h.json`, review `M04`; retain fin
 
 ### M05
 
-**Operator and ordinary-operation review** — owner **9E**, mode **MANUAL**, current final evidence **MISSING** (M01 also has a **BLOCKED** authority decision).
+**Operator and ordinary-operation review** — owner **9E**, mode **MANUAL**, **VERIFIED within 9E source/parser and operator-unit scope** (M01 also has a **BLOCKED** authority decision).
 
 Inputs: [Makefile](../Makefile), [infra/run-phase8.py](../infra/run-phase8.py), [infra/run-e2e-fixture.sh](../infra/run-e2e-fixture.sh), [infra/run-e2e-lifecycle.sh](../infra/run-e2e-lifecycle.sh), [apps/api/app/commands/collaborative_artifact.py](../apps/api/app/commands/collaborative_artifact.py).
 
 Compare direct commands to parsers/Make/wrappers, exact target confirmation and stable failure exits. Trace startup/request/migration/seed/ordinary tests/teardown for no implicit fitting/promotion/retirement/deletion. Project-owned setup/cleanup is explicit, never development data.
 
-Evidence: future `docs/evidence/stage-5-phase-9e.json`, review `M05`; retain findings and input hashes.
+Evidence: [9E verification](evidence/stage-5-phase-9e.json), review `M05`; input hashes and findings retained. Actual PostgreSQL and real-stack replay remain with 9F/9H/9K.
 
 ### M06
 
@@ -1454,4 +1460,4 @@ Owner **9D**, mapped to S5-AC-31 and M03. **VERIFIED** in the [five-variant tabl
 
 Public contribution grant/re-consent/withdrawal routes and UI are absent, and no actual user cohort has approved authority. This blocks the applicable production acceptance clauses (S5-AC-03/05/14/42); synthetic private lifecycle checks cannot discharge them. Default-off and request-only checks can be verified independently. A future explicit fixture-only release-scope decision must identify exactly which clauses remain blocked; no unexplained N/A or implicit release approval is allowed.
 
-Current final dependency/license/security/privacy evidence (9J), diagnostic coverage/gap disposition (9I), clean combined replay (9K) and final docs reconciliation (9L) remain missing. The five-baseline table (9D) is now verified. Existing tests are assertion routes, not exhaustive-coverage or current-pass claims. 9B has closed snapshot/provenance gaps with focused runtime evidence. 9C has closed its pure ML gaps and 9D its hybrid/functional comparison scope; 9E–9L own their remaining work and are unstarted.
+Current final dependency/license/security/privacy evidence (9J), diagnostic coverage/gap disposition (9I), clean combined replay (9K) and final docs reconciliation (9L) remain missing. The five-baseline table (9D) is now verified. Existing tests are assertion routes, not exhaustive-coverage or current-pass claims. 9B has closed snapshot/provenance gaps with focused runtime evidence. 9C has closed its pure ML gaps, 9D its hybrid/functional comparison scope and 9E its artifact/operator unit safety scope; 9F–9L own their remaining work and are unstarted.

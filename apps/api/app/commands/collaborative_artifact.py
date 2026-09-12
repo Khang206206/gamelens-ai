@@ -603,11 +603,21 @@ def main() -> None:
         CollaborativeRetirementPreviewError,
         CollaborativeRegistryMutationError,
         CollaborativeSnapshotError,
-        SnapshotAuditError,
-        OSError,
-        ValueError,
     ) as error:
         fail_command(error, fallback_code="collaborative_artifact_failed")
+    except SnapshotAuditError as error:
+        # Fixture parser errors may contain an untrusted JSON key.
+        fail_command(
+            CollaborativeArtifactCommandError(error.code, "Collaborative source validation failed"),
+            fallback_code="collaborative_artifact_failed",
+        )
+    except (OSError, ValueError, SQLAlchemyError) as error:
+        # Configuration, filesystem and driver exceptions can embed credentials or input rows.
+        safe_error = CollaborativeArtifactCommandError(
+            "collaborative_artifact_failed", "Collaborative artifact operation failed"
+        )
+        safe_error.__cause__ = error
+        fail_command(safe_error, fallback_code="collaborative_artifact_failed")
     write_json(result)
 
 

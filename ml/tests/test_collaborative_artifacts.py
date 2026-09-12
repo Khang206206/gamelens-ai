@@ -579,3 +579,195 @@ def test_production_loader_failure_cleans_temporary_bundle(
     assert not target.exists()
     assert not tuple(tmp_path.glob(".invalid.tmp-*"))
     assert not (tmp_path / ".invalid.promotion.lock").exists()
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "code"),
+    [
+        ("artifact_schema_version", 2, "artifact_schema_incompatible"),
+        ("artifact_schema_version", True, "artifact_schema_incompatible"),
+        ("artifact_schema_version", 1.0, "artifact_schema_incompatible"),
+        ("model.version", "2.0.0", "model_incompatible"),
+        ("code_compatibility", "stage-6-v1", "code_incompatible"),
+        ("build.software.numpy", "0.0.0", "code_incompatible"),
+        ("build.id", "../private", "manifest_invalid"),
+        ("catalog_fingerprint", "A" * 64, "catalog_mismatch"),
+        ("interaction_fingerprint", "invalid", "manifest_invalid"),
+        ("label_policy", "future", "model_incompatible"),
+        ("source.kind", "external", "manifest_invalid"),
+        ("source.kind", [], "manifest_invalid"),
+        ("source.quality_evidence", True, "manifest_invalid"),
+        ("source.quality_evidence", 0, "manifest_invalid"),
+        ("source.contains_real_user_data", 0, "manifest_invalid"),
+        ("source.fixture_id", "unapproved", "manifest_invalid"),
+        ("lifecycle.data_revision", 7, "manifest_invalid"),
+        ("lifecycle.valid_until", None, "manifest_invalid"),
+        ("lifecycle.valid_until", "2026-08-25T01:02:03.456789Z", "manifest_invalid"),
+        ("thresholds.minimum_item_support", 2.0, "config_incompatible"),
+        ("numeric.score_scale", 1000000.0, "config_incompatible"),
+        ("limits.maximum_members", 6.0, "config_incompatible"),
+        ("matrix.retained_contributors", True, "manifest_invalid"),
+        ("neighbors.shape", [6.0, 6], "artifact_shape_invalid"),
+        ("neighbors.maximum_per_item", 100.0, "artifact_shape_invalid"),
+        ("neighbors.nonzero", 0, "artifact_shape_invalid"),
+    ],
+)
+def test_loader_rejects_incompatible_and_mistyped_metadata(
+    tmp_path: Path, field: str, value: object, code: str
+) -> None:
+    root = _build_fixture(tmp_path / "artifact")
+    path = root / "manifest.json"
+    manifest = json.loads(path.read_bytes())
+    parent = manifest
+    keys = field.split(".")
+    for key in keys[:-1]:
+        parent = parent[key]
+    parent[keys[-1]] = value
+    path.write_bytes(_canonical_json(manifest))
+    before = _artifact_bytes(root)
+
+    with pytest.raises(CollaborativeArtifactError) as caught:
+        load_collaborative_artifact(root, allow_fixture=True, now=BUILT_AT)
+
+    assert caught.value.code == code
+    assert _artifact_bytes(root) == before
+
+
+@pytest.mark.parametrize("kind", ["manifest", "member", "declared-member", "total", "depth"])
+def test_loader_enforces_resource_caps_before_numeric_loading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    root = _build_fixture(tmp_path / "artifact")
+    manifest_path = root / "manifest.json"
+    manifest = json.loads(manifest_path.read_bytes())
+    if kind in {"manifest", "member"}:
+        path = manifest_path if kind == "manifest" else root / "pair-support.npy"
+        maximum = (
+            artifact_module.MAX_MANIFEST_BYTES
+            if kind == "manifest"
+            else artifact_module.MAX_MEMBER_BYTES
+        )
+        # Sparse extension proves the actual byte cap without a large allocation.
+        with path.open("r+b") as stream:
+            stream.truncate(maximum + 1)
+    else:
+        if kind == "declared-member":
+            manifest["members"]["pair-support.npy"]["size"] = artifact_module.MAX_MEMBER_BYTES + 1
+        elif kind == "total":
+            for member in manifest["members"].values():
+                member["size"] = artifact_module.MAX_MEMBER_BYTES
+        else:
+            nested: object = None
+            for _ in range(artifact_module.MAX_JSON_DEPTH + 1):
+                nested = [nested]
+            manifest["private"] = nested
+        manifest_path.write_bytes(_canonical_json(manifest))
+    monkeypatch.setattr(
+        artifact_module, "_load_npy", lambda *a, **kw: pytest.fail("numeric load before cap check")
+    )
+
+    with pytest.raises(CollaborativeArtifactError) as caught:
+        load_collaborative_artifact(root, allow_fixture=True, now=BUILT_AT)
+    assert caught.value.code == "artifact_limit_exceeded"
+
+
+@pytest.mark.parametrize("kind", ["version", "truncated", "fortran", "pickle"])
+def test_loader_rejects_unsafe_headers_without_executing_pickle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    root = _build_fixture(tmp_path / "artifact")
+    payload = _npy_bytes(_neighborhoods().neighbor_indices)
+    code = "artifact_numeric_invalid"
+    if kind == "version":
+        payload = payload[:6] + b"\x03\x00" + payload[8:]
+        code = "artifact_format_invalid"
+    elif kind == "truncated":
+        payload = payload[:-1]
+    elif kind == "fortran":
+        payload = payload.replace(b"'fortran_order': False", b"'fortran_order': True ")
+    else:
+        payload = _npy_bytes(np.asarray(["private-marker"] * 12, dtype=object), allow_pickle=True)
+        code = "artifact_dtype_invalid"
+    _rewrite_member(root, "neighbors-indices.npy", payload)
+    original_load = np.load
+
+    def safe_load(stream: BytesIO, **kwargs: object) -> np.ndarray:
+        assert kwargs["allow_pickle"] is False
+        assert stream.getvalue() != payload, "unsafe member reached numpy loading"
+        return original_load(stream, **kwargs)
+
+    monkeypatch.setattr(np, "load", safe_load)
+    with pytest.raises(CollaborativeArtifactError) as caught:
+        load_collaborative_artifact(root, allow_fixture=True, now=BUILT_AT)
+    assert caught.value.code == code
+
+
+@pytest.mark.parametrize("operation", ["load", "build"])
+@pytest.mark.parametrize("kind", ["parent-link", "traversal"])
+def test_artifact_paths_refuse_linked_ancestors_and_traversal(
+    tmp_path: Path, operation: str, kind: str
+) -> None:
+    real = tmp_path / "real"
+    real.mkdir()
+    if kind == "parent-link":
+        alias = tmp_path / "alias"
+        alias.symlink_to(real, target_is_directory=True)
+        path = alias / "artifact"
+    else:
+        child = real / "child"
+        child.mkdir()
+        path = child / ".." / "artifact"
+    if operation == "load":
+        _build_fixture(real / "artifact")
+    before = sorted(str(p.relative_to(real)) for p in real.rglob("*"))
+    with pytest.raises(CollaborativeArtifactError) as caught:
+        if operation == "load":
+            load_collaborative_artifact(path, allow_fixture=True, now=BUILT_AT)
+        else:
+            _build_fixture(path)
+    assert caught.value.code == "artifact_path_invalid"
+    assert sorted(str(p.relative_to(real)) for p in real.rglob("*")) == before
+    assert not tuple(real.glob(".*"))
+
+
+@pytest.mark.parametrize("stage", ["lock-write", "array-write", "rename", "revision"])
+def test_build_faults_leave_no_bundle_snapshot_or_owned_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stage: str
+) -> None:
+    target = tmp_path / "artifact"
+    marker = tmp_path / "unrelated"
+    marker.write_bytes(b"preserve")
+
+    def fail(*args: object, **kwargs: object) -> None:
+        raise OSError("private-identity-marker")
+
+    if stage == "lock-write":
+        monkeypatch.setattr(artifact_module.os, "write", fail)
+    elif stage == "array-write":
+        monkeypatch.setattr(artifact_module, "_save_array", fail)
+    elif stage == "rename":
+        monkeypatch.setattr(artifact_module, "_rename_directory_no_replace", fail)
+    with pytest.raises(CollaborativeArtifactError) as caught:
+        if stage == "revision":
+            build_collaborative_artifact(
+                _neighborhoods(), target, metadata=_live_metadata(), revision_check=fail
+            )
+        else:
+            _build_fixture(target)
+    assert caught.value.code == (
+        "revision_race" if stage == "revision" else "artifact_promotion_failed"
+    )
+    assert "private-identity-marker" not in str(caught.value)
+    assert list(tmp_path.iterdir()) == [marker]
+    assert marker.read_bytes() == b"preserve"
+
+
+def test_duplicate_manifest_keys_do_not_echo_private_unbounded_input(tmp_path: Path) -> None:
+    root = _build_fixture(tmp_path / "artifact")
+    key = "private-identity-marker" * 1000
+    (root / "manifest.json").write_text(json.dumps({key: 1})[:-1] + f',"{key}":2}}')
+    with pytest.raises(CollaborativeArtifactError) as caught:
+        load_collaborative_artifact(root, allow_fixture=True, now=BUILT_AT)
+    assert caught.value.code == "manifest_invalid"
+    assert len(str(caught.value)) < 256
+    assert "private-identity-marker" not in str(caught.value)
